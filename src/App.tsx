@@ -24,6 +24,7 @@ import { LegalModal } from './components/LegalModal';
 import { AdminPanel } from './components/AdminPanel';
 import { ReportDownloadModal } from './components/ReportDownloadModal';
 import { ToastProvider } from './context/ToastContext';
+import { api } from './services/api';
 
 export default function App() {
   return (
@@ -95,7 +96,31 @@ function AppContent() {
     });
   };
 
-  // Save to localStorage when state changes
+  // Fetch initial state from backend REST API with fallback to localStorage
+  useEffect(() => {
+    // 1. Load services from backend
+    api.getServices()
+      .then((data) => {
+        if (data && data.length > 0) setServices(data);
+      })
+      .catch((err) => console.warn('Using cached services', err));
+
+    // 2. Load orders from backend
+    api.getOrders()
+      .then((data) => {
+        if (data && data.length > 0) setOrders(data);
+      })
+      .catch((err) => console.warn('Using cached orders', err));
+
+    // 3. Load emails from backend
+    api.getEmails()
+      .then((data) => {
+        if (data && data.length > 0) setEmails(data);
+      })
+      .catch((err) => console.warn('Using cached emails', err));
+  }, []);
+
+  // Save to localStorage when state changes as instant offline fallback
   useEffect(() => {
     localStorage.setItem('autoaudit_services', JSON.stringify(services));
   }, [services]);
@@ -128,7 +153,13 @@ function AppContent() {
   };
 
   const handleOrderCompleted = (newOrder: Order) => {
+    // Optimistically update local state
     setOrders((prev) => [newOrder, ...prev]);
+
+    // Sync to backend REST API
+    api.createOrder(newOrder).catch((err) => {
+      console.warn('Backend order sync notification:', err);
+    });
 
     // Dispatch simulated confirmation emails
     const now = new Date().toISOString();
@@ -166,6 +197,8 @@ function AppContent() {
 
   const handleUpdateOrder = (updatedOrder: Order) => {
     setOrders((prev) => prev.map((o) => (o.id === updatedOrder.id ? updatedOrder : o)));
+    // Sync status change to backend
+    api.updateOrderStatus(updatedOrder.id, updatedOrder.status, updatedOrder.internalNotes).catch(console.warn);
   };
 
   const handleSendEmail = (newEmail: EmailNotification) => {

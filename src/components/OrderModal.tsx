@@ -6,6 +6,7 @@ import {
   Clock, AlertTriangle, ShieldAlert, RotateCcw
 } from 'lucide-react';
 import { OrderTrackingProgressBar } from './OrderTrackingProgressBar';
+import { api } from '../services/api';
 
 interface OrderModalProps {
   isOpen: boolean;
@@ -181,24 +182,35 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   }
   const total = Math.max(0, subtotal - discountAmount);
 
-  // Apply Coupon Code
-  const handleApplyCoupon = () => {
+  // Apply Coupon Code via Backend API with local fallback
+  const handleApplyCoupon = async () => {
     setCouponError('');
     if (!couponCode.trim()) {
       setCouponError('Please enter a coupon code.');
       return;
     }
 
-    const found = coupons.find(
-      (c) => c.code.toUpperCase() === couponCode.trim().toUpperCase() && c.active
-    );
-
-    if (!found) {
-      setCouponError('Invalid coupon code or expired.');
-      return;
+    try {
+      const res = await api.validateCoupon(couponCode, subtotal);
+      setAppliedCoupon({
+        code: res.code,
+        discountPercent: res.discountPercent,
+        discountFixed: res.discountFixed,
+        usageCount: 1,
+        expiryDate: '2026-12-31',
+        active: true
+      });
+    } catch (err: any) {
+      // Check local coupons fallback if offline
+      const found = coupons.find(
+        (c) => c.code.toUpperCase() === couponCode.trim().toUpperCase() && c.active
+      );
+      if (found) {
+        setAppliedCoupon(found);
+      } else {
+        setCouponError(err?.message || 'Invalid coupon code or expired.');
+      }
     }
-
-    setAppliedCoupon(found);
   };
 
   const validateStep2 = () => {
