@@ -1,0 +1,6 @@
+{
+  "name": "AutoAudit - Vehicle History Report Ordering",
+  "description": "CARFAX-inspired online ordering platform for vehicle history reports. Enter VIN, pay securely, and receive comprehensive history reports by email.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
