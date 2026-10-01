@@ -38,6 +38,7 @@ export interface CustomerDetails {
   fullName: string;
   email: string;
   phone: string;
+  smsNotifications?: boolean;
 }
 
 export interface OrderFile {
@@ -67,6 +68,7 @@ export interface Order {
   total: number;
   couponCode?: string;
   customer: CustomerDetails;
+  smsNotifications?: boolean;
   vehicle: VehicleDetails;
   payment: {
     status: 'Pending' | 'Paid' | 'Failed' | 'Refunded';

@@ -3,10 +3,11 @@ import { ServicePlan, Order, Coupon, AuditLog } from '../types';
 import { 
   X, Check, ArrowRight, ArrowLeft, ShieldCheck, Lock, CreditCard, 
   Sparkles, AlertCircle, FileCheck, CheckCircle2, Building, Wallet, CheckCircle,
-  Clock, AlertTriangle, ShieldAlert, RotateCcw
+  Clock, AlertTriangle, ShieldAlert, RotateCcw, MessageSquare
 } from 'lucide-react';
 import { OrderTrackingProgressBar } from './OrderTrackingProgressBar';
 import { api } from '../services/api';
+import { useToast } from '../context/ToastContext';
 
 interface OrderModalProps {
   isOpen: boolean;
@@ -56,6 +57,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const [fullName, setFullName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
+  const [smsNotifications, setSmsNotifications] = useState<boolean>(true);
   const [createAccount, setCreateAccount] = useState<boolean>(true);
 
   // Coupon & agreement
@@ -91,6 +93,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
     setFullName('');
     setEmail('');
     setPhone('');
+    setSmsNotifications(true);
     setCouponCode('');
     setAppliedCoupon(null);
     setCouponError('');
@@ -233,9 +236,15 @@ export const OrderModal: React.FC<OrderModalProps> = ({
     return true;
   };
 
+  const { showToast } = useToast();
+
   const handleProcessPayment = () => {
     if (!agreedToTerms) {
-      alert('Please acknowledge the terms of service.');
+      showToast({
+        title: 'Agreement Required',
+        message: 'Please review and accept the Terms of Service to proceed with payment.',
+        type: 'warning'
+      });
       return;
     }
 
@@ -275,8 +284,10 @@ export const OrderModal: React.FC<OrderModalProps> = ({
         customer: {
           fullName: fullName.trim() || 'Verified Customer',
           email: email.trim() || 'customer@example.com',
-          phone: phone.trim() || '+1 (555) 019-2834'
+          phone: phone.trim() || '+1 (555) 019-2834',
+          smsNotifications
         },
+        smsNotifications,
         vehicle: {
           vinOrReg: vinOrReg.trim().toUpperCase() || '1HGCM82633A004352',
           isVin,
@@ -301,6 +312,13 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
       setCreatedOrder(newOrder);
       setIsProcessingPayment(false);
+      if (newOrder.customer?.email) {
+        try {
+          localStorage.setItem('autoaudit_customer_email', newOrder.customer.email.toLowerCase().trim());
+        } catch {
+          // ignore
+        }
+      }
       onOrderCompleted(newOrder);
       setStep(5); // Step 5: Payment Success / Confirmation
     }, 1200);
@@ -690,8 +708,11 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   </p>
                 </div>
 
+                {/* Phone Number Input */}
                 <div className="space-y-1">
-                  <label className="text-[11px] sm:text-xs font-bold text-slate-800">Phone Number (For SMS Order Alert)</label>
+                  <label className="text-[11px] sm:text-xs font-bold text-slate-800">
+                    Mobile Phone Number {smsNotifications ? '*' : '(Optional)'}
+                  </label>
                   <input
                     type="tel"
                     value={phone}
@@ -699,6 +720,35 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     placeholder="e.g. +1 (415) 555-0192"
                     className="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 bg-slate-50 border border-slate-300 rounded-[8px] text-xs sm:text-sm focus:outline-none focus:border-[#FB2C36]"
                   />
+                </div>
+
+                {/* SMS Notification Toggle Card */}
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-[8px] space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                        <MessageSquare className="w-3.5 h-3.5" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-slate-800 block">Instant SMS Status Alerts</span>
+                        <span className="text-[10px] text-slate-500 block">Receive live text alerts alongside email</span>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={smsNotifications}
+                        onChange={(e) => setSmsNotifications(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                    </label>
+                  </div>
+                  <p className="text-[11px] text-slate-500 leading-snug">
+                    {smsNotifications
+                      ? 'You will receive immediate SMS updates on your mobile device when your report is generated, verified, and ready for download.'
+                      : 'SMS notifications disabled. You will only receive order receipts and your vehicle history report via email.'}
+                  </p>
                 </div>
 
                 <div className="pt-1">
@@ -1024,7 +1074,11 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   return;
                 }
                 if (step === 3 && (!email.trim() || !email.includes('@'))) {
-                  alert('Please enter a valid email address to receive your report.');
+                  showToast({
+                    title: 'Email Required',
+                    message: 'Please enter a valid email address to receive your completed vehicle report.',
+                    type: 'warning'
+                  });
                   return;
                 }
                 setStep((s) => s + 1);

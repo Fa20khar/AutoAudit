@@ -1,10 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
+import { requireAdminAuth } from '../middleware/auth';
 
 export const statsRouter = Router();
 
-// GET /api/stats
-statsRouter.get('/', (_req: Request, res: Response) => {
+// GET /api/stats (requires staff authorization)
+statsRouter.get('/', requireAdminAuth, (_req: Request, res: Response) => {
   const orders = db.getOrders();
   const totalRevenue = orders.reduce((acc, o) => acc + (o.payment.status === 'Paid' ? o.total : 0), 0);
   const deliveredCount = orders.filter(o => o.status === 'Delivered' || o.status === 'Completed').length;

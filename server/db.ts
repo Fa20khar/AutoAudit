@@ -1,4 +1,5 @@
 import { ServicePlan, Order, Coupon, EmailNotification } from '../src/types';
+import { isSupabaseConfigured, supabaseDb, supabaseTableStatus } from './supabase';
 
 // Pre-seeded Initial Data
 export const INITIAL_SERVICES: ServicePlan[] = [
@@ -230,12 +231,50 @@ export const INITIAL_EMAILS: EmailNotification[] = [
   }
 ];
 
-// Backend In-Memory Database Store
+// Backend Database Store with Supabase PostgreSQL Integration
 class Database {
   private services: ServicePlan[] = [...INITIAL_SERVICES];
   private orders: Order[] = [...INITIAL_ORDERS];
   private coupons: Coupon[] = [...INITIAL_COUPONS];
   private emails: EmailNotification[] = [...INITIAL_EMAILS];
+
+  constructor() {
+    this.hydrateFromSupabase();
+  }
+
+  // Hydrate in-memory cache from Supabase Postgres if keys are set
+  async hydrateFromSupabase(): Promise<void> {
+    if (!isSupabaseConfigured()) return;
+    try {
+      const orders = await supabaseDb.getOrders();
+      if (orders && orders.length > 0) {
+        this.orders = orders;
+        console.log(`[Database] Hydrated ${orders.length} orders from Supabase PostgreSQL.`);
+      }
+      const coupons = await supabaseDb.getCoupons();
+      if (coupons && coupons.length > 0) {
+        this.coupons = coupons;
+      }
+      const emails = await supabaseDb.getEmails();
+      if (emails && emails.length > 0) {
+        this.emails = emails;
+      }
+    } catch (e: any) {
+      console.warn('[Database] Failed to hydrate from Supabase:', e?.message);
+    }
+  }
+
+  getDatabaseStatus() {
+    return {
+      type: isSupabaseConfigured() ? 'Supabase PostgreSQL' : 'In-Memory DB (Local Fallback)',
+      isSupabaseConnected: isSupabaseConfigured(),
+      tablesReady: supabaseTableStatus.ordersReady && supabaseTableStatus.servicesReady,
+      tableStatus: supabaseTableStatus,
+      orderCount: this.orders.length,
+      couponCount: this.coupons.length,
+      emailCount: this.emails.length
+    };
+  }
 
   // Services
   getServices(): ServicePlan[] {
@@ -257,6 +296,11 @@ class Database {
 
   createOrder(order: Order): Order {
     this.orders.unshift(order);
+    if (isSupabaseConfigured()) {
+      supabaseDb.createOrder(order).catch(err => {
+        console.error('[Database] Failed to sync order to Supabase:', err);
+      });
+    }
     return order;
   }
 
@@ -287,6 +331,53 @@ class Database {
         uploadedAt: new Date().toISOString()
       };
     }
+
+    if (isSupabaseConfigured()) {
+      supabaseDb.updateOrderStatus(orderId, status, note).catch(err => {
+        console.error('[Database] Failed to sync status to Supabase:', err);
+      });
+    }
+
+    return order;
+  }
+
+  updateOrderNotes(orderId: string, notes: string): Order | null {
+    const order = this.getOrderById(orderId);
+    if (!order) return null;
+
+    order.internalNotes = notes;
+    order.updatedAt = new Date().toISOString();
+    order.auditLogs.unshift({
+      id: `log-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      actor: 'Admin Specialist',
+      action: 'Updated Internal Notes',
+      details: 'Internal fulfillment comments updated'
+    });
+
+    if (isSupabaseConfigured()) {
+      supabaseDb.updateOrderStatus(orderId, order.status, 'Internal notes updated').catch(() => {});
+    }
+
+    return order;
+  }
+
+  attachOrderReport(orderId: string, file: { fileName: string; fileUrl: string; type: 'pdf' | 'link' | 'html' }): Order | null {
+    const order = this.getOrderById(orderId);
+    if (!order) return null;
+
+    order.resultFile = {
+      ...file,
+      uploadedAt: new Date().toISOString()
+    };
+    order.updatedAt = new Date().toISOString();
+    order.auditLogs.unshift({
+      id: `log-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      actor: 'Admin Specialist',
+      action: 'Report Attached',
+      details: `File attached: ${file.fileName}`
+    });
 
     return order;
   }
@@ -330,6 +421,11 @@ class Database {
 
   addEmail(email: EmailNotification): void {
     this.emails.unshift(email);
+    if (isSupabaseConfigured()) {
+      supabaseDb.addEmail(email).catch(err => {
+        console.error('[Database] Failed to sync email to Supabase:', err);
+      });
+    }
   }
 }
 

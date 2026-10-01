@@ -1,0 +1,93 @@
+# Project Memory (MEMORY.md)
+
+This file records important decisions, architectural choices, implementation notes, and known status flags across the AutoAudit project. All future development must reference and update this document.
+
+---
+
+## Important Decisions
+- **Documentation-First Development:** Established a permanent `docs/` source of truth containing `PRD.md`, `ARCHITECTURE.md`, `DESIGN.md`, `RULES.md`, `TASKS.md`, and `MEMORY.md` before making further major code modifications.
+- **Dual-Persistence Architecture:** Implemented an in-memory cache synchronized with Supabase PostgreSQL. This guarantees zero-downtime operation, ultra-fast UI responses, and transparent fallback if cloud connectivity is pending.
+- **Tokenless Customer Tracking:** Decided to allow customers to track their orders using their Email Address + Order Number (`AA-XXXXX`), eliminating friction while keeping orders private.
+- **NHTSA vPIC Real-Time Fallback:** Integrated the official US Department of Transportation vehicle decoder API with an automatic 2.5-second timeout and fallback to cached vehicle specs.
+
+---
+
+## Technology Decisions
+- **Full-Stack Single Process:** Chose Node.js + Express 5 with TSX running `server.ts` to host both the REST API and the Vite React 19 SPA on port 3000.
+- **Tailwind CSS v4:** Selected Tailwind CSS v4 using the modern `@tailwindcss/vite` plugin for zero-configuration, high-performance styling without standalone PostCSS configuration.
+- **Supabase PostgreSQL:** Selected Supabase (`@supabase/supabase-js`) as the primary cloud database platform for relational data persistence and Row Level Security.
+- **TypeScript 5.7:** Configured strict TypeScript typing across both frontend (`src/`) and backend (`server/`).
+
+---
+
+## Architecture Decisions
+- **Client/Server Separation:** Server-side routes are neatly segregated in `server/routes/` (`vin.ts`, `orders.ts`, `services.ts`, `coupons.ts`, `emails.ts`, `stats.ts`).
+- **Resilient PostgREST Schema Error Isolation:** Implemented `isTableMissingError()` in `server/supabase.ts`. When a Supabase project is connected but tables haven't been created yet, the server gracefully marks tables unready and continues operating on local memory without throwing application-breaking exceptions.
+- **Dynamic Table Health Check:** In `GET /api/orders/db-status`, the server performs a live check of table health and reports readiness directly to the Admin Console.
+- **One-Click SQL Delivery:** Added `GET /api/orders/schema-sql` so administrators can copy the exact PostgreSQL schema directly to their clipboard with one click.
+
+---
+
+## Database Decisions
+- **Relational Tables:** Designed 4 primary tables in `supabase/schema.sql`:
+  1. `orders`: Primary vehicle audit orders with customer, vehicle, payment, and audit logs.
+  2. `services`: Tiered pricing plans (Basic, Complete, Premium).
+  3. `coupons`: Active promotional discount codes (`FAKHAR20`, `AUTOAUDIT10`, `SAVE5`).
+  4. `emails`: Notification dispatch log.
+- **JSONB for Unstructured Metadata:** Used `JSONB` for vehicle audit logs, included features, and attached report file metadata to maintain query flexibility without over-normalizing audit trails.
+- **Row Level Security (RLS):** Enabled RLS on all tables with explicit public policies for reading services, reading active coupons, inserting orders, and viewing order records.
+
+---
+
+## Authentication Decisions
+- **Customer Self-Service:** Uses Email + Order Number combination. Avoids forcing registration before purchase to optimize checkout conversion rates.
+- **Admin Access:** Accessible via navigation action with session persistence. Full Supabase Auth with Magic Link / OAuth is designated for Phase 3.
+- **Credential Segregation:** `SUPABASE_SERVICE_ROLE_KEY` is strictly reserved for server-side operations and never exposed to the client.
+
+---
+
+## Design Decisions
+- **Color Palette:**
+  - Deep Navy foundations: `#0B132B`, `#0F172A`
+  - Action Blue accents: `#1D4ED8`, `#2563EB`
+  - Verification Emerald accents: `#059669`, `#10B981`
+  - Clean Slate backgrounds: `#FFFFFF`, `#F8FAFC`, `#E2E8F0`
+- **Zero-Pill Discipline:** Applied `rounded-xl` and `rounded-2xl` to all cards, modals, and container wrappers. Pill styling is strictly reserved for status tags.
+- **High-Density Data Display:** Used monospace font (`font-mono`) and letter spacing (`tracking-wider`) for VINs, transaction IDs, and order numbers to maximize legibility.
+
+---
+
+## Completed Major Changes
+1. **Initial Full-Stack Application:** Built complete CARFAX-style vehicle report ordering platform with hero search, multi-tier plans, sample report preview, FAQ, and footer.
+2. **REST API Implementation:** Created Express routers for VIN lookup, orders, services, coupons, email notifications, and dashboard stats.
+3. **Admin Operations Panel:** Built complete administrative operations dashboard with order management, status updates, staff notes, and report attachment.
+4. **Supabase Integration:** Added `@supabase/supabase-js`, created `supabase/schema.sql`, built `server/supabase.ts` and `src/lib/supabaseClient.ts`.
+5. **Missing Table Resilience Fix:** Resolved PostgREST schema cache error (`PGRST205`) by adding table readiness detection and dynamic recovery.
+6. **Live Database Verification:** Verified that the user executed `supabase/schema.sql` in their Supabase SQL editor; verified that `GET /api/orders/db-status` confirmed `tablesReady: true` across all tables.
+7. **Documentation-First System:** Created full 6-file documentation suite in `docs/` (`PRD.md`, `ARCHITECTURE.md`, `DESIGN.md`, `RULES.md`, `TASKS.md`, `MEMORY.md`).
+8. **Admin Authentication & Token Authorization:** Implemented `server/middleware/auth.ts` and `server/routes/auth.ts` with `POST /api/auth/admin-login` and `GET /api/auth/verify`. Added staff login screen and sign-out controls in `AdminPanel.tsx`.
+9. **Customer Data Isolation & Privacy:** Modified `GET /api/orders` to strictly require `requireAdminAuth` unless an explicit `email` parameter is supplied. Stopped indiscriminate fetching of all customer orders on public homepage mount in `App.tsx`.
+10. **Strict Form Validation & XSS Sanitization:** Enforced ISO 3779 17-digit VIN format checks and email regex validation in `POST /api/orders`. Added sanitization to prevent stored XSS attacks.
+11. **Express 5 API Catch-All Routing Fix:** Replaced invalid `app.all('/api/*')` wildcard syntax with Express 5-compatible `app.use('/api', ...)` returning clean JSON 404 responses.
+12. **UI Polish & Dialog Compliance:** Replaced browser `alert()` invocations in `OrderModal.tsx` with non-blocking `useToast()` notifications. Added direct HTML report file download in `ReportDownloadModal.tsx`.
+
+---
+
+## Known Issues
+- *No critical runtime errors:* All components compile with 0 TypeScript errors and the dev server is active and verified.
+- *Simulated Payment Gateway:* Checkout currently simulates card processing rather than capturing real credit cards via Stripe/PayPal.
+- *Static PDF Downloads:* Report downloads currently serve client-side sample PDFs rather than dynamic server-rendered PDFs.
+
+---
+
+## Important Warnings
+- **Never expose Supabase service-role keys:** Ensure `SUPABASE_SERVICE_ROLE_KEY` is never imported in `src/` or exposed via `import.meta.env`.
+- **Do not commit `.env` files with production secrets:** Use `.env.example` as the template.
+- **Do not bypass the Dual-Persistence Engine:** All modifications to database operations must preserve the in-memory fallback to avoid application crashes during cloud maintenance.
+
+---
+
+## Future Considerations
+- Integrate live Stripe Elements card processing with webhooks for automated order status advancement.
+- Implement server-side PDF generation using Puppeteer or PDFKit to render dynamic vehicle history reports with official NMVTIS and state seal graphics.
+- Add Supabase Auth for customer accounts to enable fleet managers and dealerships to track multi-vehicle audits in a single unified dashboard.

@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Order } from '../types';
 import { 
   X, LayoutDashboard, FileText, ShoppingBag, User, HelpCircle, 
   LogOut, CheckCircle2, Clock, Download, Eye, Search, AlertCircle, 
-  FileCheck, Mail, ShieldCheck 
+  FileCheck, Mail, ShieldCheck, ArrowRight, Loader2
 } from 'lucide-react';
 import { OrderTrackingProgressBar } from './OrderTrackingProgressBar';
+import { api } from '../services/api';
+import { useToast } from '../context/ToastContext';
 
 interface MyOrdersModalProps {
   isOpen: boolean;
@@ -22,19 +24,89 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
   onOpenSampleReport,
   onDownloadReport,
 }) => {
+  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'my-reports' | 'orders' | 'account' | 'support'>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
+  const [customerOrders, setCustomerOrders] = useState<Order[]>(orders);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(orders[0] || null);
+  const [lookupEmail, setLookupEmail] = useState<string>(() => {
+    return (typeof window !== 'undefined' && localStorage.getItem('autoaudit_customer_email')) || '';
+  });
+  const [isSearching, setIsSearching] = useState<boolean>(false);
+
+  // Sync when parent orders change
+  useEffect(() => {
+    if (orders.length > 0) {
+      setCustomerOrders(orders);
+      if (!selectedOrder) setSelectedOrder(orders[0]);
+    }
+  }, [orders]);
+
+  // If customer has a stored email, auto-fetch their orders on mount
+  useEffect(() => {
+    if (lookupEmail && customerOrders.length === 0) {
+      handleLookup(lookupEmail);
+    }
+  }, [isOpen]);
+
+  const handleLookup = async (queryTerm: string) => {
+    if (!queryTerm.trim()) return;
+    setIsSearching(true);
+    try {
+      const term = queryTerm.trim();
+      let found: Order[] = [];
+
+      if (term.includes('@')) {
+        // Query by email
+        found = await api.getOrders({ email: term });
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('autoaudit_customer_email', term.toLowerCase());
+        }
+      } else {
+        // Query by order number
+        try {
+          const single = await api.getOrderById(term);
+          if (single) found = [single];
+        } catch {
+          found = [];
+        }
+      }
+
+      if (found && found.length > 0) {
+        setCustomerOrders(found);
+        setSelectedOrder(found[0]);
+        showToast({
+          title: 'Reports Loaded',
+          message: `Found ${found.length} vehicle report(s) for ${term}.`,
+          type: 'success'
+        });
+      } else {
+        showToast({
+          title: 'No Reports Found',
+          message: `No active orders found matching "${term}". Please check the spelling or order number.`,
+          type: 'warning'
+        });
+      }
+    } catch (err: any) {
+      showToast({
+        title: 'Lookup Error',
+        message: err?.message || 'Could not retrieve orders at this time.',
+        type: 'error'
+      });
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   if (!isOpen) return null;
 
   // Stats
-  const totalOrders = orders.length;
-  const reportsReady = orders.filter((o) => o.status === 'Ready' || o.status === 'Delivered' || o.status === 'Completed').length;
-  const reportsProcessing = orders.filter((o) => o.status === 'Processing' || o.status === 'Paid / New' || o.status === 'NMVTIS Check').length;
+  const totalOrders = customerOrders.length;
+  const reportsReady = customerOrders.filter((o) => o.status === 'Ready' || o.status === 'Delivered' || o.status === 'Completed').length;
+  const reportsProcessing = customerOrders.filter((o) => o.status === 'Processing' || o.status === 'Paid / New' || o.status === 'NMVTIS Check').length;
   const reportsPurchased = totalOrders;
 
-  const filteredOrders = orders.filter((o) => {
+  const filteredOrders = customerOrders.filter((o) => {
     const q = searchQuery.toLowerCase();
     return (
       o.orderNumber.toLowerCase().includes(q) ||
@@ -395,6 +467,44 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
+                    {filteredOrders.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="py-8 px-4 text-center">
+                          <div className="max-w-md mx-auto space-y-3">
+                            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
+                              <Search className="w-5 h-5" />
+                            </div>
+                            <h4 className="text-sm font-bold text-slate-800">No Vehicle Reports Found</h4>
+                            <p className="text-xs text-slate-500">
+                              Enter your checkout email address or order number (e.g. AA-XXXXX) below to retrieve your official vehicle history report.
+                            </p>
+                            <form 
+                              onSubmit={(e) => {
+                                e.preventDefault();
+                                handleLookup(lookupEmail);
+                              }}
+                              className="flex items-center gap-2 pt-1"
+                            >
+                              <input
+                                type="text"
+                                value={lookupEmail}
+                                onChange={(e) => setLookupEmail(e.target.value)}
+                                placeholder="name@example.com or AA-XXXXX"
+                                className="flex-1 px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:border-blue-600"
+                              />
+                              <button
+                                type="submit"
+                                disabled={isSearching}
+                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg transition-colors cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                              >
+                                {isSearching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+                                <span>Look Up</span>
+                              </button>
+                            </form>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
                     {filteredOrders.map((ord) => (
                       <tr
                         key={ord.id}

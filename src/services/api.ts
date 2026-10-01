@@ -30,8 +30,11 @@ async function request<T>(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
+  const adminToken = typeof window !== 'undefined' ? sessionStorage.getItem('autoaudit_admin_token') : null;
+
   const headers: Record<string, string> = {
     'Accept': 'application/json',
+    ...(adminToken ? { 'x-admin-token': adminToken } : {}),
     ...(options.headers as Record<string, string> || {})
   };
 
@@ -292,5 +295,69 @@ export const api = {
       timeoutMs
     );
     return res.data;
+  },
+
+  async updateOrderNotes(id: string, notes: string, timeoutMs = 8000): Promise<Order> {
+    const res = await request<{ success: boolean; message: string; data: Order }>(
+      `/api/orders/${encodeURIComponent(id)}/notes`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ notes })
+      },
+      timeoutMs
+    );
+    return res.data;
+  },
+
+  async attachOrderReport(
+    id: string, 
+    file: { fileName: string; fileUrl: string; type: 'pdf' | 'link' | 'html' },
+    timeoutMs = 8000
+  ): Promise<Order> {
+    const res = await request<{ success: boolean; message: string; data: Order }>(
+      `/api/orders/${encodeURIComponent(id)}/attach-report`,
+      {
+        method: 'POST',
+        body: JSON.stringify(file)
+      },
+      timeoutMs
+    );
+    return res.data;
+  },
+
+  /**
+   * Admin Authentication Helpers
+   */
+  async adminLogin(credentials: { email?: string; password?: string; accessKey?: string }, timeoutMs = 8000): Promise<{
+    success: boolean;
+    token: string;
+    user: any;
+  }> {
+    const res = await request<{ success: boolean; message: string; token: string; user: any }>(
+      '/api/auth/admin-login',
+      {
+        method: 'POST',
+        body: JSON.stringify(credentials)
+      },
+      timeoutMs
+    );
+
+    if (res.token && typeof window !== 'undefined') {
+      sessionStorage.setItem('autoaudit_admin_token', res.token);
+    }
+    return res;
+  },
+
+  adminLogout(): void {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('autoaudit_admin_token');
+    }
+  },
+
+  getAdminToken(): string | null {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('autoaudit_admin_token');
+    }
+    return null;
   }
 };

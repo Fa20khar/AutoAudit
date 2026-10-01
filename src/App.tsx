@@ -105,19 +105,22 @@ function AppContent() {
       })
       .catch((err) => console.warn('Using cached services', err));
 
-    // 2. Load orders from backend
-    api.getOrders()
+    // 2. Load active coupons from backend
+    api.getCoupons()
       .then((data) => {
-        if (data && data.length > 0) setOrders(data);
+        if (data && data.length > 0) setCoupons(data);
       })
-      .catch((err) => console.warn('Using cached orders', err));
+      .catch((err) => console.warn('Using cached coupons', err));
 
-    // 3. Load emails from backend
-    api.getEmails()
-      .then((data) => {
-        if (data && data.length > 0) setEmails(data);
-      })
-      .catch((err) => console.warn('Using cached emails', err));
+    // 3. Load customer-scoped past orders if customer previously placed an order on this browser
+    const customerEmail = localStorage.getItem('autoaudit_customer_email');
+    if (customerEmail) {
+      api.getOrders({ email: customerEmail })
+        .then((data) => {
+          if (data && data.length > 0) setOrders(data);
+        })
+        .catch(() => {});
+    }
   }, []);
 
   // Save to localStorage when state changes as instant offline fallback

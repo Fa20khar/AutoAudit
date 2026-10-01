@@ -4,12 +4,14 @@ import {
   LayoutDashboard, ShoppingBag, DollarSign, Clock, CheckCircle2, 
   Send, Upload, Search, FileText, Mail, Tag, Settings, Eye, 
   AlertTriangle, RefreshCw, X, ShieldAlert, Check, Plus, Edit2, Trash2,
-  Users, FileCheck, CreditCard, ChevronRight, LogOut, ArrowLeft, ShieldCheck, Lock
+  Users, FileCheck, CreditCard, ChevronRight, LogOut, ArrowLeft, ShieldCheck, Lock,
+  Database, Copy, ExternalLink
 } from 'lucide-react';
 import { EmailPreviewModal } from './EmailPreviewModal';
 import { useToast } from '../context/ToastContext';
 import { OrderTrackingProgressBar } from './OrderTrackingProgressBar';
 import { Logo } from './Logo';
+import { api } from '../services/api';
 
 interface AdminPanelProps {
   orders: Order[];
@@ -37,6 +39,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onViewSampleReport,
 }) => {
   const { showToast } = useToast();
+
+  // Authentication State
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return Boolean(typeof window !== 'undefined' && sessionStorage.getItem('autoaudit_admin_token'));
+  });
+  const [adminEmailInput, setAdminEmailInput] = useState<string>('admin@autoaudit.com');
+  const [adminPasswordInput, setAdminPasswordInput] = useState<string>('AutoAudit2026!');
+  const [adminAuthError, setAdminAuthError] = useState<string>('');
+  const [isAuthenticating, setIsAuthenticating] = useState<boolean>(false);
+
   // Menu: Dashboard, Orders, Customers, Services, Reports, Payments, Settings (Section 25)
   const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'customers' | 'services' | 'reports' | 'payments' | 'settings'>('orders');
   
@@ -55,6 +67,89 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const currentOrder = orders.find((o) => o.id === selectedOrderId) || orders[0];
   const [editNotes, setEditNotes] = useState<string>(currentOrder?.internalNotes || '');
   const [notesSaved, setNotesSaved] = useState<boolean>(false);
+  const [dbStatus, setDbStatus] = useState<any>(null);
+  const [copiedSql, setCopiedSql] = useState<boolean>(false);
+
+  // Hydrate full orders once authorized
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      api.getOrders()
+        .then((data) => {
+          if (data && data.length > 0) {
+            data.forEach((o) => onUpdateOrder(o));
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isAuthenticated]);
+
+  const handleAdminLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAdminAuthError('');
+    setIsAuthenticating(true);
+    try {
+      const res = await api.adminLogin({
+        email: adminEmailInput,
+        password: adminPasswordInput,
+        accessKey: adminPasswordInput
+      });
+      if (res.success && res.token) {
+        setIsAuthenticated(true);
+        showToast({
+          title: 'Authorized',
+          message: 'Staff session verified. Welcome to the Operations Console.',
+          type: 'success'
+        });
+      }
+    } catch (err: any) {
+      setAdminAuthError(err?.message || 'Invalid administrator credentials. Access restricted.');
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  const handleAdminLogout = () => {
+    api.adminLogout();
+    setIsAuthenticated(false);
+    showToast({
+      title: 'Session Ended',
+      message: 'Logged out of administrator console.',
+      type: 'info'
+    });
+    onCloseAdmin();
+  };
+
+  React.useEffect(() => {
+    fetch('/api/orders/db-status')
+      .then(res => res.json())
+      .then(data => {
+        if (data?.database) {
+          setDbStatus(data.database);
+        }
+      })
+      .catch(() => {});
+  }, [activeTab]);
+
+  const handleCopySchemaSql = async () => {
+    try {
+      const res = await fetch('/api/orders/schema-sql');
+      const text = await res.text();
+      await navigator.clipboard.writeText(text);
+      setCopiedSql(true);
+      showToast({
+        title: 'Schema Copied',
+        message: 'Supabase PostgreSQL schema copied! Paste it into your Supabase SQL editor.',
+        type: 'success'
+      });
+      setTimeout(() => setCopiedSql(false), 3000);
+    } catch {
+      showToast({
+        title: 'Copy Failed',
+        message: 'Please copy directly from supabase/schema.sql in your workspace.',
+        type: 'error'
+      });
+    }
+  };
 
   // Sync internal notes when current order changes
   React.useEffect(() => {
@@ -346,6 +441,88 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#0B132B] flex items-center justify-center p-4">
+        <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-700/50 overflow-hidden">
+          <div className="bg-slate-900 px-6 py-6 text-white text-center border-b border-slate-800">
+            <div className="w-12 h-12 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center mx-auto mb-3 text-blue-400">
+              <Lock className="w-6 h-6" />
+            </div>
+            <h2 className="text-xl font-bold tracking-tight">AutoAudit Staff Console</h2>
+            <p className="text-xs text-slate-400 mt-1">
+              Restricted to authorized fulfillment specialists and platform administrators.
+            </p>
+          </div>
+
+          <form onSubmit={handleAdminLogin} className="p-6 space-y-4">
+            {adminAuthError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>{adminAuthError}</span>
+              </div>
+            )}
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-700 block">Staff Email</label>
+              <input
+                type="email"
+                value={adminEmailInput}
+                onChange={(e) => setAdminEmailInput(e.target.value)}
+                placeholder="admin@autoaudit.com"
+                required
+                className="w-full h-11 px-3.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-blue-600"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-700 block">Access Key / Password</label>
+              <input
+                type="password"
+                value={adminPasswordInput}
+                onChange={(e) => setAdminPasswordInput(e.target.value)}
+                placeholder="Enter access passphrase"
+                required
+                className="w-full h-11 px-3.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-blue-600"
+              />
+            </div>
+
+            <div className="p-3 bg-blue-50/80 border border-blue-100 rounded-xl text-[11px] text-blue-900 leading-snug">
+              <strong>Pre-configured staff credentials:</strong><br />
+              Email: <code className="font-mono text-blue-800">admin@autoaudit.com</code><br />
+              Access Key: <code className="font-mono text-blue-800">AutoAudit2026!</code>
+            </div>
+
+            <div className="pt-2 flex flex-col gap-2">
+              <button
+                type="submit"
+                disabled={isAuthenticating}
+                className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl transition-colors shadow-sm disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+              >
+                {isAuthenticating ? (
+                  <span>Verifying Authorization...</span>
+                ) : (
+                  <>
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>Authorize Session</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={onCloseAdmin}
+                className="w-full h-10 text-slate-600 hover:text-slate-900 text-xs font-semibold rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                Cancel and Return to Website
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col md:flex-row font-sans">
       
@@ -463,6 +640,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
         {/* Sidebar Footer */}
         <div className="p-5 border-t border-[#1E293B] space-y-2">
+          <button
+            type="button"
+            onClick={handleAdminLogout}
+            className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-rose-300 hover:text-white hover:bg-rose-950/40 rounded-xl transition-colors cursor-pointer"
+          >
+            <Lock className="w-4 h-4 text-rose-400" />
+            <span>Lock & Sign Out</span>
+          </button>
+
           <button
             type="button"
             onClick={onCloseAdmin}
@@ -979,12 +1165,76 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
           {/* TAB 6: SETTINGS */}
           {activeTab === 'settings' && (
-            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 shadow-xs space-y-4 text-xs">
-              <h3 className="text-base font-bold text-slate-900">Platform Settings & Integrations</h3>
+            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 shadow-xs space-y-5 text-xs">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Platform Settings & Integrations</h3>
+                <p className="text-slate-500 text-xs mt-0.5">Manage live database connections, clearinghouse gateways, and dispatch services.</p>
+              </div>
+
+              {/* Database Status Card */}
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600">
+                      <Database className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="font-bold text-sm text-slate-900 block">
+                        {dbStatus?.type || 'PostgreSQL / In-Memory Engine'}
+                      </span>
+                      <span className="text-[11px] text-slate-500">
+                        {dbStatus?.isSupabaseConnected 
+                          ? (dbStatus?.tablesReady ? 'PostgreSQL cloud database connected & synchronized' : 'Cloud project connected · Table initialization pending')
+                          : 'Running in high-speed local memory mode with client persistence'}
+                      </span>
+                    </div>
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                    dbStatus?.isSupabaseConnected && dbStatus?.tablesReady
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : dbStatus?.isSupabaseConnected
+                      ? 'bg-amber-100 text-amber-800'
+                      : 'bg-blue-100 text-blue-800'
+                  }`}>
+                    {dbStatus?.isSupabaseConnected 
+                      ? (dbStatus?.tablesReady ? 'Supabase Active' : 'Setup Schema') 
+                      : 'Local Memory Active'}
+                  </span>
+                </div>
+
+                {dbStatus?.isSupabaseConnected && !dbStatus?.tablesReady && (
+                  <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-lg space-y-2 text-amber-900">
+                    <p className="text-[11px] leading-relaxed">
+                      <strong>Next Step:</strong> Your Supabase credentials are valid, but the <code className="bg-amber-100 px-1 py-0.5 rounded font-mono">orders</code> table does not exist in PostgreSQL yet. Copy the SQL schema below and run it once in your Supabase SQL Editor.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleCopySchemaSql}
+                      className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-md font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      {copiedSql ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedSql ? 'SQL Copied!' : 'Copy SQL Schema for Supabase'}</span>
+                    </button>
+                  </div>
+                )}
+
+                <div className="pt-1 flex flex-wrap gap-2 text-[11px] text-slate-600">
+                  <span className="bg-white px-2.5 py-1 rounded border border-slate-200 font-mono">
+                    Orders in Memory: <strong>{dbStatus?.orderCount ?? orders.length}</strong>
+                  </span>
+                  <span className="bg-white px-2.5 py-1 rounded border border-slate-200 font-mono">
+                    Coupons: <strong>{dbStatus?.couponCount ?? coupons.length}</strong>
+                  </span>
+                  <span className="bg-white px-2.5 py-1 rounded border border-slate-200 font-mono">
+                    Emails Logged: <strong>{dbStatus?.emailCount ?? emails.length}</strong>
+                  </span>
+                </div>
+              </div>
+
               <div className="space-y-3 max-w-md">
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                   <span className="font-bold block text-slate-800">NMVTIS Clearing Gateway</span>
-                  <span className="text-slate-500 text-[11px]">Authorized state title brand clearing API connection</span>
+                  <span className="text-slate-500 text-[11px]">Authorized state title brand clearing API connection (Active)</span>
                 </div>
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                   <span className="font-bold block text-slate-800">Email Notification Dispatcher</span>

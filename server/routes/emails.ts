@@ -1,10 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
+import { requireAdminAuth } from '../middleware/auth';
 
 export const emailsRouter = Router();
 
-// GET /api/emails
-emailsRouter.get('/', (_req: Request, res: Response) => {
+// GET /api/emails (requires staff authorization)
+emailsRouter.get('/', requireAdminAuth, (_req: Request, res: Response) => {
   res.json({
     success: true,
     count: db.getEmails().length,

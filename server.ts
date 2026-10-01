@@ -7,6 +7,7 @@ import { servicesRouter } from './server/routes/services';
 import { couponsRouter } from './server/routes/coupons';
 import { emailsRouter } from './server/routes/emails';
 import { statsRouter } from './server/routes/stats';
+import { authRouter } from './server/routes/auth';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,12 +32,21 @@ async function startServer() {
   });
 
   // REST API Route Mounts
+  app.use('/api/auth', authRouter);
   app.use('/api/vin', vinRouter);
   app.use('/api/orders', ordersRouter);
   app.use('/api/services', servicesRouter);
   app.use('/api/coupons', couponsRouter);
   app.use('/api/emails', emailsRouter);
   app.use('/api/stats', statsRouter);
+
+  // Catch-all 404 handler for undefined /api routes (Express 5 compatible)
+  app.use('/api', (req: Request, res: Response) => {
+    res.status(404).json({
+      success: false,
+      error: `API route ${req.method} ${req.originalUrl} not found.`
+    });
+  });
 
   // Vite development middleware or production static serving
   if (!isProduction) {

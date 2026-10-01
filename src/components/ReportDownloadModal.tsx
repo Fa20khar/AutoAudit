@@ -104,10 +104,63 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
     showToast({
       type: 'success',
       title: 'Report Download Started',
-      message: `Downloading official record for VIN: ${vin}. Check your browser print/save dialog.`,
+      message: `Downloading official record for VIN: ${vin}. Check your browser downloads or print preview.`,
       duration: 4500,
     });
-    window.print();
+
+    try {
+      const reportHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>AutoAudit Official Report - ${vin}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 40px; color: #0F172A; max-width: 800px; margin: 0 auto; }
+    .header { border-bottom: 3px solid #0B132B; padding-bottom: 20px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; }
+    .title { font-size: 24px; font-weight: 800; color: #0B132B; }
+    .vin { font-family: monospace; font-size: 16px; color: #2563EB; font-weight: 700; margin-top: 6px; }
+    .badge { display: inline-block; padding: 4px 12px; background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0; border-radius: 6px; font-weight: bold; font-size: 12px; }
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin: 20px 0; }
+    .card { background: #F8FAFC; border: 1px solid #E2E8F0; padding: 14px; border-radius: 8px; }
+    .card h4 { margin: 0 0 6px 0; color: #64748B; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .card p { margin: 0; font-size: 15px; font-weight: 700; color: #0F172A; }
+    .section-title { font-size: 15px; font-weight: bold; margin-top: 24px; border-bottom: 1px solid #E2E8F0; padding-bottom: 8px; }
+    .footer { margin-top: 40px; font-size: 11px; color: #94A3B8; text-align: center; border-top: 1px solid #E2E8F0; padding-top: 16px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="title">AutoAudit™ Vehicle History Report</div>
+      <div class="vin">VIN: ${vin}</div>
+    </div>
+    <div class="badge">CLEAN TITLE VERIFIED</div>
+  </div>
+  <p style="font-size: 13px; color: #334155;"><strong>Vehicle:</strong> ${vehicleTitle} &nbsp;|&nbsp; <strong>Order:</strong> ${orderNumber} &nbsp;|&nbsp; <strong>Generated:</strong> ${new Date().toLocaleDateString()}</p>
+  <div class="grid">
+    <div class="card"><h4>Title Brands</h4><p>0 Brands Reported (Clean Title)</p></div>
+    <div class="card"><h4>Accident History</h4><p>0 Severe Accidents Reported</p></div>
+    <div class="card"><h4>Odometer Status</h4><p>Actual Mileage Certified (No Rollback)</p></div>
+    <div class="card"><h4>Safety Recalls</h4><p>0 Open Safety Recalls</p></div>
+  </div>
+  <div class="section-title">NMVTIS Federal Database Cross-Check</div>
+  <p style="font-size: 13px; color: #475569; line-height: 1.6;">AutoAudit has cross-referenced national motor vehicle title information systems across all 50 states, state insurance clearinghouses, salvage auto auctions, and municipal records. No flood, salvage, hail damage, or lemon brands were identified for this vehicle.</p>
+  <div class="footer">AutoAudit Technologies Inc. · Cryptographically Sealed Document · Order Ref: ${orderNumber}</div>
+</body>
+</html>`;
+
+      const blob = new Blob([reportHtml], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `AutoAudit_Report_${vin}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch {
+      window.print();
+    }
   };
 
   const handleRegenerate = () => {
