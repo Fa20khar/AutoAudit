@@ -3,7 +3,7 @@ import { ServicePlan, Order, Coupon, AuditLog } from '../types';
 import { 
   X, Check, ArrowRight, ArrowLeft, ShieldCheck, Lock, CreditCard, 
   Sparkles, AlertCircle, FileCheck, CheckCircle2, Building, Wallet, CheckCircle,
-  Clock, AlertTriangle, ShieldAlert, RotateCcw, MessageSquare
+  Clock, AlertTriangle, ShieldAlert, RotateCcw, MessageSquare, Loader2
 } from 'lucide-react';
 import { OrderTrackingProgressBar } from './OrderTrackingProgressBar';
 import { api } from '../services/api';
@@ -239,6 +239,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const { showToast } = useToast();
 
   const handleProcessPayment = () => {
+    // Prevent duplicate submissions while an order is processing
+    if (isProcessingPayment) return;
+
     if (!agreedToTerms) {
       showToast({
         title: 'Agreement Required',
@@ -947,22 +950,24 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   )}
                 </div>
 
-                {/* Primary Button: Pay Securely (#FB2C36 accent, 8px radius, micro-shadow) */}
+                {/* Primary Button: Submit Order (#FB2C36 accent, 8px radius, micro-shadow) */}
                 <button
                   type="button"
                   disabled={isProcessingPayment}
                   onClick={handleProcessPayment}
-                  className="w-full py-2.5 sm:py-3 bg-[#FB2C36] hover:bg-[#E0242E] text-white rounded-[8px] text-xs sm:text-sm font-medium shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 min-h-[44px] leading-[1.43]"
+                  aria-busy={isProcessingPayment}
+                  aria-label={isProcessingPayment ? 'Submitting order, please wait' : `Submit Order and Pay Securely $${total.toFixed(2)} USD`}
+                  className="w-full py-2.5 sm:py-3 bg-[#FB2C36] hover:bg-[#E0242E] text-white rounded-[8px] text-xs sm:text-sm font-medium shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed min-h-[44px] leading-[1.43]"
                 >
                   {isProcessingPayment ? (
                     <>
-                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Processing Payment…</span>
+                      <Loader2 className="w-4 h-4 animate-spin text-white shrink-0" />
+                      <span className="font-semibold">Submitting Order…</span>
                     </>
                   ) : (
                     <>
                       <Lock className="w-4 h-4" />
-                      <span>Pay Securely (${total.toFixed(2)})</span>
+                      <span>Submit Order · Pay Securely (${total.toFixed(2)})</span>
                     </>
                   )}
                 </button>

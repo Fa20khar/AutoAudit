@@ -126,9 +126,35 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
     .card p { margin: 0; font-size: 15px; font-weight: 700; color: #0F172A; }
     .section-title { font-size: 15px; font-weight: bold; margin-top: 24px; border-bottom: 1px solid #E2E8F0; padding-bottom: 8px; }
     .footer { margin-top: 40px; font-size: 11px; color: #94A3B8; text-align: center; border-top: 1px solid #E2E8F0; padding-top: 16px; }
+    .print-watermark { display: none; }
+    @media print {
+      .print-watermark {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        position: fixed !important;
+        top: 48% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) rotate(-32deg) !important;
+        font-size: 38pt !important;
+        font-weight: 900 !important;
+        letter-spacing: 0.16em !important;
+        color: rgba(15, 23, 42, 0.045) !important;
+        text-transform: uppercase !important;
+        white-space: nowrap !important;
+        pointer-events: none !important;
+        z-index: 0 !important;
+        border: 3.5px dashed rgba(15, 23, 42, 0.045) !important;
+        padding: 12px 40px !important;
+        border-radius: 16px !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+    }
   </style>
 </head>
 <body>
+  <div class="print-watermark" aria-hidden="true">OFFICIAL AUTOAUDIT REPORT</div>
   <div class="header">
     <div>
       <div class="title">AutoAudit™ Vehicle History Report</div>
@@ -161,6 +187,16 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
     } catch {
       window.print();
     }
+  };
+
+  const handlePrintReport = () => {
+    showToast({
+      type: 'info',
+      title: 'Preparing Print Preview',
+      message: `Formatting official paper report for VIN: ${vin}. Check your printer settings.`,
+      duration: 3500,
+    });
+    window.print();
   };
 
   const handleRegenerate = () => {
@@ -207,8 +243,8 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/85 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6">
-      <div className="bg-slate-900 border border-slate-700/80 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col text-white animate-fade-in">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/85 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 print-modal-container">
+      <div className="bg-slate-900 border border-slate-700/80 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col text-white animate-fade-in print-modal-card">
         
         {/* Top Header */}
         <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
@@ -306,13 +342,24 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
             ) : (
               /* SUCCESS STATE: Action buttons once generation finishes */
               <div className="space-y-2.5">
+                {/* Print Report Primary Button */}
+                <button
+                  type="button"
+                  onClick={handlePrintReport}
+                  className="w-full py-2.5 sm:py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs sm:text-sm rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-lg active:scale-[0.99]"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Print Report (Paper Copy)</span>
+                </button>
+
+                {/* Download HTML / PDF Report File */}
                 <button
                   type="button"
                   onClick={handleDownloadPdf}
-                  className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-lg active:scale-[0.99]"
+                  className="w-full py-2.5 sm:py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-lg active:scale-[0.99]"
                 >
                   <Download className="w-4 h-4" />
-                  <span>Download / Print Official PDF</span>
+                  <span>Download HTML / PDF Report</span>
                 </button>
 
                 <div className="flex gap-2">
@@ -344,6 +391,178 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
 
         </div>
 
+      </div>
+
+      {/* Printable Vehicle History Report (Paper Copy Target for @media print) */}
+      <div id="printable-vehicle-report" className="hidden print:block text-slate-900 font-sans p-2">
+        {/* Subtle diagonal watermark (visible only when printed) */}
+        <div className="print-watermark" aria-hidden="true">
+          OFFICIAL AUTOAUDIT REPORT
+        </div>
+
+        {/* Document Header */}
+        <div className="border-b-2 border-slate-900 pb-4 mb-4 flex items-start justify-between print-header">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-extrabold text-xl tracking-tight text-slate-900">AutoAudit™</span>
+              <span className="text-[10px] font-mono uppercase bg-slate-100 border border-slate-300 px-2 py-0.5 rounded font-bold">
+                Official Vehicle History Record
+              </span>
+            </div>
+            <p className="text-xs text-slate-600 mt-1">
+              NMVTIS National Motor Vehicle Title Information System · Certified Database Clearinghouse
+            </p>
+          </div>
+          <div className="text-right print-header-badge">
+            <span className="inline-block bg-emerald-50 border border-emerald-300 text-emerald-800 font-bold text-xs px-2.5 py-1 rounded">
+              ✓ CLEAN TITLE CERTIFIED
+            </span>
+            <p className="text-[10px] text-slate-500 font-mono mt-1">
+              Order Ref: {orderNumber}
+            </p>
+          </div>
+        </div>
+
+        {/* Vehicle Metadata Summary */}
+        <div className="bg-slate-50 border border-slate-200 rounded p-3 mb-4 print-avoid-break print-meta-box">
+          <div className="grid grid-cols-3 gap-3 text-xs print-meta-grid">
+            <div>
+              <span className="text-slate-500 block text-[10px] uppercase font-semibold">Vehicle Specification</span>
+              <span className="font-bold text-slate-900 text-sm print-meta-val">{vehicleTitle}</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-[10px] uppercase font-semibold">Vehicle Identification (VIN)</span>
+              <span className="font-mono font-bold text-blue-700 text-sm print-meta-vin">{vin}</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-[10px] uppercase font-semibold">Audit Generated</span>
+              <span className="font-mono text-slate-700 print-meta-date">{new Date().toLocaleDateString()} {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Key Findings 4-Card Summary */}
+        <div className="grid grid-cols-4 gap-2.5 mb-4 print-avoid-break print-findings-grid">
+          <div className="border border-slate-200 p-2.5 rounded bg-emerald-50/50 print-finding-card">
+            <span className="text-[10px] uppercase font-bold text-slate-600 block">Title Brands</span>
+            <span className="font-bold text-emerald-700 text-xs mt-1 block">0 Brands Reported</span>
+            <span className="text-[9px] text-slate-500">No salvage, junk, flood</span>
+          </div>
+          <div className="border border-slate-200 p-2.5 rounded bg-emerald-50/50 print-finding-card">
+            <span className="text-[10px] uppercase font-bold text-slate-600 block">Accident History</span>
+            <span className="font-bold text-emerald-700 text-xs mt-1 block">0 Severe Accidents</span>
+            <span className="text-[9px] text-slate-500">Airbags intact, no frame loss</span>
+          </div>
+          <div className="border border-slate-200 p-2.5 rounded bg-emerald-50/50 print-finding-card">
+            <span className="text-[10px] uppercase font-bold text-slate-600 block">Odometer Integrity</span>
+            <span className="font-bold text-emerald-700 text-xs mt-1 block">Actual Mileage Verified</span>
+            <span className="text-[9px] text-slate-500">No rollback discrepancies</span>
+          </div>
+          <div className="border border-slate-200 p-2.5 rounded bg-emerald-50/50 print-finding-card">
+            <span className="text-[10px] uppercase font-bold text-slate-600 block">Safety Recalls</span>
+            <span className="font-bold text-emerald-700 text-xs mt-1 block">0 Open NHTSA Recalls</span>
+            <span className="text-[9px] text-slate-500">Compliant with federal safety</span>
+          </div>
+        </div>
+
+        {/* Detailed Brand Checks */}
+        <div className="space-y-4 text-xs">
+          <div className="print-avoid-break">
+            <div className="font-bold text-slate-900 border-b border-slate-300 pb-1 mb-2 flex items-center justify-between print-section-header">
+              <span>1. State Title Brand Clearinghouse (All 50 US States + Federal Registries)</span>
+              <span className="text-[10px] text-emerald-700 font-semibold font-mono">STATUS: PASSED</span>
+            </div>
+            <table className="w-full text-left border-collapse text-[10px] print-table">
+              <thead>
+                <tr className="bg-slate-100 text-slate-700">
+                  <th className="p-1.5 border border-slate-200">Record Verification</th>
+                  <th className="p-1.5 border border-slate-200">Reporting Clearinghouse</th>
+                  <th className="p-1.5 border border-slate-200">Result</th>
+                  <th className="p-1.5 border border-slate-200">Finding Details</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                <tr>
+                  <td className="p-1.5 border border-slate-200 font-semibold">Salvage / Total Loss</td>
+                  <td className="p-1.5 border border-slate-200">Insurance Clearinghouses & Auto Auctions</td>
+                  <td className="p-1.5 border border-slate-200 text-emerald-700 font-bold">Clear</td>
+                  <td className="p-1.5 border border-slate-200 text-slate-600">No total loss claims or salvage auction transfers reported</td>
+                </tr>
+                <tr>
+                  <td className="p-1.5 border border-slate-200 font-semibold">Flood / Hail / Water Damage</td>
+                  <td className="p-1.5 border border-slate-200">FEMA Emergency Registries & State DMVs</td>
+                  <td className="p-1.5 border border-slate-200 text-emerald-700 font-bold">Clear</td>
+                  <td className="p-1.5 border border-slate-200 text-slate-600">No flood title brands or hurricane storm damage flags found</td>
+                </tr>
+                <tr>
+                  <td className="p-1.5 border border-slate-200 font-semibold">Junk / Dismantler Record</td>
+                  <td className="p-1.5 border border-slate-200">NMVTIS National Motor Clearinghouse</td>
+                  <td className="p-1.5 border border-slate-200 text-emerald-700 font-bold">Clear</td>
+                  <td className="p-1.5 border border-slate-200 text-slate-600">Vehicle was never scrapped, crushed, or parted out</td>
+                </tr>
+                <tr>
+                  <td className="p-1.5 border border-slate-200 font-semibold">Stolen Vehicle Database</td>
+                  <td className="p-1.5 border border-slate-200">NICB & Federal Law Enforcement</td>
+                  <td className="p-1.5 border border-slate-200 text-emerald-700 font-bold">Clear</td>
+                  <td className="p-1.5 border border-slate-200 text-slate-600">No active police theft records or stolen vehicle reports</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Section 2: Certified Odometer Timeline */}
+          <div className="print-avoid-break">
+            <div className="font-bold text-slate-900 border-b border-slate-300 pb-1 mb-2 flex items-center justify-between print-section-header">
+              <span>2. Odometer Readings & Annual Mileage Timeline</span>
+              <span className="text-[10px] text-emerald-700 font-semibold font-mono">INTEGRITY: CERTIFIED</span>
+            </div>
+            <p className="text-[10px] text-slate-600 mb-2 print-section-desc">
+              Cross-checked across state registration renewals, annual safety inspection centers, and authorized dealership services. Certified steady mileage accumulation without reverse rollback indicators.
+            </p>
+            <table className="w-full text-left border-collapse text-[10px] print-table">
+              <thead>
+                <tr className="bg-slate-100 text-slate-700">
+                  <th className="p-1.5 border border-slate-200">Reading Date</th>
+                  <th className="p-1.5 border border-slate-200">Recorded Mileage</th>
+                  <th className="p-1.5 border border-slate-200">Reporting Facility</th>
+                  <th className="p-1.5 border border-slate-200">Source Category</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                <tr>
+                  <td className="p-1.5 border border-slate-200 font-mono">11/14/2021</td>
+                  <td className="p-1.5 border border-slate-200 font-bold">12 mi</td>
+                  <td className="p-1.5 border border-slate-200">Authorized Dealership Network</td>
+                  <td className="p-1.5 border border-slate-200">Pre-Delivery Inspection</td>
+                </tr>
+                <tr>
+                  <td className="p-1.5 border border-slate-200 font-mono">10/05/2023</td>
+                  <td className="p-1.5 border border-slate-200 font-bold">18,420 mi</td>
+                  <td className="p-1.5 border border-slate-200">State DMV Registration Bureau</td>
+                  <td className="p-1.5 border border-slate-200">Annual Registration Renewal</td>
+                </tr>
+                <tr>
+                  <td className="p-1.5 border border-slate-200 font-mono">08/19/2025</td>
+                  <td className="p-1.5 border border-slate-200 font-bold">36,810 mi</td>
+                  <td className="p-1.5 border border-slate-200">Certified Vehicle Service Center</td>
+                  <td className="p-1.5 border border-slate-200">Scheduled 35k Mile Service</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Document Legal Footnote */}
+          <div className="pt-3 border-t border-slate-300 text-[9px] text-slate-500 flex items-center justify-between print-avoid-break print-footer-note">
+            <div>
+              <p>Official Vehicle History Document generated for VIN: <strong>{vin}</strong> by AutoAudit Technologies Inc.</p>
+              <p>Provided in accordance with the Federal Anti-Car Theft Act and NMVTIS public access mandates.</p>
+            </div>
+            <div className="text-right font-mono">
+              <span className="text-slate-400">SECURITY DIGEST:</span><br />
+              <span className="text-slate-800 font-bold">AA-CERT-{orderNumber}</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

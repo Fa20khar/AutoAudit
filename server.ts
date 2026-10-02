@@ -40,7 +40,8 @@ async function startServer() {
   app.use('/api/emails', emailsRouter);
   app.use('/api/stats', statsRouter);
 
-  // Catch-all 404 handler for undefined /api routes (Express 5 compatible)
+  // Catch-all 404 handler for undefined /api routes
+  // Express 5 / path-to-regexp v8 compliance: uses literal prefix mount '/api' without '*' wildcards
   app.use('/api', (req: Request, res: Response) => {
     res.status(404).json({
       success: false,
@@ -63,10 +64,21 @@ async function startServer() {
   } else {
     const distPath = path.resolve(__dirname, 'dist');
     app.use(express.static(distPath));
-    app.get('*', (_req: Request, res: Response) => {
+    // SPA fallback handler: uses path-less middleware instead of invalid '*' wildcard
+    // In Express 5 (path-to-regexp v8), app.get('*') throws PathError: Missing parameter name
+    app.use((_req: Request, res: Response) => {
       res.sendFile(path.resolve(distPath, 'index.html'));
     });
   }
+
+  // Global error handler to catch and safely log any uncaught route exceptions
+  app.use((err: unknown, _req: Request, res: Response, _next: express.NextFunction) => {
+    console.error('Unhandled server exception:', err);
+    res.status(500).json({
+      success: false,
+      error: 'An internal server error occurred.'
+    });
+  });
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 AutoAudit server active on http://0.0.0.0:${PORT}`);

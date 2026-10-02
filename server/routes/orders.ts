@@ -5,6 +5,7 @@ import { db } from '../db';
 import { supabaseDb } from '../supabase';
 import { requireAdminAuth } from '../middleware/auth';
 import { Order, AuditLog, EmailNotification } from '../../src/types';
+import { triggerAutomatedEmailSequence, sendMockEmail } from '../services/smtp';
 
 export const ordersRouter = Router();
 
@@ -248,24 +249,17 @@ ordersRouter.post('/', (req: Request, res: Response) => {
 
   db.createOrder(newOrder);
 
-  // Send confirmation email
-  const confirmationEmail: EmailNotification = {
-    id: `em-${Date.now()}`,
-    orderId: newOrder.id,
-    orderNumber: newOrder.orderNumber,
-    recipientEmail: newOrder.customer.email,
-    recipientType: 'customer',
-    subject: `Order Confirmed: ${newOrder.serviceName} (${newOrder.orderNumber})`,
-    type: 'order_confirmation',
-    body: `Hello ${newOrder.customer.fullName},\n\nWe have received your order for vehicle ${newOrder.vehicle.year} ${newOrder.vehicle.make} ${newOrder.vehicle.model} (VIN/Reg: ${newOrder.vehicle.vinOrReg}). Your reference number is ${newOrder.orderNumber}.\n\nOur system is running checks across NMVTIS databases and salvage auctions. You will receive an email as soon as your report is ready.`,
-    sentAt: now,
-    read: false
-  };
-  db.addEmail(confirmationEmail);
+  // Trigger automated mock SMTP email sequence (Confirmation -> In-Progress -> Ready)
+  triggerAutomatedEmailSequence(newOrder, {
+    stageDelaySeconds: { stage2: 4, stage3: 8 },
+    autoAdvanceOrderStatus: true
+  }).catch(err => {
+    console.error('[SMTP] Automated email sequence error:', err);
+  });
 
   res.status(201).json({
     success: true,
-    message: 'Order created successfully and sent to processing queue.',
+    message: 'Order created successfully and automated lifecycle email sequence initiated.',
     data: newOrder
   });
 });
@@ -287,21 +281,15 @@ ordersRouter.patch('/:id/status', requireAdminAuth, (req: Request, res: Response
     return;
   }
 
-  // If delivered, send report email
-  if (status === 'Delivered' || status === 'Ready') {
-    const readyEmail: EmailNotification = {
-      id: `em-${Date.now()}`,
-      orderId: updated.id,
-      orderNumber: updated.orderNumber,
-      recipientEmail: updated.customer.email,
-      recipientType: 'customer',
-      subject: `Your AutoAudit Report is Ready (${updated.orderNumber})`,
-      type: 'report_ready',
-      body: `Hello ${updated.customer.fullName},\n\nYour verified AutoAudit vehicle history report for ${updated.vehicle.year} ${updated.vehicle.make} ${updated.vehicle.model} is now ready for download.\n\nOrder Number: ${updated.orderNumber}\nFile: AutoAudit_Report_${updated.vehicle.vinOrReg}.pdf`,
-      sentAt: new Date().toISOString(),
-      read: false
-    };
-    db.addEmail(readyEmail);
+  // Trigger corresponding stage email via Mock SMTP transporter
+  if (status === 'In Progress') {
+    sendMockEmail({ order: updated, type: 'processing' }).catch(err => {
+      console.error('[SMTP] Error dispatching processing email:', err);
+    });
+  } else if (status === 'Delivered' || status === 'Ready') {
+    sendMockEmail({ order: updated, type: 'report_ready' }).catch(err => {
+      console.error('[SMTP] Error dispatching report ready email:', err);
+    });
   }
 
   res.json({

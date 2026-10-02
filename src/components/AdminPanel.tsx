@@ -49,8 +49,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [adminAuthError, setAdminAuthError] = useState<string>('');
   const [isAuthenticating, setIsAuthenticating] = useState<boolean>(false);
 
-  // Menu: Dashboard, Orders, Customers, Services, Reports, Payments, Settings (Section 25)
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'customers' | 'services' | 'reports' | 'payments' | 'settings'>('orders');
+  // Menu: Dashboard, Orders, Customers, Services, Reports, Payments, Settings, Emails (Section 25)
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'customers' | 'services' | 'reports' | 'payments' | 'settings' | 'emails'>('orders');
   
   // Selected Order for Section 25 detail view
   const [selectedOrderId, setSelectedOrderId] = useState<string>(orders[0]?.id || '');
@@ -63,12 +63,75 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [uploadedFileName, setUploadedFileName] = useState<string>('');
   const [showEmailPreviewModal, setShowEmailPreviewModal] = useState<boolean>(false);
 
+  // Mock SMTP Email Sequence & Log state
+  const [dispatchedEmails, setDispatchedEmails] = useState<EmailNotification[]>(emails);
+  const [smtpStatus, setSmtpStatus] = useState<any>(null);
+  const [selectedEmailForView, setSelectedEmailForView] = useState<EmailNotification | null>(null);
+  const [emailPreviewTab, setEmailPreviewTab] = useState<'html' | 'text'>('html');
+  const [isTriggeringSequence, setIsTriggeringSequence] = useState<boolean>(false);
+  const [emailStageFilter, setEmailStageFilter] = useState<string>('All');
+  const [emailSearchQuery, setEmailSearchQuery] = useState<string>('');
+
   // Editable Internal notes
   const currentOrder = orders.find((o) => o.id === selectedOrderId) || orders[0];
   const [editNotes, setEditNotes] = useState<string>(currentOrder?.internalNotes || '');
   const [notesSaved, setNotesSaved] = useState<boolean>(false);
   const [dbStatus, setDbStatus] = useState<any>(null);
   const [copiedSql, setCopiedSql] = useState<boolean>(false);
+
+  const fetchEmailLogs = async () => {
+    try {
+      const data = await api.getEmails();
+      if (Array.isArray(data)) {
+        setDispatchedEmails(data);
+      }
+      const status = await api.getSmtpStatus();
+      if (status) {
+        setSmtpStatus(status);
+      }
+    } catch {
+      // fallback
+    }
+  };
+
+  React.useEffect(() => {
+    if (activeTab === 'emails') {
+      fetchEmailLogs();
+    }
+  }, [activeTab]);
+
+  React.useEffect(() => {
+    if (emails && emails.length > 0) {
+      setDispatchedEmails(emails);
+    }
+  }, [emails]);
+
+  const handleTriggerEmailSequence = async (orderId: string) => {
+    setIsTriggeringSequence(true);
+    try {
+      await api.triggerEmailSequence(orderId);
+      showToast({
+        title: 'Mock SMTP Sequence Started',
+        message: `Automated lifecycle initiated for ${currentOrder?.customer?.email || 'customer'}: Stage 1 sent; Stages 2 & 3 scheduled.`,
+        type: 'success'
+      });
+      // Refresh order list and email logs
+      const updatedOrders = await api.getOrders();
+      if (Array.isArray(updatedOrders)) {
+        const found = updatedOrders.find(o => o.id === orderId);
+        if (found) onUpdateOrder(found);
+      }
+      await fetchEmailLogs();
+    } catch (err: any) {
+      showToast({
+        title: 'Sequence Trigger Failed',
+        message: err?.message || 'SMTP Handler Error',
+        type: 'error'
+      });
+    } finally {
+      setIsTriggeringSequence(false);
+    }
+  };
 
   // Hydrate full orders once authorized
   React.useEffect(() => {
@@ -177,6 +240,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       o.customer.fullName.toLowerCase().includes(q) ||
       o.customer.email.toLowerCase().includes(q);
     return matchesStatus && matchesSearch;
+  });
+
+  // Filtered dispatched emails list
+  const filteredEmails = dispatchedEmails.filter((em) => {
+    const matchesStage =
+      emailStageFilter === 'All'
+        ? true
+        : emailStageFilter === 'Confirmation'
+        ? em.type === 'order_confirmation'
+        : emailStageFilter === 'In-Progress'
+        ? em.type === 'processing'
+        : em.type === 'report_ready';
+
+    const q = emailSearchQuery.toLowerCase();
+    const matchesSearch =
+      !emailSearchQuery.trim() ||
+      em.recipientEmail.toLowerCase().includes(q) ||
+      em.subject.toLowerCase().includes(q) ||
+      em.orderNumber.toLowerCase().includes(q);
+
+    return matchesStage && matchesSearch;
   });
 
   // Action: Save Internal Notes
@@ -625,6 +709,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
             <button
               type="button"
+              onClick={() => setActiveTab('emails')}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-colors cursor-pointer ${
+                activeTab === 'emails'
+                  ? 'bg-[#2563EB] text-white shadow-sm'
+                  : 'text-slate-300 hover:bg-[#0F172A] hover:text-white'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Mail className="w-4 h-4" />
+                <span>Mock SMTP</span>
+              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono">
+                {dispatchedEmails.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setActiveTab('settings')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-colors cursor-pointer ${
                 activeTab === 'settings'
@@ -1067,6 +1169,44 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                   </div>
 
+                  {/* Automated SMTP Email Sequence & Notification Action Bar */}
+                  <div className="bg-blue-50/60 border border-blue-200/80 rounded-xl p-4 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900 uppercase tracking-wider text-[11px] block">
+                            Automated Email Sequence (Mock SMTP)
+                          </span>
+                          <span className="px-2 py-0.5 rounded text-[10px] bg-blue-100 text-blue-700 font-semibold font-mono">
+                            Nodemailer Engine
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          Dispatches 3-stage lifecycle to <strong>{currentOrder.customer.email}</strong>: Confirmation → In-Progress (4s) → Report Ready (8s)
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={isTriggeringSequence}
+                          onClick={() => handleTriggerEmailSequence(currentOrder.id)}
+                          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          <span>{isTriggeringSequence ? 'Triggering...' : 'Trigger 3-Stage Sequence'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowEmailPreviewModal(true)}
+                          className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Mail className="w-3.5 h-3.5" />
+                          <span>Compose One-Off</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Section 25: Internal Notes */}
                   <div className="space-y-2 text-xs">
                     <div className="flex items-center justify-between">
@@ -1244,6 +1384,172 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           )}
 
+          {/* TAB 8: MOCK SMTP & EMAIL NOTIFICATIONS */}
+          {activeTab === 'emails' && (
+            <div className="space-y-6">
+              
+              {/* Header Card with Nodemailer SMTP Status */}
+              <div className="bg-white p-6 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2.5">
+                      <h3 className="text-base font-bold text-slate-900">
+                        Mock SMTP Service & Automated Email Sequences
+                      </h3>
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        ● Nodemailer Active
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Automated 3-stage lifecycle dispatch (Confirmation → In-Progress → Ready) via mock SMTP JSON transporter with zero network latency.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={fetchEmailLogs}
+                    className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer self-start"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Refresh Logs</span>
+                  </button>
+                </div>
+
+                {/* SMTP Stats Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-slate-100 text-xs">
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <span className="text-[10px] uppercase font-bold text-slate-500 block">Transport Driver</span>
+                    <span className="font-bold text-slate-900 mt-0.5 block">{smtpStatus?.mode || 'Nodemailer JSON Transporter'}</span>
+                    <span className="text-[10px] text-slate-400">Zero-Timeout Mock Pipeline</span>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <span className="text-[10px] uppercase font-bold text-slate-500 block">Lifecycle Sequence</span>
+                    <span className="font-bold text-blue-700 mt-0.5 block">3 Stages Automated</span>
+                    <span className="text-[10px] text-slate-400">Confirmation → In-Progress → Ready</span>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <span className="text-[10px] uppercase font-bold text-slate-500 block">System Sender</span>
+                    <span className="font-mono text-slate-800 text-[11px] mt-0.5 block truncate">{smtpStatus?.sender || 'noreply@autoaudit.intelligence'}</span>
+                    <span className="text-[10px] text-slate-400">DKIM & SPF Sealed</span>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <span className="text-[10px] uppercase font-bold text-slate-500 block">Dispatched Outbox</span>
+                    <span className="font-mono font-bold text-slate-900 text-sm mt-0.5 block">{dispatchedEmails.length} Emails</span>
+                    <span className="text-[10px] text-emerald-600 font-semibold">100% Mock Delivery</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Filters & Search */}
+              <div className="bg-white p-4 rounded-xl border border-[#E2E8F0] flex flex-col sm:flex-row gap-3 items-center justify-between shadow-xs">
+                <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                  {['All', 'Confirmation', 'In-Progress', 'Report Ready'].map((stage) => (
+                    <button
+                      key={stage}
+                      type="button"
+                      onClick={() => setEmailStageFilter(stage)}
+                      className={`px-3 py-1.5 rounded-lg font-semibold cursor-pointer transition-colors ${
+                        emailStageFilter === stage
+                          ? 'bg-[#0B132B] text-white'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {stage}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="relative w-full sm:w-72">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={emailSearchQuery}
+                    onChange={(e) => setEmailSearchQuery(e.target.value)}
+                    placeholder="Search by recipient or order #..."
+                    className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:border-[#2563EB]"
+                  />
+                </div>
+              </div>
+
+              {/* Dispatched Emails Table */}
+              <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-xs overflow-hidden">
+                <div className="px-6 py-4 border-b border-[#E2E8F0] flex items-center justify-between">
+                  <h4 className="text-sm font-bold text-slate-900">
+                    Dispatched Email Outbox ({filteredEmails.length})
+                  </h4>
+                  <span className="text-xs text-slate-400">
+                    Click "Preview" to inspect rendered HTML template & message headers
+                  </span>
+                </div>
+
+                {filteredEmails.length === 0 ? (
+                  <div className="p-8 text-center text-xs text-slate-400">
+                    No emails matching filter criteria. Place an order or trigger a lifecycle sequence from the Orders tab.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-[#F8FAFC] text-slate-500 font-semibold border-b border-[#E2E8F0]">
+                        <tr>
+                          <th className="py-3 px-4">Stage / Type</th>
+                          <th className="py-3 px-4">Subject</th>
+                          <th className="py-3 px-4">Recipient</th>
+                          <th className="py-3 px-4">Order Ref</th>
+                          <th className="py-3 px-4">Nodemailer Message ID</th>
+                          <th className="py-3 px-4">Sent At</th>
+                          <th className="py-3 px-4 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {filteredEmails.map((em) => (
+                          <tr key={em.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="py-3 px-4 whitespace-nowrap">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                em.type === 'order_confirmation'
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  : em.type === 'processing'
+                                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                  : 'bg-purple-50 text-purple-700 border border-purple-200'
+                              }`}>
+                                {em.type === 'order_confirmation' ? '1. Confirmation' : em.type === 'processing' ? '2. In-Progress' : '3. Ready'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 font-semibold text-slate-900 max-w-xs truncate">
+                              {em.subject}
+                            </td>
+                            <td className="py-3 px-4 font-mono text-slate-700">
+                              {em.recipientEmail}
+                            </td>
+                            <td className="py-3 px-4 font-mono font-bold text-slate-800">
+                              {em.orderNumber}
+                            </td>
+                            <td className="py-3 px-4 font-mono text-[10px] text-slate-400 truncate max-w-[120px]">
+                              {em.messageId || em.id}
+                            </td>
+                            <td className="py-3 px-4 text-slate-500 whitespace-nowrap">
+                              {new Date(em.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            </td>
+                            <td className="py-3 px-4 text-right whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedEmailForView(em)}
+                                className="px-2.5 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700 rounded-lg text-xs font-semibold transition-colors cursor-pointer inline-flex items-center gap-1"
+                              >
+                                <Eye className="w-3 h-3" />
+                                <span>Preview</span>
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+            </div>
+          )}
+
         </div>
       </main>
 
@@ -1313,6 +1619,119 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           order={currentOrder}
           onConfirmSend={handleConfirmSendEmail}
         />
+      )}
+
+      {/* Modal: View Dispatched Mock SMTP Email (HTML + Plain Text Inspector) */}
+      {selectedEmailForView && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-fade-in">
+          <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+            
+            {/* Header */}
+            <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-base">Mock SMTP Message Inspector</span>
+                  <span className="text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded font-mono">
+                    Nodemailer Delivered
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Message ID: <span className="font-mono text-slate-300">{selectedEmailForView.messageId || selectedEmailForView.id}</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedEmailForView(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Email Meta Ribbon */}
+            <div className="px-6 py-3 bg-slate-50 border-b border-slate-200 text-xs space-y-1">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                <div>
+                  <span className="text-slate-500 font-semibold">Subject: </span>
+                  <strong className="text-slate-900">{selectedEmailForView.subject}</strong>
+                </div>
+                <div className="text-slate-500 font-mono text-[11px]">
+                  {new Date(selectedEmailForView.sentAt).toLocaleString()}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-4 text-slate-600">
+                <div>
+                  <span className="text-slate-400">To: </span>
+                  <strong className="text-blue-700 font-mono">{selectedEmailForView.recipientEmail}</strong>
+                </div>
+                <div>
+                  <span className="text-slate-400">Order: </span>
+                  <strong className="text-slate-800 font-mono">{selectedEmailForView.orderNumber}</strong>
+                </div>
+                <div>
+                  <span className="text-slate-400">Transport: </span>
+                  <strong className="text-emerald-700">{selectedEmailForView.smtpTransport || 'Nodemailer Mock SMTP'}</strong>
+                </div>
+              </div>
+            </div>
+
+            {/* Tab Selector */}
+            <div className="px-6 pt-3 border-b border-slate-200 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setEmailPreviewTab('html')}
+                className={`pb-2 px-3 text-xs font-bold border-b-2 transition-colors cursor-pointer ${
+                  emailPreviewTab === 'html'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Rendered HTML Email
+              </button>
+              <button
+                type="button"
+                onClick={() => setEmailPreviewTab('text')}
+                className={`pb-2 px-3 text-xs font-bold border-b-2 transition-colors cursor-pointer ${
+                  emailPreviewTab === 'text'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Plain Text Version
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 overflow-y-auto flex-1 bg-slate-100/50">
+              {emailPreviewTab === 'html' && selectedEmailForView.htmlBody ? (
+                <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+                  <iframe
+                    title="Rendered Email HTML"
+                    srcDoc={selectedEmailForView.htmlBody}
+                    className="w-full h-[460px] border-0"
+                    sandbox="allow-same-origin"
+                  />
+                </div>
+              ) : (
+                <pre className="bg-white p-4 rounded-xl border border-slate-200 text-xs font-mono text-slate-800 whitespace-pre-wrap leading-relaxed">
+                  {selectedEmailForView.body}
+                </pre>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-3 bg-white border-t border-slate-200 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedEmailForView(null)}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold cursor-pointer"
+              >
+                Close Inspector
+              </button>
+            </div>
+
+          </div>
+        </div>
       )}
 
     </div>

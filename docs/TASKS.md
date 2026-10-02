@@ -53,6 +53,9 @@ This roadmap tracks the development lifecycle of the AutoAudit platform. All tas
 - [x] Create report download modal (`ReportDownloadModal.tsx`) with PDF trigger
 - [x] Implement live customer report lookup by email and order number
 - [x] Add direct downloadable HTML report generation with print stylesheet
+- [x] Add print-friendly CSS media query and 'Print Report' paper copy button in ReportDownloadModal
+- [x] Optimize print-friendly media query for mobile smartphones (margins: 4mm 6mm, scaled 8.5pt font, 2x2 findings grid, and table auto-wrap)
+- [x] Add subtle diagonal 'OFFICIAL AUTOAUDIT REPORT' watermark in printable CSS and standalone HTML report
 - [ ] Add browser local storage history sync for recently audited VINs
 - [ ] Add one-click email resend trigger for customer report links
 
@@ -100,6 +103,8 @@ This roadmap tracks the development lifecycle of the AutoAudit platform. All tas
 - [x] Build persistent internal staff notes textarea per order
 - [x] Build coupon management tab in Admin Console
 - [x] Build email dispatch notification history tab in Admin Console
+- [x] Implement Mock SMTP Service Handler and Automated Email Sequence (Confirmation → In-Progress → Ready) with Nodemailer
+- [x] Add Mock SMTP tab, inspector modal with HTML and plain text previews, and manual sequence triggers in Admin Console
 - [x] Add database diagnostics card with live table health and 1-click SQL copy button
 
 ---
@@ -109,6 +114,7 @@ This roadmap tracks the development lifecycle of the AutoAudit platform. All tas
 - [x] Configure PostgreSQL Row Level Security (RLS) policies on all tables
 - [x] Add request timeout protection (`AbortController`) on all external fetch calls
 - [x] Implement input sanitization on VIN queries and checkout form payloads
+- [x] Express 5 routing configuration audit: eliminate invalid '*' wildcard path patterns to prevent startup PathError
 - [ ] Add Express rate-limiting middleware (`express-rate-limit`) on `/api/vin/lookup`
 - [ ] Add CSRF token protection on sensitive administrative write endpoints
 

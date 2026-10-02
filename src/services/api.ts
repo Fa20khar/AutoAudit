@@ -255,11 +255,44 @@ export const api = {
   },
 
   /**
-   * Email Dispatch Notification Logs
+   * Email Dispatch Notification Logs & Mock SMTP Management
    */
-  async getEmails(timeoutMs = 6000): Promise<EmailNotification[]> {
+  async getEmails(query?: { email?: string; orderNumber?: string }, timeoutMs = 6000): Promise<EmailNotification[]> {
+    const params = new URLSearchParams();
+    if (query?.email) params.set('email', query.email);
+    if (query?.orderNumber) params.set('orderNumber', query.orderNumber);
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+
     const res = await request<{ success: boolean; count: number; data: EmailNotification[] }>(
-      '/api/emails',
+      `/api/emails${queryString}`,
+      { method: 'GET' },
+      timeoutMs
+    );
+    return res.data;
+  },
+
+  async triggerEmailSequence(orderId: string, timeoutMs = 8000): Promise<{
+    success: boolean;
+    message: string;
+    data: any;
+  }> {
+    return await request<any>(
+      `/api/emails/trigger-sequence/${encodeURIComponent(orderId)}`,
+      { method: 'POST' },
+      timeoutMs
+    );
+  },
+
+  async getSmtpStatus(timeoutMs = 5000): Promise<{
+    service: string;
+    library: string;
+    version: string;
+    mode: string;
+    sender: string;
+    totalDispatched: number;
+  }> {
+    const res = await request<{ success: boolean; data: any }>(
+      '/api/emails/smtp-status',
       { method: 'GET' },
       timeoutMs
     );

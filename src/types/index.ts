@@ -103,6 +103,9 @@ export interface EmailNotification {
   subject: string;
   type: 'new_order_admin' | 'order_confirmation' | 'processing' | 'report_ready' | 'refund' | 'payment_failed';
   body: string;
+  htmlBody?: string;
+  messageId?: string;
+  smtpTransport?: string;
   sentAt: string;
   read?: boolean;
 }

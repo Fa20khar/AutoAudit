@@ -199,3 +199,286 @@
   animation: subtle-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 }
 
+/* Watermark: Strictly hidden on screen */
+.print-watermark {
+  display: none !important;
+}
+
+/* ==========================================================================
+   PRINT-FRIENDLY CSS MEDIA QUERY FOR OFFICIAL PAPER REPORTS
+   ========================================================================== */
+@media print {
+  @page {
+    size: letter portrait;
+    margin: 8mm 10mm;
+  }
+
+  /* Reset body and background for crisp printing */
+  html, body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 10pt !important;
+    line-height: 1.4 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Subtle diagonal 'OFFICIAL AUTOAUDIT REPORT' watermark background */
+  .print-watermark {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: fixed !important;
+    top: 48% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) rotate(-32deg) !important;
+    transform-origin: center center !important;
+    font-size: 38pt !important;
+    font-weight: 900 !important;
+    letter-spacing: 0.16em !important;
+    color: rgba(15, 23, 42, 0.045) !important;
+    text-transform: uppercase !important;
+    white-space: nowrap !important;
+    pointer-events: none !important;
+    z-index: 0 !important;
+    user-select: none !important;
+    border: 3.5px dashed rgba(15, 23, 42, 0.045) !important;
+    padding: 12px 40px !important;
+    border-radius: 16px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide interactive application UI: navbar, hero, background modals, overlays, buttons, toasts */
+  header,
+  footer,
+  nav,
+  main,
+  aside,
+  .toast-container,
+  .no-print,
+  button,
+  .gearbox {
+    display: none !important;
+  }
+
+  /* Reset modal backdrop positioning so only the printable document flows onto paper */
+  .print-modal-container {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    display: block !important;
+    inset: auto !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  .print-modal-card {
+    display: none !important;
+  }
+
+  /* Printable Report Container */
+  #printable-vehicle-report {
+    position: relative !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Force borders and colors to print accurately */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Page Break Hygiene */
+  .print-avoid-break {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .print-page-break {
+    page-break-before: always !important;
+    break-before: page !important;
+  }
+
+  /* ========================================================================
+     MOBILE & SMARTPHONE SPECIFIC PRINT OPTIMIZATIONS (iOS & Android Print / PDF)
+     Adjusts margins, font sizes, grid wrapping, and table padding for mobile devices
+     ======================================================================== */
+  @media (max-width: 768px) {
+    @page {
+      size: letter portrait;
+      margin: 4mm 6mm !important;
+    }
+
+    html, body {
+      font-size: 8.5pt !important;
+      line-height: 1.25 !important;
+    }
+
+    #printable-vehicle-report {
+      padding: 0 !important;
+      font-size: 8.5pt !important;
+    }
+
+    /* Mobile Header Layout & Compact Branding */
+    #printable-vehicle-report .print-header {
+      padding-bottom: 6px !important;
+      margin-bottom: 8px !important;
+      display: flex !important;
+      flex-direction: row !important;
+      justify-content: space-between !important;
+      align-items: flex-start !important;
+    }
+
+    #printable-vehicle-report .print-header h2,
+    #printable-vehicle-report .print-header span.text-xl {
+      font-size: 13pt !important;
+      letter-spacing: -0.02em !important;
+    }
+
+    #printable-vehicle-report .print-header p {
+      font-size: 7pt !important;
+      line-height: 1.2 !important;
+      margin-top: 2px !important;
+    }
+
+    #printable-vehicle-report .print-header-badge span {
+      font-size: 7.5pt !important;
+      padding: 2px 6px !important;
+    }
+
+    #printable-vehicle-report .print-header-badge p {
+      font-size: 7pt !important;
+    }
+
+    /* Mobile Vehicle Metadata Summary Box */
+    #printable-vehicle-report .print-meta-box {
+      padding: 6px 8px !important;
+      margin-bottom: 8px !important;
+    }
+
+    #printable-vehicle-report .print-meta-grid {
+      display: grid !important;
+      grid-template-columns: repeat(3, 1fr) !important;
+      gap: 6px !important;
+    }
+
+    #printable-vehicle-report .print-meta-grid span.uppercase {
+      font-size: 6.5pt !important;
+      letter-spacing: 0.02em !important;
+    }
+
+    #printable-vehicle-report .print-meta-val,
+    #printable-vehicle-report .print-meta-vin,
+    #printable-vehicle-report .print-meta-date {
+      font-size: 8pt !important;
+      line-height: 1.2 !important;
+      word-break: break-all !important;
+    }
+
+    /* Mobile 4-Card Summary: 2x2 Grid for Smartphone Screen / Page Width */
+    #printable-vehicle-report .print-findings-grid {
+      display: grid !important;
+      grid-template-columns: repeat(2, 1fr) !important;
+      gap: 5px !important;
+      margin-bottom: 8px !important;
+    }
+
+    #printable-vehicle-report .print-finding-card {
+      padding: 5px 7px !important;
+    }
+
+    #printable-vehicle-report .print-finding-card span.uppercase {
+      font-size: 6.5pt !important;
+    }
+
+    #printable-vehicle-report .print-finding-card span.text-xs {
+      font-size: 7.5pt !important;
+      margin-top: 1px !important;
+    }
+
+    #printable-vehicle-report .print-finding-card span.text-\[9px\] {
+      font-size: 6.5pt !important;
+      line-height: 1.1 !important;
+    }
+
+    /* Mobile Section Titles & Spacing */
+    #printable-vehicle-report .print-section-header {
+      font-size: 8pt !important;
+      padding-bottom: 2px !important;
+      margin-bottom: 4px !important;
+    }
+
+    #printable-vehicle-report .print-section-desc {
+      font-size: 6.5pt !important;
+      line-height: 1.2 !important;
+      margin-bottom: 4px !important;
+    }
+
+    /* Mobile Table: Auto-Wrap and Tight Padding to Prevent Horizontal Clipping */
+    #printable-vehicle-report .print-table {
+      width: 100% !important;
+      table-layout: fixed !important;
+      font-size: 6.5pt !important;
+    }
+
+    #printable-vehicle-report .print-table th,
+    #printable-vehicle-report .print-table td {
+      padding: 2.5px 3.5px !important;
+      line-height: 1.2 !important;
+      word-break: break-word !important;
+      overflow-wrap: break-word !important;
+    }
+
+    /* Mobile Footer Note */
+    #printable-vehicle-report .print-footer-note {
+      font-size: 6.5pt !important;
+      padding-top: 5px !important;
+      margin-top: 6px !important;
+    }
+
+    #printable-vehicle-report .print-footer-note p {
+      font-size: 6.5pt !important;
+      line-height: 1.2 !important;
+    }
+
+    /* Mobile Watermark Scaling */
+    .print-watermark {
+      font-size: 20pt !important;
+      letter-spacing: 0.10em !important;
+      padding: 6px 18px !important;
+      border-width: 2px !important;
+      transform: translate(-50%, -50%) rotate(-32deg) !important;
+    }
+  }
+
+  /* Ultra-compact for small smartphones (<= 480px viewport width) */
+  @media (max-width: 480px) {
+    @page {
+      margin: 3mm 4mm !important;
+    }
+
+    #printable-vehicle-report .print-meta-grid {
+      grid-template-columns: 1fr 1fr !important;
+    }
+
+    .print-watermark {
+      font-size: 14pt !important;
+      letter-spacing: 0.06em !important;
+      padding: 4px 12px !important;
+      border-width: 1.5px !important;
+    }
+  }
+}
