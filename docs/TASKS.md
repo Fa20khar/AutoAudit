@@ -139,10 +139,13 @@ This roadmap tracks the development lifecycle of the AutoAudit platform. All tas
 
 ## Phase 12 — Production Deployment & DevOps
 - [x] Configure production Express static file serving from `dist/`
-- [x] Create `.env.example` deployment template
+- [x] Create comprehensive `.env.example` deployment template with frontend vs backend separation
 - [x] Define npm scripts (`"build"`, `"dev"`, `"start"`, `"lint"`)
-- [ ] Setup Dockerfile and containerized build definition
+- [x] Move `tsx` to production dependencies to prevent command-not-found failures on pruned deploys
+- [x] Configure Railway Nixpacks deployment specification (`railway.json`) with `/health` probe
+- [x] Implement standard CORS middleware on Express backend
 - [ ] Configure GitHub Actions CI/CD pipeline for automated testing and deploy
+- [ ] Setup Dockerfile and containerized build definition (Phase 2 deployment)
 
 ---
 

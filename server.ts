@@ -20,8 +20,20 @@ async function startServer() {
   // Body parser for JSON payloads
   app.use(express.json());
 
-  // API Health Check & Info
-  app.get('/api/health', (_req: Request, res: Response) => {
+  // CORS Middleware for cloud probes and cross-origin clients
+  app.use((req: Request, res: Response, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-admin-token');
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(204);
+      return;
+    }
+    next();
+  });
+
+  // Health Check endpoints: /health for cloud/Railway deployment probes & /api/health for frontend
+  const healthCheckHandler = (_req: Request, res: Response) => {
     res.json({
       status: 'ok',
       service: 'AutoAudit Vehicle Intelligence Engine',
@@ -29,7 +41,9 @@ async function startServer() {
       timestamp: new Date().toISOString(),
       uptime: process.uptime()
     });
-  });
+  };
+  app.get('/health', healthCheckHandler);
+  app.get('/api/health', healthCheckHandler);
 
   // REST API Route Mounts
   app.use('/api/auth', authRouter);

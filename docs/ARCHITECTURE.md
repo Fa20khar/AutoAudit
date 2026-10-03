@@ -294,12 +294,33 @@ autoaudit/
 
 | Variable | Environment | Description |
 |---|---|---|
-| `PORT` | Server | HTTP port for Express server (default `3000`) |
+| `PORT` | Server | HTTP port for Express server (defaults to `3000`, injected by Railway) |
+| `NODE_ENV` | Server | Environment mode (`development` vs `production`) |
 | `VITE_SUPABASE_URL` | Client (Vite) | Supabase project HTTPS URL for client SDK |
 | `VITE_SUPABASE_ANON_KEY` | Client (Vite) | Supabase public anonymous API key for client SDK |
 | `SUPABASE_URL` | Server (Express) | Supabase project HTTPS URL for backend adapter |
 | `SUPABASE_ANON_KEY` | Server (Express) | Supabase public anonymous API key for backend adapter |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server (Express) | Optional privileged key for backend administrative tasks |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server (Express) | Optional privileged key for backend administrative tasks (bypasses RLS) |
+| `ADMIN_SECRET_KEY` | Server (Express) | Staff bearer token for operational endpoints |
+| `ADMIN_EMAIL` | Server (Express) | Staff administrator login email |
+| `ADMIN_PASSWORD` | Server (Express) | Staff administrator login password |
+| `SMTP_HOST` | Server (Optional) | Real SMTP host (if omitted, uses Nodemailer mock JSON transporter) |
+| `SMTP_PORT` | Server (Optional) | SMTP port (e.g. 587) |
+| `SMTP_USER` / `SMTP_PASS` | Server (Optional) | SMTP authentication credentials |
+| `SMTP_FROM` | Server (Optional) | Outgoing notification sender header |
+
+---
+
+## Deployment Architecture (Railway)
+
+- **Platform:** Railway (PaaS)
+- **Container Strategy:** Direct Nixpacks build (Dockerless)
+- **Configuration:** `railway.json`
+- **Build Phase:** `npm run build` (runs `tsc --noEmit && vite build`, outputting to `dist/`)
+- **Runtime Execution:** `npm run start` (runs `tsx server.ts`)
+- **Health Probing:** `GET /health` responding with HTTP 200 `{ "status": "ok" }` within `< 100ms`
+- **Port Binding:** Binds dynamically to `0.0.0.0:$PORT`
+- **Asset Serving:** Express static file server (`dist/`) with path-less SPA fallback for client-side routing
 
 ---
 
