@@ -109,3 +109,59 @@ export interface EmailNotification {
   sentAt: string;
   read?: boolean;
 }
+
+export type ContactChannel = 'whatsapp' | 'phone' | 'email' | 'form';
+
+export type ContactSource = 
+  | 'floating_widget'
+  | 'hero'
+  | 'navbar'
+  | 'footer'
+  | 'pricing'
+  | 'order_modal'
+  | 'my_orders'
+  | 'faq'
+  | 'sample_report';
+
+export type ContactIntent = 
+  | 'vin_check'
+  | 'order_tracking'
+  | 'pricing'
+  | 'general_support'
+  | 'auction_photo'
+  | 'custom';
+
+export interface ContactEvent {
+  id: string;
+  channel: ContactChannel;
+  source: ContactSource;
+  intent: ContactIntent;
+  vin?: string;
+  orderNumber?: string;
+  messagePreview?: string;
+  timestamp: string;
+  pageUrl?: string;
+  deviceType?: 'desktop' | 'mobile' | 'tablet';
+}
+
+export interface ContactAnalyticsSummary {
+  totalClicks: number;
+  clicksLast24h: number;
+  clicksLast7d: number;
+  topSource: string;
+  topIntent: string;
+  conversionRateEstimate: number;
+  bySource: Record<string, number>;
+  byIntent: Record<string, number>;
+  byChannel: Record<string, number>;
+  recentEvents: ContactEvent[];
+}
+
+export interface WhatsAppConfig {
+  phoneNumber: string;
+  displayNumber: string;
+  defaultGreeting: string;
+  supportAvailability: string;
+  active: boolean;
+}
+

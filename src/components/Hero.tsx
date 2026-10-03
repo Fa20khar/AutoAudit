@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, ShieldCheck, CheckCircle2, ArrowRight, Car, Lock, Zap, Shield, FileCheck, Check } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
+import { WhatsAppButton } from './WhatsAppButton';
 
 interface HeroProps {
   onStartOrderWithVin: (vin: string, isVin: boolean) => void;
@@ -123,6 +124,14 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample })
                 <FileCheck className="w-4 h-4 text-emerald-400" />
                 <span>View Sample Report</span>
               </button>
+
+              <WhatsAppButton
+                variant="secondary"
+                source="hero"
+                intent="vin_check"
+                label="WhatsApp Chat"
+                className="px-4 py-3 rounded-[8px] bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 border-emerald-800/80 font-medium text-sm leading-[1.43]"
+              />
             </div>
 
             {/* Section 7: Vehicle Search / Order Component (Card radius = 14px) */}
@@ -207,10 +216,19 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample })
                   </button>
                 </div>
 
-                {/* Trust Message Below */}
-                <div className="pt-2 border-t border-[#334155]/60 text-center text-[10.5px] sm:text-xs text-slate-400 flex items-center justify-center gap-1.5 sm:gap-2">
-                  <Lock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400 shrink-0" />
-                  <span>Secure checkout • Fast processing • Email delivery</span>
+                {/* Trust Message & WhatsApp Quick Link Below */}
+                <div className="pt-2.5 border-t border-[#334155]/60 flex flex-col sm:flex-row items-center justify-between gap-2 text-[10.5px] sm:text-xs text-slate-400">
+                  <div className="flex items-center gap-1.5">
+                    <Lock className="w-3 h-3 text-emerald-400 shrink-0" />
+                    <span>Secure checkout • Fast email delivery</span>
+                  </div>
+                  <WhatsAppButton
+                    variant="text"
+                    source="hero"
+                    intent="vin_check"
+                    label="Need VIN Help? Chat on WhatsApp"
+                    className="text-emerald-400 hover:text-emerald-300 font-medium text-[11px]"
+                  />
                 </div>
               </form>
 

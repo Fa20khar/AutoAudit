@@ -1,4 +1,4 @@
-import { ServicePlan, Order, Coupon, EmailNotification } from '../types';
+import { ServicePlan, Order, Coupon, EmailNotification, ContactEvent, WhatsAppConfig } from '../types';
 
 export const INITIAL_SERVICES: ServicePlan[] = [
   {
@@ -454,3 +454,78 @@ export const TESTIMONIALS = [
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80'
   }
 ];
+
+export const INITIAL_WHATSAPP_CONFIG: WhatsAppConfig = {
+  phoneNumber: '18005552886',
+  displayNumber: '+1 (800) 555-AUTO',
+  defaultGreeting: 'Hello AutoAudit Support, I would like assistance with a vehicle history report.',
+  supportAvailability: 'Mon–Sun · 24/7 Coverage · Avg Response < 5 Mins',
+  active: true,
+};
+
+export const INITIAL_CONTACT_EVENTS: ContactEvent[] = [
+  {
+    id: 'evt_101',
+    channel: 'whatsapp',
+    source: 'floating_widget',
+    intent: 'vin_check',
+    vin: '1HGCR2F83HA029184',
+    messagePreview: 'Hi AutoAudit, I have a question regarding vehicle with VIN: 1HGCR2F83HA029184.',
+    timestamp: new Date(Date.now() - 1000 * 60 * 35).toISOString(),
+    deviceType: 'mobile',
+    pageUrl: '/',
+  },
+  {
+    id: 'evt_102',
+    channel: 'whatsapp',
+    source: 'pricing',
+    intent: 'pricing',
+    messagePreview: 'Hi AutoAudit, what is the difference between Complete and Premium auction records?',
+    timestamp: new Date(Date.now() - 1000 * 60 * 140).toISOString(),
+    deviceType: 'desktop',
+    pageUrl: '/#services',
+  },
+  {
+    id: 'evt_103',
+    channel: 'whatsapp',
+    source: 'hero',
+    intent: 'vin_check',
+    messagePreview: 'Can you verify if Copart auction photos are included for Canadian vehicles?',
+    timestamp: new Date(Date.now() - 1000 * 60 * 320).toISOString(),
+    deviceType: 'desktop',
+    pageUrl: '/#hero',
+  },
+  {
+    id: 'evt_104',
+    channel: 'whatsapp',
+    source: 'order_modal',
+    intent: 'general_support',
+    messagePreview: 'Need assistance verifying my payment method during checkout.',
+    timestamp: new Date(Date.now() - 1000 * 60 * 540).toISOString(),
+    deviceType: 'mobile',
+    pageUrl: '/checkout',
+  },
+  {
+    id: 'evt_105',
+    channel: 'whatsapp',
+    source: 'my_orders',
+    intent: 'order_tracking',
+    orderNumber: 'AA-10025',
+    vin: '1G1YY22U965104921',
+    messagePreview: 'Hello AutoAudit Support, I need an update on my order #AA-10025.',
+    timestamp: new Date(Date.now() - 1000 * 60 * 960).toISOString(),
+    deviceType: 'mobile',
+    pageUrl: '/portal/orders',
+  },
+  {
+    id: 'evt_106',
+    channel: 'whatsapp',
+    source: 'faq',
+    intent: 'general_support',
+    messagePreview: 'Do you offer batch vehicle report discounts for small auto dealerships?',
+    timestamp: new Date(Date.now() - 1000 * 60 * 1440).toISOString(),
+    deviceType: 'desktop',
+    pageUrl: '/#faq',
+  },
+];
+

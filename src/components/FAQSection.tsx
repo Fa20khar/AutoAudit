@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { ChevronDown, HelpCircle } from 'lucide-react';
+import { ChevronDown, HelpCircle, MessageCircle } from 'lucide-react';
 import { FAQS } from '../data/initialData';
+import { WhatsAppButton } from './WhatsAppButton';
 
 export const FAQSection: React.FC = () => {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
@@ -62,6 +63,28 @@ export const FAQSection: React.FC = () => {
               </div>
             );
           })}
+        </div>
+
+        {/* Bottom WhatsApp Help Banner */}
+        <div className="mt-10 p-6 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+              <MessageCircle className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-slate-900">
+                Still have questions about a vehicle?
+              </h4>
+              <p className="text-xs text-slate-600 mt-0.5">
+                Our team is available on WhatsApp 24/7 to help you verify VINs and choose the right report.
+              </p>
+            </div>
+          </div>
+          <WhatsAppButton
+            variant="primary"
+            label="Chat with Us on WhatsApp"
+            className="shrink-0 px-4 py-2.5 text-xs font-bold"
+          />
         </div>
 
       </div>

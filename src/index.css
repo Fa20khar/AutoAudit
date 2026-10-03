@@ -482,3 +482,101 @@
     }
   }
 }
+
+/* ==========================================================================
+   Subtle CSS Transition Animations: Report View Loading -> Ready Transitions
+   Improves perceived system responsiveness, stability, and polish.
+   ========================================================================== */
+
+@keyframes reportReadyFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.992);
+    filter: blur(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes reportSuccessGlow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 24px 4px rgba(16, 185, 129, 0.18);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+@keyframes reportCardSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes reportCheckmarkPop {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  65% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes reportScanSweep {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Core classes for report view transitions */
+.report-ready-transition {
+  animation: reportReadyFadeIn 420ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity, transform, filter;
+}
+
+.report-ready-glow {
+  animation: reportSuccessGlow 1.2s ease-out 1;
+}
+
+.report-checkmark-pop {
+  animation: reportCheckmarkPop 380ms cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.report-stagger-1 {
+  animation: reportCardSlideUp 380ms cubic-bezier(0.16, 1, 0.3, 1) 50ms backwards;
+}
+
+.report-stagger-2 {
+  animation: reportCardSlideUp 380ms cubic-bezier(0.16, 1, 0.3, 1) 110ms backwards;
+}
+
+.report-stagger-3 {
+  animation: reportCardSlideUp 380ms cubic-bezier(0.16, 1, 0.3, 1) 170ms backwards;
+}
+
+.report-loading-shimmer {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.03) 25%, rgba(255, 255, 255, 0.12) 50%, rgba(255, 255, 255, 0.03) 75%);
+  background-size: 200% 100%;
+  animation: reportScanSweep 1.6s infinite ease-in-out;
+}
+

@@ -1,6 +1,7 @@
 import React from 'react';
 import { ServicePlan } from '../types';
 import { Check, X, Clock, ShieldCheck, ArrowRight, Sparkles } from 'lucide-react';
+import { WhatsAppButton } from './WhatsAppButton';
 
 interface ServicesSectionProps {
   services: ServicePlan[];
@@ -119,7 +120,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
                   )}
 
                   {/* CTA Button (8px button radius, #FB2C36 on featured, micro-shadow) */}
-                  <div className="pt-2">
+                  <div className="pt-2 space-y-2">
                     <button
                       type="button"
                       onClick={() => onSelectService(plan.id)}
@@ -132,6 +133,17 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
                       <span>{ctaLabel}</span>
                       <ArrowRight className="w-4 h-4" />
                     </button>
+
+                    <div className="text-center">
+                      <WhatsAppButton
+                        variant="text"
+                        source="pricing"
+                        intent="pricing"
+                        label={`Questions about ${plan.name}? Chat on WhatsApp`}
+                        message={`Hi AutoAudit Support, I have a question regarding the ${plan.name} ($${plan.price.toFixed(2)}).`}
+                        className="text-[11px] text-slate-500 hover:text-emerald-600 font-normal"
+                      />
+                    </div>
                   </div>
 
                 </div>

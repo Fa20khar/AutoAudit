@@ -1,4 +1,5 @@
-import { ServicePlan, Order, Coupon, EmailNotification } from '../src/types';
+import { ServicePlan, Order, Coupon, EmailNotification, ContactEvent, WhatsAppConfig, ContactAnalyticsSummary } from '../src/types';
+import { INITIAL_WHATSAPP_CONFIG, INITIAL_CONTACT_EVENTS } from '../src/data/initialData';
 import { isSupabaseConfigured, supabaseDb, supabaseTableStatus } from './supabase';
 
 // Pre-seeded Initial Data
@@ -237,6 +238,8 @@ class Database {
   private orders: Order[] = [...INITIAL_ORDERS];
   private coupons: Coupon[] = [...INITIAL_COUPONS];
   private emails: EmailNotification[] = [...INITIAL_EMAILS];
+  private contactEvents: ContactEvent[] = [...INITIAL_CONTACT_EVENTS];
+  private whatsAppConfig: WhatsAppConfig = { ...INITIAL_WHATSAPP_CONFIG };
 
   constructor() {
     this.hydrateFromSupabase();
@@ -426,6 +429,84 @@ class Database {
         console.error('[Database] Failed to sync email to Supabase:', err);
       });
     }
+  }
+
+  // Contact Events & Click-to-Chat Analytics
+  getContactEvents(): ContactEvent[] {
+    return this.contactEvents;
+  }
+
+  logContactEvent(eventData: Omit<ContactEvent, 'id' | 'timestamp'> & { id?: string; timestamp?: string }): ContactEvent {
+    const event: ContactEvent = {
+      id: eventData.id || `evt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      timestamp: eventData.timestamp || new Date().toISOString(),
+      channel: eventData.channel || 'whatsapp',
+      source: eventData.source || 'floating_widget',
+      intent: eventData.intent || 'general_support',
+      vin: eventData.vin,
+      orderNumber: eventData.orderNumber,
+      messagePreview: eventData.messagePreview,
+      pageUrl: eventData.pageUrl,
+      deviceType: eventData.deviceType,
+    };
+    this.contactEvents.unshift(event);
+    if (this.contactEvents.length > 500) {
+      this.contactEvents = this.contactEvents.slice(0, 500);
+    }
+    return event;
+  }
+
+  getContactSummary(): ContactAnalyticsSummary {
+    const events = this.contactEvents;
+    const now = Date.now();
+    const oneDayAgo = now - 24 * 60 * 60 * 1000;
+    const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+
+    const clicksLast24h = events.filter(e => new Date(e.timestamp).getTime() >= oneDayAgo).length;
+    const clicksLast7d = events.filter(e => new Date(e.timestamp).getTime() >= sevenDaysAgo).length;
+
+    const bySource: Record<string, number> = {};
+    const byIntent: Record<string, number> = {};
+    const byChannel: Record<string, number> = {};
+
+    for (const e of events) {
+      bySource[e.source] = (bySource[e.source] || 0) + 1;
+      byIntent[e.intent] = (byIntent[e.intent] || 0) + 1;
+      byChannel[e.channel] = (byChannel[e.channel] || 0) + 1;
+    }
+
+    const topSource = Object.entries(bySource).sort((a, b) => b[1] - a[1])[0]?.[0] || 'floating_widget';
+    const topIntent = Object.entries(byIntent).sort((a, b) => b[1] - a[1])[0]?.[0] || 'vin_check';
+
+    const totalOrders = this.orders.length;
+    const conversionRateEstimate = events.length > 0
+      ? Math.min(100, Math.round((totalOrders / Math.max(events.length, 1)) * 38))
+      : 32;
+
+    return {
+      totalClicks: events.length,
+      clicksLast24h,
+      clicksLast7d,
+      topSource,
+      topIntent,
+      conversionRateEstimate,
+      bySource,
+      byIntent,
+      byChannel,
+      recentEvents: events.slice(0, 50),
+    };
+  }
+
+  getWhatsAppConfig(): WhatsAppConfig {
+    return this.whatsAppConfig;
+  }
+
+  updateWhatsAppConfig(updates: Partial<WhatsAppConfig>): WhatsAppConfig {
+    this.whatsAppConfig = {
+      ...this.whatsAppConfig,
+      ...updates,
+    };
+    return this.whatsAppConfig;
   }
 }
 

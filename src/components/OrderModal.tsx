@@ -6,6 +6,7 @@ import {
   Clock, AlertTriangle, ShieldAlert, RotateCcw, MessageSquare, Loader2
 } from 'lucide-react';
 import { OrderTrackingProgressBar } from './OrderTrackingProgressBar';
+import { WhatsAppButton } from './WhatsAppButton';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 
@@ -978,9 +979,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
           {/* STEP 5: Payment Success / Order Confirmed (Section 15) */}
           {step === 5 && createdOrder && (
-            <div className="text-center space-y-3.5 sm:space-y-5 py-2 sm:py-4 max-w-lg mx-auto">
+            <div className="text-center space-y-3.5 sm:space-y-5 py-2 sm:py-4 max-w-lg mx-auto report-ready-transition report-ready-glow">
               {/* Large Emerald Check Icon */}
-              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-emerald-100 border border-emerald-200 text-[#059669] flex items-center justify-center mx-auto shadow-xs">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-emerald-100 border border-emerald-200 text-[#059669] flex items-center justify-center mx-auto shadow-xs report-checkmark-pop">
                 <CheckCircle2 className="w-7 h-7 sm:w-10 sm:h-10 stroke-[2.2]" />
               </div>
 
@@ -994,7 +995,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               </div>
 
               {/* Order Details Box */}
-              <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl sm:rounded-2xl p-3.5 sm:p-5 text-[11px] sm:text-xs text-left space-y-2 sm:space-y-2.5 shadow-xs">
+              <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl sm:rounded-2xl p-3.5 sm:p-5 text-[11px] sm:text-xs text-left space-y-2 sm:space-y-2.5 shadow-xs report-stagger-1">
                 <div className="flex justify-between pb-1.5 sm:pb-2 border-b border-slate-200">
                   <span className="text-slate-500">Order Number:</span>
                   <span className="font-mono font-bold text-slate-900 text-xs sm:text-sm">{createdOrder.orderNumber}</span>
@@ -1021,18 +1022,20 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               </div>
 
               {/* 4-Stage Fulfillment Progress Bar */}
-              <OrderTrackingProgressBar
-                status="Processing"
-                orderNumber={createdOrder.orderNumber}
-                compact={true}
-              />
+              <div className="report-stagger-2">
+                <OrderTrackingProgressBar
+                  status="Processing"
+                  orderNumber={createdOrder.orderNumber}
+                  compact={true}
+                />
+              </div>
 
-              <div className="p-2.5 sm:p-3 bg-blue-50/70 border border-blue-100 rounded-xl text-[11px] sm:text-xs text-blue-900 leading-snug">
+              <div className="p-2.5 sm:p-3 bg-blue-50/70 border border-blue-100 rounded-xl text-[11px] sm:text-xs text-blue-900 leading-snug report-stagger-3">
                 A confirmation has been dispatched to <strong>{createdOrder.customer.email}</strong>. You will receive your PDF report as soon as records are verified.
               </div>
 
-              {/* Action Buttons: View Order & Back to Home */}
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-3 pt-1">
+              {/* Action Buttons: View Order, WhatsApp Help, Back to Home */}
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-3 pt-1 report-stagger-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -1043,6 +1046,15 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 >
                   View Order
                 </button>
+                <WhatsAppButton
+                  variant="primary"
+                  source="order_modal"
+                  intent="order_tracking"
+                  orderNumber={createdOrder.orderNumber}
+                  vin={createdOrder.vehicle.vinOrReg}
+                  label="Chat on WhatsApp"
+                  className="w-full sm:w-auto px-5 py-2.5 rounded-[8px] min-h-[44px]"
+                />
                 <button
                   type="button"
                   onClick={onClose}

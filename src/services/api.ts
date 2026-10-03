@@ -1,4 +1,4 @@
-import { Order, ServicePlan, Coupon, EmailNotification } from '../types';
+import { Order, ServicePlan, Coupon, EmailNotification, ContactEvent, ContactAnalyticsSummary, WhatsAppConfig } from '../types';
 
 /**
  * Custom Error class with HTTP status code and timeout details
@@ -392,5 +392,75 @@ export const api = {
       return sessionStorage.getItem('autoaudit_admin_token');
     }
     return null;
+  },
+
+  /**
+   * Contact Analytics & Click-to-Chat Tracking
+   */
+  async logContactEvent(event: Omit<ContactEvent, 'id' | 'timestamp'>, timeoutMs = 5000): Promise<ContactEvent | null> {
+    try {
+      const res = await request<{ success: boolean; data: ContactEvent }>(
+        '/api/analytics/contact-events',
+        {
+          method: 'POST',
+          body: JSON.stringify(event),
+        },
+        timeoutMs
+      );
+      return res.data;
+    } catch {
+      try {
+        const localLogs = JSON.parse(localStorage.getItem('autoaudit_contact_events') || '[]');
+        const fallbackEvent: ContactEvent = {
+          id: `evt_local_${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          ...event,
+        };
+        localLogs.unshift(fallbackEvent);
+        localStorage.setItem('autoaudit_contact_events', JSON.stringify(localLogs.slice(0, 100)));
+        return fallbackEvent;
+      } catch {
+        return null;
+      }
+    }
+  },
+
+  async getContactEvents(timeoutMs = 8000): Promise<ContactEvent[]> {
+    const res = await request<{ success: boolean; data: ContactEvent[] }>(
+      '/api/analytics/contact-events',
+      { method: 'GET' },
+      timeoutMs
+    );
+    return res.data;
+  },
+
+  async getContactSummary(timeoutMs = 8000): Promise<ContactAnalyticsSummary> {
+    const res = await request<{ success: boolean; data: ContactAnalyticsSummary }>(
+      '/api/analytics/contact-summary',
+      { method: 'GET' },
+      timeoutMs
+    );
+    return res.data;
+  },
+
+  async getWhatsAppConfig(timeoutMs = 5000): Promise<WhatsAppConfig> {
+    const res = await request<{ success: boolean; data: WhatsAppConfig }>(
+      '/api/analytics/whatsapp-config',
+      { method: 'GET' },
+      timeoutMs
+    );
+    return res.data;
+  },
+
+  async updateWhatsAppConfig(updates: Partial<WhatsAppConfig>, timeoutMs = 8000): Promise<WhatsAppConfig> {
+    const res = await request<{ success: boolean; data: WhatsAppConfig }>(
+      '/api/analytics/whatsapp-config',
+      {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      },
+      timeoutMs
+    );
+    return res.data;
   }
 };

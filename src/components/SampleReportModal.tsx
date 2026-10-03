@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SAMPLE_REPORT_DATA } from '../data/initialData';
-import { X, ShieldCheck, AlertTriangle, CheckCircle2, FileText, Printer, ArrowRight, Car, History, Wrench, ShieldAlert } from 'lucide-react';
+import { X, ShieldCheck, AlertTriangle, CheckCircle2, FileText, Printer, ArrowRight, Car, History, Wrench, ShieldAlert, Loader2, Sparkles, Check } from 'lucide-react';
 
 interface SampleReportModalProps {
   isOpen: boolean;
@@ -16,6 +16,17 @@ export const SampleReportModal: React.FC<SampleReportModalProps> = ({
   onDownloadReport,
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'accidents' | 'ownership' | 'service'>('overview');
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsLoading(true);
+      const timer = setTimeout(() => {
+        setIsLoading(false);
+      }, 360);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -70,144 +81,172 @@ export const SampleReportModal: React.FC<SampleReportModalProps> = ({
 
         {/* Modal Body / Report Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          
-          {/* Vehicle Profile Card */}
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <span className="text-xs font-semibold text-blue-700 uppercase tracking-wider">
-                Audited Vehicle Profile
-              </span>
-              <h3 className="text-xl font-extrabold text-slate-900">{data.vehicle}</h3>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
-                <span>{data.engine}</span>
-                <span aria-hidden="true">·</span>
-                <span>{data.transmission}</span>
-                <span aria-hidden="true">·</span>
-                <span>{data.drivetrain}</span>
-                <span aria-hidden="true">·</span>
-                <span>Assembly: {data.assembly}</span>
+          {isLoading ? (
+            <div className="py-12 flex flex-col items-center justify-center space-y-4">
+              <div className="relative">
+                <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center shadow-xs">
+                  <ShieldCheck className="w-7 h-7 text-blue-600 animate-pulse" />
+                </div>
+                <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-blue-600" />
+                </span>
+              </div>
+              <div className="text-center space-y-1">
+                <h4 className="text-sm font-bold text-slate-900">Verifying Official Records...</h4>
+                <p className="text-xs text-slate-500">Cross-referencing NMVTIS federal title registry & collision archives</p>
+              </div>
+              {/* Skeleton placeholders with subtle shimmer */}
+              <div className="w-full max-w-lg space-y-2.5 pt-2">
+                <div className="h-16 w-full rounded-xl bg-slate-100 report-loading-shimmer border border-slate-200/50" />
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div className="h-12 rounded-lg bg-slate-100 report-loading-shimmer border border-slate-200/50" />
+                  <div className="h-12 rounded-lg bg-slate-100 report-loading-shimmer border border-slate-200/50" />
+                  <div className="h-12 rounded-lg bg-slate-100 report-loading-shimmer border border-slate-200/50" />
+                  <div className="h-12 rounded-lg bg-slate-100 report-loading-shimmer border border-slate-200/50" />
+                </div>
               </div>
             </div>
+          ) : (
+            <div className="space-y-6 report-ready-transition report-ready-glow">
+              {/* Vehicle Profile Card */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 report-stagger-1">
+                <div className="space-y-1">
+                  <span className="text-xs font-semibold text-blue-700 uppercase tracking-wider">
+                    Audited Vehicle Profile
+                  </span>
+                  <h3 className="text-xl font-extrabold text-slate-900">{data.vehicle}</h3>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
+                    <span>{data.engine}</span>
+                    <span aria-hidden="true">·</span>
+                    <span>{data.transmission}</span>
+                    <span aria-hidden="true">·</span>
+                    <span>{data.drivetrain}</span>
+                    <span aria-hidden="true">·</span>
+                    <span>Assembly: {data.assembly}</span>
+                  </div>
+                </div>
 
-            <div className="text-right sm:border-l sm:border-slate-200 sm:pl-6 shrink-0">
-              <span className="text-xs text-slate-500 block">Verified Odometer</span>
-              <span className="text-lg font-bold text-slate-900 font-mono tabular-nums">
-                {data.estimatedMileage}
-              </span>
-              <span className="text-[11px] text-emerald-700 font-semibold block">
-                Consistent Trend
-              </span>
-            </div>
-          </div>
-
-          {/* Quick Pillar Status Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-            <div className="p-3 rounded-lg border border-emerald-200 bg-emerald-50/60">
-              <span className="text-slate-500 block">Title Record</span>
-              <span className="font-bold text-emerald-800 flex items-center gap-1 mt-0.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Clean Title
-              </span>
-            </div>
-
-            <div className="p-3 rounded-lg border border-amber-200 bg-amber-50/60">
-              <span className="text-slate-500 block">Accident History</span>
-              <span className="font-bold text-amber-800 flex items-center gap-1 mt-0.5">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-600" /> 1 Minor Record
-              </span>
-            </div>
-
-            <div className="p-3 rounded-lg border border-emerald-200 bg-emerald-50/60">
-              <span className="text-slate-500 block">Salvage / Junk Brand</span>
-              <span className="font-bold text-emerald-800 flex items-center gap-1 mt-0.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> 0 Flags (Passed)
-              </span>
-            </div>
-
-            <div className="p-3 rounded-lg border border-emerald-200 bg-emerald-50/60">
-              <span className="text-slate-500 block">Total Owners</span>
-              <span className="font-bold text-slate-900 mt-0.5 block">
-                2 Previous Owners
-              </span>
-            </div>
-          </div>
-
-          {/* Navigation Tabs */}
-          <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
-            <button
-              onClick={() => setActiveTab('overview')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
-                activeTab === 'overview'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <Car className="w-3.5 h-3.5" />
-              <span>Full Specifications</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('accidents')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
-                activeTab === 'accidents'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <ShieldAlert className="w-3.5 h-3.5" />
-              <span>Accident & Damage Record</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('ownership')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
-                activeTab === 'ownership'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <History className="w-3.5 h-3.5" />
-              <span>Ownership Timeline</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('service')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
-                activeTab === 'service'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <Wrench className="w-3.5 h-3.5" />
-              <span>Service Logs</span>
-            </button>
-          </div>
-
-          {/* Tab 1: Overview */}
-          {activeTab === 'overview' && (
-            <div className="space-y-4">
-              <h4 className="text-sm font-bold text-slate-900">Title Brand & Severe Event Audit</h4>
-              <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 text-xs">
-                <div className="p-3 flex items-center justify-between">
-                  <span className="text-slate-600">Salvage, Junk or Total Loss Certificate</span>
-                  <span className="font-semibold text-emerald-700 flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Not Issued (Clear)
+                <div className="text-right sm:border-l sm:border-slate-200 sm:pl-6 shrink-0">
+                  <span className="text-xs text-slate-500 block">Verified Odometer</span>
+                  <span className="text-lg font-bold text-slate-900 font-mono tabular-nums">
+                    {data.estimatedMileage}
+                  </span>
+                  <span className="text-[11px] text-emerald-700 font-semibold block">
+                    Consistent Trend
                   </span>
                 </div>
-                <div className="p-3 flex items-center justify-between">
-                  <span className="text-slate-600">Flood, Hail or Fire Casualty Insurance Brand</span>
-                  <span className="font-semibold text-emerald-700 flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> None Found
+              </div>
+
+              {/* Quick Pillar Status Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs report-stagger-2">
+                <div className="p-3 rounded-lg border border-emerald-200 bg-emerald-50/60 transition-all hover:shadow-xs">
+                  <span className="text-slate-500 block">Title Record</span>
+                  <span className="font-bold text-emerald-800 flex items-center gap-1 mt-0.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Clean Title
                   </span>
                 </div>
-                <div className="p-3 flex items-center justify-between">
-                  <span className="text-slate-600">Police Theft / Stolen Vehicle Database</span>
-                  <span className="font-semibold text-emerald-700 flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> No Stolen Record
+
+                <div className="p-3 rounded-lg border border-amber-200 bg-amber-50/60 transition-all hover:shadow-xs">
+                  <span className="text-slate-500 block">Accident History</span>
+                  <span className="font-bold text-amber-800 flex items-center gap-1 mt-0.5">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600" /> 1 Minor Record
                   </span>
                 </div>
-                <div className="p-3 flex items-center justify-between">
-                  <span className="text-slate-600">Odometer Tampering / Rollback Record</span>
-                  <span className="font-semibold text-emerald-700 flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Verified Actual Mileage
+
+                <div className="p-3 rounded-lg border border-emerald-200 bg-emerald-50/60 transition-all hover:shadow-xs">
+                  <span className="text-slate-500 block">Salvage / Junk Brand</span>
+                  <span className="font-bold text-emerald-800 flex items-center gap-1 mt-0.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> 0 Flags (Passed)
                   </span>
                 </div>
+
+                <div className="p-3 rounded-lg border border-emerald-200 bg-emerald-50/60 transition-all hover:shadow-xs">
+                  <span className="text-slate-500 block">Total Owners</span>
+                  <span className="font-bold text-slate-900 mt-0.5 block">
+                    2 Previous Owners
+                  </span>
+                </div>
+              </div>
+
+              {/* Navigation Tabs */}
+              <div className="space-y-4 report-stagger-3">
+                <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+                  <button
+                    onClick={() => setActiveTab('overview')}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
+                      activeTab === 'overview'
+                        ? 'bg-slate-900 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    }`}
+                  >
+                    <Car className="w-3.5 h-3.5" />
+                    <span>Full Specifications</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('accidents')}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
+                      activeTab === 'accidents'
+                        ? 'bg-slate-900 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    }`}
+                  >
+                    <ShieldAlert className="w-3.5 h-3.5" />
+                    <span>Accident & Damage Record</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('ownership')}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
+                      activeTab === 'ownership'
+                        ? 'bg-slate-900 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    }`}
+                  >
+                    <History className="w-3.5 h-3.5" />
+                    <span>Ownership Timeline</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('service')}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
+                      activeTab === 'service'
+                        ? 'bg-slate-900 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    }`}
+                  >
+                    <Wrench className="w-3.5 h-3.5" />
+                    <span>Service Logs</span>
+                  </button>
+                </div>
+
+                {/* Tab 1: Overview */}
+                {activeTab === 'overview' && (
+                  <div key="overview" className="space-y-4 report-ready-transition">
+                    <h4 className="text-sm font-bold text-slate-900">Title Brand & Severe Event Audit</h4>
+                    <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 text-xs">
+                      <div className="p-3 flex items-center justify-between">
+                        <span className="text-slate-600">Salvage, Junk or Total Loss Certificate</span>
+                        <span className="font-semibold text-emerald-700 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Not Issued (Clear)
+                        </span>
+                      </div>
+                      <div className="p-3 flex items-center justify-between">
+                        <span className="text-slate-600">Flood, Hail or Fire Casualty Insurance Brand</span>
+                        <span className="font-semibold text-emerald-700 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> None Found
+                        </span>
+                      </div>
+                      <div className="p-3 flex items-center justify-between">
+                        <span className="text-slate-600">Police Theft / Stolen Vehicle Database</span>
+                        <span className="font-semibold text-emerald-700 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> No Stolen Record
+                        </span>
+                      </div>
+                      <div className="p-3 flex items-center justify-between">
+                        <span className="text-slate-600">Odometer Tampering / Rollback Record</span>
+                        <span className="font-semibold text-emerald-700 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Verified Actual Mileage
+                        </span>
+                      </div>
                 <div className="p-3 flex items-center justify-between">
                   <span className="text-slate-600">Active Financial Lien / Lender Encumbrance</span>
                   <span className="font-semibold text-emerald-700 flex items-center gap-1">
@@ -308,18 +347,20 @@ export const SampleReportModal: React.FC<SampleReportModalProps> = ({
               </div>
             </div>
           )}
-
-          {/* Compliance & Limitation Notice (Section 13 & 17 of PDF) */}
-          <div className="p-4 bg-slate-100 rounded-xl border border-slate-200 text-[11px] text-slate-600 space-y-1.5">
-            <p className="font-bold text-slate-800 uppercase tracking-wider">
-              Legal Disclosure & Information Scope
-            </p>
-            <p className="leading-relaxed">
-              This report compiles information gathered from authorized state and federal databases, insurance write-off clearinghouses, and participating repair centers. AutoAudit provides online fulfillment of vehicle records and is not an in-person physical inspection service. We do not warranty undisclosed repairs performed without an insurance claim or outside registered facilities.
-            </p>
-          </div>
-
         </div>
+
+        {/* Compliance & Limitation Notice (Section 13 & 17 of PDF) */}
+        <div className="p-4 bg-slate-100 rounded-xl border border-slate-200 text-[11px] text-slate-600 space-y-1.5">
+          <p className="font-bold text-slate-800 uppercase tracking-wider">
+            Legal Disclosure & Information Scope
+          </p>
+          <p className="leading-relaxed">
+            This report compiles information gathered from authorized state and federal databases, insurance write-off clearinghouses, and participating repair centers. AutoAudit provides online fulfillment of vehicle records and is not an in-person physical inspection service. We do not warranty undisclosed repairs performed without an insurance claim or outside registered facilities.
+          </p>
+        </div>
+      </div>
+    )}
+  </div>
 
         {/* Modal Bottom CTA */}
         <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">

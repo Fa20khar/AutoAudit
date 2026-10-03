@@ -1,5 +1,6 @@
 import React from 'react';
 import { Logo } from './Logo';
+import { WhatsAppButton } from './WhatsAppButton';
 
 interface FooterProps {
   onOpenLegal: (tab: 'terms' | 'privacy' | 'refund' | 'compliance') => void;
@@ -32,6 +33,13 @@ export const Footer: React.FC<FooterProps> = ({
             <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
               AutoAudit is an online digital ordering platform compiling vehicle title, salvage, and collision records from authorized registries. We do not provide physical vehicle inspections.
             </p>
+            <div className="pt-2">
+              <WhatsAppButton
+                variant="secondary"
+                label="Chat with Support on WhatsApp"
+                className="bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border-emerald-800 text-xs"
+              />
+            </div>
           </div>
 
           {/* Column 1: Company */}
@@ -129,6 +137,13 @@ export const Footer: React.FC<FooterProps> = ({
                 >
                   Order Support & Tracking
                 </button>
+              </li>
+              <li>
+                <WhatsAppButton
+                  variant="text"
+                  label="WhatsApp: +1 (800) 555-AUTO"
+                  className="hover:text-emerald-400 text-slate-400"
+                />
               </li>
               <li>
                 <button

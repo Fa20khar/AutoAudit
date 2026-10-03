@@ -271,8 +271,8 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
             <div className="relative">
               <GearboxLoader />
               {isDone && (
-                <div className="absolute inset-0 bg-slate-900/85 backdrop-blur-xs rounded-md flex flex-col items-center justify-center transition-all duration-300">
-                  <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mb-2">
+                <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-xs rounded-md flex flex-col items-center justify-center transition-all duration-300 report-ready-transition">
+                  <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mb-2 report-checkmark-pop">
                     <CheckCircle2 className="w-7 h-7" />
                   </div>
                   <span className="text-xs font-bold text-emerald-400 tracking-wider font-mono">
@@ -284,11 +284,11 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
           </div>
 
           {/* Vehicle summary banner */}
-          <div className="bg-slate-800/80 border border-slate-700/80 rounded-xl p-3.5 text-xs text-left space-y-1.5 shadow-inner">
+          <div className={`bg-slate-800/80 border border-slate-700/80 rounded-xl p-3.5 text-xs text-left space-y-1.5 shadow-inner transition-all duration-300 ${isDone ? 'border-emerald-500/30 bg-slate-800/95 report-ready-transition' : ''}`}>
             <div className="flex justify-between items-center text-slate-400 text-[11px]">
               <span className="font-mono">Order: {orderNumber}</span>
-              <span className="font-mono px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                NMVTIS VERIFIED
+              <span className={`font-mono px-2 py-0.5 rounded text-[10px] font-bold transition-all duration-300 ${isDone ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'}`}>
+                {isDone ? 'RECORDS READY' : 'NMVTIS VERIFIED'}
               </span>
             </div>
             <p className="font-bold text-white text-sm truncate">{vehicleTitle}</p>
@@ -297,10 +297,10 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
 
           {/* Status Text & Step Details */}
           <div className="space-y-1.5">
-            <p className="text-sm font-semibold text-slate-200 min-h-[22px] transition-all duration-200">
+            <p className={`text-sm font-semibold text-slate-200 min-h-[22px] transition-all duration-300 ${isDone ? 'text-emerald-300 report-ready-transition' : ''}`}>
               {statusMessage}
             </p>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-400 transition-opacity duration-300">
               {isGenerating
                 ? 'Official records are being retrieved and formatted into a tamper-evident PDF.'
                 : 'All ownership history, title records, and damage logs compiled successfully.'}
@@ -340,13 +340,13 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
                 </div>
               </div>
             ) : (
-              /* SUCCESS STATE: Action buttons once generation finishes */
-              <div className="space-y-2.5">
+              /* SUCCESS STATE: Action buttons once generation finishes with subtle CSS transitions */
+              <div className="space-y-2.5 report-ready-transition report-ready-glow">
                 {/* Print Report Primary Button */}
                 <button
                   type="button"
                   onClick={handlePrintReport}
-                  className="w-full py-2.5 sm:py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs sm:text-sm rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-lg active:scale-[0.99]"
+                  className="w-full py-2.5 sm:py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs sm:text-sm rounded-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-lg active:scale-[0.99] report-stagger-1"
                 >
                   <Printer className="w-4 h-4" />
                   <span>Print Report (Paper Copy)</span>
@@ -356,13 +356,13 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
                 <button
                   type="button"
                   onClick={handleDownloadPdf}
-                  className="w-full py-2.5 sm:py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-lg active:scale-[0.99]"
+                  className="w-full py-2.5 sm:py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm rounded-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-lg active:scale-[0.99] report-stagger-2"
                 >
                   <Download className="w-4 h-4" />
                   <span>Download HTML / PDF Report</span>
                 </button>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 report-stagger-3">
                   <button
                     type="button"
                     onClick={handleRegenerate}

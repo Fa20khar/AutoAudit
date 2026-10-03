@@ -23,6 +23,7 @@ import { MyOrdersModal } from './components/MyOrdersModal';
 import { LegalModal } from './components/LegalModal';
 import { AdminPanel } from './components/AdminPanel';
 import { ReportDownloadModal } from './components/ReportDownloadModal';
+import { WhatsAppWidget } from './components/WhatsAppWidget';
 import { ToastProvider } from './context/ToastContext';
 import { api } from './services/api';
 
@@ -352,6 +353,9 @@ function AppContent() {
         vehicleTitle={downloadModalState.vehicleTitle}
         orderNumber={downloadModalState.orderNumber}
       />
+
+      {/* Persistent Floating WhatsApp Support Widget */}
+      <WhatsAppWidget />
 
     </div>
   );

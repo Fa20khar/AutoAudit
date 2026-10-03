@@ -12,6 +12,8 @@ import { useToast } from '../context/ToastContext';
 import { OrderTrackingProgressBar } from './OrderTrackingProgressBar';
 import { Logo } from './Logo';
 import { api } from '../services/api';
+import { ContactAnalyticsTab } from './ContactAnalyticsTab';
+import { WhatsAppIcon } from './WhatsAppWidget';
 
 interface AdminPanelProps {
   orders: Order[];
@@ -49,8 +51,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [adminAuthError, setAdminAuthError] = useState<string>('');
   const [isAuthenticating, setIsAuthenticating] = useState<boolean>(false);
 
-  // Menu: Dashboard, Orders, Customers, Services, Reports, Payments, Settings, Emails (Section 25)
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'customers' | 'services' | 'reports' | 'payments' | 'settings' | 'emails'>('orders');
+  // Menu: Dashboard, Orders, Customers, Services, Reports, Payments, Settings, Emails, Contact Analytics (Section 25)
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'customers' | 'services' | 'reports' | 'payments' | 'settings' | 'emails' | 'contact-analytics'>('orders');
   
   // Selected Order for Section 25 detail view
   const [selectedOrderId, setSelectedOrderId] = useState<string>(orders[0]?.id || '');
@@ -727,6 +729,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
             <button
               type="button"
+              onClick={() => setActiveTab('contact-analytics')}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-colors cursor-pointer ${
+                activeTab === 'contact-analytics'
+                  ? 'bg-[#2563EB] text-white shadow-sm'
+                  : 'text-slate-300 hover:bg-[#0F172A] hover:text-white'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <WhatsAppIcon className="w-4 h-4 text-[#25D366]" />
+                <span>Contact Analytics</span>
+              </div>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                LIVE
+              </span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setActiveTab('settings')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-colors cursor-pointer ${
                 activeTab === 'settings'
@@ -1301,6 +1321,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 ))}
               </div>
             </div>
+          )}
+
+          {/* TAB: CONTACT & WHATSAPP ANALYTICS */}
+          {activeTab === 'contact-analytics' && (
+            <ContactAnalyticsTab />
           )}
 
           {/* TAB 6: SETTINGS */}

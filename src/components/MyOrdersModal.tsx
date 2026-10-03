@@ -6,6 +6,7 @@ import {
   FileCheck, Mail, ShieldCheck, ArrowRight, Loader2
 } from 'lucide-react';
 import { OrderTrackingProgressBar } from './OrderTrackingProgressBar';
+import { WhatsAppButton } from './WhatsAppButton';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 
@@ -253,6 +254,11 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
 
           {/* Bottom Actions */}
           <div className="pt-4 border-t border-[#1E293B] space-y-2">
+            <WhatsAppButton
+              variant="secondary"
+              label="Live WhatsApp Help"
+              className="w-full justify-center bg-emerald-950/50 text-emerald-300 border-emerald-800/60 hover:bg-emerald-900/60 text-xs py-2"
+            />
             <button
               type="button"
               onClick={onClose}
@@ -336,16 +342,16 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
             {selectedOrder && (
               <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 shadow-xs space-y-5">
                 
-                {/* Section 17: When report is ready */}
+                {/* Section 17: When report is ready with subtle CSS transition animations */}
                 {(selectedOrder.status === 'Ready' || selectedOrder.status === 'Delivered' || selectedOrder.status === 'Completed' || selectedOrder.resultFile) ? (
-                  <div className="space-y-4">
+                  <div key={`ready-${selectedOrder.id}`} className="space-y-4 report-ready-transition report-ready-glow">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
                       <div>
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-[#059669] mb-1.5">
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-[#059669] mb-1.5 report-checkmark-pop">
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           <span>READY</span>
                         </div>
-                        <h3 className="text-2xl font-black text-slate-900">
+                        <h3 className="text-2xl font-black text-slate-900 tracking-tight">
                           Your Vehicle Report Is Ready
                         </h3>
                         <p className="text-xs text-slate-500 mt-0.5">
@@ -353,12 +359,12 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
                         </p>
                       </div>
 
-                      {/* Primary & Secondary CTAs */}
-                      <div className="flex flex-wrap items-center gap-2">
+                      {/* Primary & Secondary CTAs with staggered entrance */}
+                      <div className="flex flex-wrap items-center gap-2 report-stagger-1">
                         <button
                           type="button"
                           onClick={onOpenSampleReport}
-                          className="px-4 py-2.5 rounded-xl bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                          className="px-4 py-2.5 rounded-xl bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-all active:scale-[0.98]"
                         >
                           <Eye className="w-3.5 h-3.5" />
                           <span>View Report</span>
@@ -373,15 +379,23 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
                               selectedOrder.orderNumber
                             )
                           }
-                          className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                          className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-all active:scale-[0.98]"
                         >
                           <Download className="w-3.5 h-3.5" />
                           <span>Download Report</span>
                         </button>
+
+                        <WhatsAppButton
+                          variant="primary"
+                          label="WhatsApp Help"
+                          orderNumber={selectedOrder.orderNumber}
+                          vin={selectedOrder.vehicle.vinOrReg}
+                          className="px-3.5 py-2.5 rounded-xl font-bold"
+                        />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#F8FAFC] p-4 rounded-xl border border-slate-200 text-xs">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#F8FAFC] p-4 rounded-xl border border-slate-200 text-xs report-stagger-2">
                       <div>
                         <span className="text-slate-400 block">Vehicle</span>
                         <span className="font-bold text-slate-900">
@@ -419,9 +433,18 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
                         </p>
                       </div>
 
-                      <span className="text-xs font-mono text-slate-400">
-                        Placed on {new Date(selectedOrder.createdAt).toLocaleDateString()}
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-mono text-slate-400">
+                          Placed {new Date(selectedOrder.createdAt).toLocaleDateString()}
+                        </span>
+                        <WhatsAppButton
+                          variant="primary"
+                          label="Ask on WhatsApp"
+                          orderNumber={selectedOrder.orderNumber}
+                          vin={selectedOrder.vehicle.vinOrReg}
+                          className="px-3 py-1.5 rounded-xl font-semibold text-xs"
+                        />
+                      </div>
                     </div>
 
                     <OrderTrackingProgressBar
