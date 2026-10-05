@@ -5,7 +5,7 @@ import {
   Send, Upload, Search, FileText, Mail, Tag, Settings, Eye, 
   AlertTriangle, RefreshCw, X, ShieldAlert, Check, Plus, Edit2, Trash2,
   Users, FileCheck, CreditCard, ChevronRight, LogOut, ArrowLeft, ShieldCheck, Lock,
-  Database, Copy, ExternalLink
+  Database, Copy, ExternalLink, CheckCheck, Ban, CheckSquare, Square, XCircle
 } from 'lucide-react';
 import { EmailPreviewModal } from './EmailPreviewModal';
 import { useToast } from '../context/ToastContext';
@@ -14,6 +14,7 @@ import { Logo } from './Logo';
 import { api } from '../services/api';
 import { ContactAnalyticsTab } from './ContactAnalyticsTab';
 import { WhatsAppIcon } from './WhatsAppWidget';
+import { AdminOrderAnalyticsDashboard } from './AdminOrderAnalyticsDashboard';
 
 interface AdminPanelProps {
   orders: Order[];
@@ -21,6 +22,7 @@ interface AdminPanelProps {
   coupons: Coupon[];
   emails: EmailNotification[];
   onUpdateOrder: (updatedOrder: Order) => void;
+  onBatchUpdateOrders?: (updatedOrders: Order[]) => void;
   onUpdateServices: (updatedServices: ServicePlan[]) => void;
   onUpdateCoupons: (updatedCoupons: Coupon[]) => void;
   onSendEmail: (email: EmailNotification) => void;
@@ -34,6 +36,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   coupons,
   emails,
   onUpdateOrder,
+  onBatchUpdateOrders,
   onUpdateServices,
   onUpdateCoupons,
   onSendEmail,
@@ -51,13 +54,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [adminAuthError, setAdminAuthError] = useState<string>('');
   const [isAuthenticating, setIsAuthenticating] = useState<boolean>(false);
 
-  // Menu: Dashboard, Orders, Customers, Services, Reports, Payments, Settings, Emails, Contact Analytics (Section 25)
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'customers' | 'services' | 'reports' | 'payments' | 'settings' | 'emails' | 'contact-analytics'>('orders');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'customers' | 'services' | 'reports' | 'payments' | 'settings' | 'emails' | 'contact-analytics'>('dashboard');
   
   // Selected Order for Section 25 detail view
   const [selectedOrderId, setSelectedOrderId] = useState<string>(orders[0]?.id || '');
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Bulk Selection & Action State
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
+  const [showBulkCancelModal, setShowBulkCancelModal] = useState<boolean>(false);
+  const [isProcessingBulkAction, setIsProcessingBulkAction] = useState<boolean>(false);
 
   // Modals for admin actions
   const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
@@ -243,6 +250,73 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       o.customer.email.toLowerCase().includes(q);
     return matchesStatus && matchesSearch;
   });
+
+  // Master checkbox selection helpers
+  const allFilteredSelected = filteredOrders.length > 0 && filteredOrders.every((o) => selectedOrderIds.includes(o.id));
+  const someFilteredSelected = filteredOrders.some((o) => selectedOrderIds.includes(o.id)) && !allFilteredSelected;
+
+  const handleToggleSelectAll = () => {
+    if (allFilteredSelected) {
+      const filteredIds = new Set(filteredOrders.map((o) => o.id));
+      setSelectedOrderIds((prev) => prev.filter((id) => !filteredIds.has(id)));
+    } else {
+      const newIds = new Set([...selectedOrderIds, ...filteredOrders.map((o) => o.id)]);
+      setSelectedOrderIds(Array.from(newIds));
+    }
+  };
+
+  const handleToggleSelectOrder = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setSelectedOrderIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleClearSelection = () => {
+    setSelectedOrderIds([]);
+  };
+
+  // Bulk Status Update Action ('Delivered' | 'Cancelled')
+  const handleExecuteBulkUpdate = (targetStatus: 'Delivered' | 'Cancelled') => {
+    if (selectedOrderIds.length === 0) return;
+    setIsProcessingBulkAction(true);
+    const now = new Date().toISOString();
+    const count = selectedOrderIds.length;
+
+    const ordersToUpdate = orders.filter((o) => selectedOrderIds.includes(o.id));
+    const updatedList: Order[] = ordersToUpdate.map((ord, idx) => ({
+      ...ord,
+      status: targetStatus,
+      updatedAt: now,
+      auditLogs: [
+        ...(ord.auditLogs || []),
+        {
+          id: `log-${Date.now()}-${idx}`,
+          timestamp: now,
+          actor: 'Admin Specialist (Bulk Action)',
+          action: `Bulk Status: ${targetStatus}`,
+          details: `Order status set to ${targetStatus} via bulk operations toolbar`
+        }
+      ]
+    }));
+
+    if (onBatchUpdateOrders) {
+      onBatchUpdateOrders(updatedList);
+    } else {
+      updatedList.forEach((uo) => onUpdateOrder(uo));
+    }
+
+    setSelectedOrderIds([]);
+    setShowBulkCancelModal(false);
+    setIsProcessingBulkAction(false);
+
+    showToast({
+      type: targetStatus === 'Delivered' ? 'success' : 'warning',
+      title: 'Bulk Status Updated',
+      message: `Successfully marked ${count} ${count === 1 ? 'order' : 'orders'} as '${targetStatus}'.`,
+      duration: 4000
+    });
+  };
 
   // Filtered dispatched emails list
   const filteredEmails = dispatchedEmails.filter((em) => {
@@ -522,6 +596,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         return <span className="text-slate-700 bg-slate-100 border border-slate-300 px-2.5 py-0.5 rounded text-[11px] font-bold">Completed</span>;
       case 'Refunded':
         return <span className="text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded text-[11px] font-semibold">Refunded</span>;
+      case 'Cancelled':
+        return <span className="text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded text-[11px] font-semibold">Cancelled</span>;
       default:
         return <span className="text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded text-[11px]">{status}</span>;
     }
@@ -863,6 +939,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
               </div>
 
+              {/* Recharts Daily Order Volume & Traffic Pattern Line Chart Dashboard */}
+              <AdminOrderAnalyticsDashboard
+                orders={orders}
+                onSelectOrder={(id) => {
+                  setSelectedOrderId(id);
+                  setActiveTab('orders');
+                }}
+              />
+
               {/* Quick Jump to Orders */}
               <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 shadow-xs flex items-center justify-between">
                 <div>
@@ -890,7 +975,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               {/* Filter & Search Bar */}
               <div className="bg-white p-4 rounded-xl border border-[#E2E8F0] flex flex-col sm:flex-row gap-3 items-center justify-between shadow-xs">
                 <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                  {['All', 'Paid / New', 'Processing', 'Ready', 'Delivered', 'Completed', 'Refunded'].map((status) => (
+                  {['All', 'Paid / New', 'Processing', 'Ready', 'Delivered', 'Completed', 'Cancelled', 'Refunded'].map((status) => (
                     <button
                       key={status}
                       type="button"
@@ -918,21 +1003,112 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
               </div>
 
-              {/* SECTION 25: Orders Table (Columns: Order ID, Customer, Vehicle, Service, Amount, Payment, Status, Created, Actions) */}
+              {/* Bulk Selection Action Bar */}
+              {selectedOrderIds.length > 0 && (
+                <div className="bg-[#0B132B] text-white p-3.5 sm:p-4 rounded-xl border border-blue-500/40 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-blue-600/30 border border-blue-500/50 flex items-center justify-center text-blue-400 shrink-0">
+                      <CheckCheck className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs sm:text-sm font-bold text-white">
+                          {selectedOrderIds.length} {selectedOrderIds.length === 1 ? 'order' : 'orders'} selected
+                        </span>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                          Bulk Mode Active
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-slate-400 block mt-0.5">
+                        Select an action below to update all chosen orders in a single operation.
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Bulk Action 1: Mark as Delivered */}
+                    <button
+                      type="button"
+                      disabled={isProcessingBulkAction}
+                      onClick={() => handleExecuteBulkUpdate('Delivered')}
+                      className="px-3.5 py-2 bg-[#059669] hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-50"
+                      title="Mark all selected orders as Delivered"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Mark as Delivered ({selectedOrderIds.length})</span>
+                    </button>
+
+                    {/* Bulk Action 2: Mark as Cancelled */}
+                    <button
+                      type="button"
+                      disabled={isProcessingBulkAction}
+                      onClick={() => setShowBulkCancelModal(true)}
+                      className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-50"
+                      title="Mark all selected orders as Cancelled"
+                    >
+                      <Ban className="w-3.5 h-3.5" />
+                      <span>Mark as Cancelled ({selectedOrderIds.length})</span>
+                    </button>
+
+                    {/* Deselect All */}
+                    <button
+                      type="button"
+                      onClick={handleClearSelection}
+                      className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      <span>Deselect All</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION 25: Orders Table (Columns: Checkbox, Order ID, Customer, Vehicle, Service, Amount, Payment, Status, Created, Actions) */}
               <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-xs overflow-hidden">
-                <div className="px-6 py-4 border-b border-[#E2E8F0] flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-slate-900">
-                    Orders List ({filteredOrders.length})
-                  </h3>
-                  <span className="text-xs text-slate-400">
-                    Click any row to open the complete fulfillment detail pane below
-                  </span>
+                <div className="px-6 py-4 border-b border-[#E2E8F0] flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-sm font-bold text-slate-900">
+                      Orders List ({filteredOrders.length})
+                    </h3>
+                    {selectedOrderIds.length > 0 && (
+                      <span className="text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
+                        {selectedOrderIds.length} selected
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {filteredOrders.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleToggleSelectAll}
+                        className="text-xs font-semibold text-[#2563EB] hover:underline cursor-pointer"
+                      >
+                        {allFilteredSelected ? 'Deselect All Visible' : 'Select All Visible'}
+                      </button>
+                    )}
+                    <span className="text-xs text-slate-400">
+                      · Click row to view fulfillment details
+                    </span>
+                  </div>
                 </div>
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-[#F8FAFC] text-slate-500 font-semibold border-b border-[#E2E8F0]">
                       <tr>
+                        <th className="py-3 px-3 w-10 text-center">
+                          <input
+                            type="checkbox"
+                            checked={allFilteredSelected}
+                            ref={(el) => {
+                              if (el) el.indeterminate = someFilteredSelected;
+                            }}
+                            onChange={handleToggleSelectAll}
+                            className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer accent-[#2563EB]"
+                            title={allFilteredSelected ? 'Deselect all visible' : 'Select all visible'}
+                            aria-label="Select all orders in current view"
+                          />
+                        </th>
                         <th className="py-3 px-4">Order ID</th>
                         <th className="py-3 px-4">Customer</th>
                         <th className="py-3 px-4">Vehicle</th>
@@ -945,64 +1121,80 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {filteredOrders.map((ord) => (
-                        <tr
-                          key={ord.id}
-                          onClick={() => setSelectedOrderId(ord.id)}
-                          className={`hover:bg-slate-50 cursor-pointer transition-colors ${
-                            currentOrder?.id === ord.id ? 'bg-blue-50/60' : ''
-                          }`}
-                        >
-                          <td className="py-3 px-4 font-mono font-bold text-slate-900">
-                            {ord.orderNumber}
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="font-semibold text-slate-900 block">{ord.customer.fullName}</span>
-                            <span className="text-[11px] text-slate-400 truncate max-w-[140px] block">{ord.customer.email}</span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="font-semibold text-slate-800 block">
-                              {ord.vehicle.year} {ord.vehicle.make} {ord.vehicle.model}
-                            </span>
-                            <span className="text-[11px] text-slate-400 font-mono block">
-                              {ord.vehicle.vinOrReg}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 font-medium text-slate-700">
-                            {ord.serviceName}
-                          </td>
-                          <td className="py-3 px-4 font-mono font-bold text-slate-900">
-                            ${ord.total.toFixed(2)}
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              ord.payment.status === 'Paid'
-                                ? 'bg-emerald-50 text-[#059669] border border-emerald-200'
-                                : 'bg-slate-100 text-slate-600'
-                            }`}>
-                              {ord.payment.status}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4">
-                            {getStatusBadge(ord.status)}
-                          </td>
-                          <td className="py-3 px-4 text-slate-400 font-mono text-[11px]">
-                            {new Date(ord.createdAt).toLocaleDateString()}
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedOrderId(ord.id);
-                              }}
-                              className="px-2.5 py-1 rounded bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-[11px] font-semibold cursor-pointer"
-                            >
-                              Manage
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                      {filteredOrders.map((ord) => {
+                        const isSelected = selectedOrderIds.includes(ord.id);
+                        return (
+                          <tr
+                            key={ord.id}
+                            onClick={() => setSelectedOrderId(ord.id)}
+                            className={`hover:bg-slate-50 cursor-pointer transition-colors ${
+                              isSelected
+                                ? 'bg-blue-50/70 border-l-4 border-l-[#2563EB]'
+                                : currentOrder?.id === ord.id
+                                ? 'bg-blue-50/40'
+                                : ''
+                            }`}
+                          >
+                            <td className="py-3 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => handleToggleSelectOrder(ord.id)}
+                                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer accent-[#2563EB]"
+                                aria-label={`Select order ${ord.orderNumber}`}
+                              />
+                            </td>
+                            <td className="py-3 px-4 font-mono font-bold text-slate-900">
+                              {ord.orderNumber}
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className="font-semibold text-slate-900 block">{ord.customer.fullName}</span>
+                              <span className="text-[11px] text-slate-400 truncate max-w-[140px] block">{ord.customer.email}</span>
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className="font-semibold text-slate-800 block">
+                                {ord.vehicle.year} {ord.vehicle.make} {ord.vehicle.model}
+                              </span>
+                              <span className="text-[11px] text-slate-400 font-mono block">
+                                {ord.vehicle.vinOrReg}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 font-medium text-slate-700">
+                              {ord.serviceName}
+                            </td>
+                            <td className="py-3 px-4 font-mono font-bold text-slate-900">
+                              ${ord.total.toFixed(2)}
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                ord.payment.status === 'Paid'
+                                  ? 'bg-emerald-50 text-[#059669] border border-emerald-200'
+                                  : 'bg-slate-100 text-slate-600'
+                              }`}>
+                                {ord.payment.status}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4">
+                              {getStatusBadge(ord.status)}
+                            </td>
+                            <td className="py-3 px-4 text-slate-400 font-mono text-[11px]">
+                              {new Date(ord.createdAt).toLocaleDateString()}
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedOrderId(ord.id);
+                                }}
+                                className="px-2.5 py-1 rounded bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-[11px] font-semibold cursor-pointer"
+                              >
+                                Manage
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -1755,6 +1947,59 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Cancel Confirmation Modal */}
+      {showBulkCancelModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+            <div className="p-6 text-center space-y-4">
+              <div className="w-12 h-12 rounded-full bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto">
+                <Ban className="w-6 h-6" />
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="text-base sm:text-lg font-bold text-slate-900">Confirm Bulk Cancellation</h3>
+                <p className="text-xs text-slate-500">
+                  Are you sure you want to mark <strong className="text-slate-900">{selectedOrderIds.length} {selectedOrderIds.length === 1 ? 'order' : 'orders'}</strong> as <strong className="text-rose-600">'Cancelled'</strong>?
+                </p>
+              </div>
+
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-left text-xs max-h-36 overflow-y-auto space-y-1.5">
+                <span className="text-[10.5px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                  Selected Orders ({selectedOrderIds.length}):
+                </span>
+                {orders
+                  .filter((o) => selectedOrderIds.includes(o.id))
+                  .map((o) => (
+                    <div key={o.id} className="flex items-center justify-between text-slate-700 font-mono text-[11px] pb-1 border-b border-slate-200/50 last:border-0 last:pb-0">
+                      <span>{o.orderNumber} ({o.customer.fullName})</span>
+                      <span className="font-bold text-slate-900">${o.total.toFixed(2)}</span>
+                    </div>
+                  ))}
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowBulkCancelModal(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  No, Keep Orders
+                </button>
+                <button
+                  type="button"
+                  disabled={isProcessingBulkAction}
+                  onClick={() => handleExecuteBulkUpdate('Cancelled')}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  <Ban className="w-3.5 h-3.5" />
+                  <span>Yes, Cancel {selectedOrderIds.length} Orders</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

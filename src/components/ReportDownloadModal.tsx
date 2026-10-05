@@ -100,6 +100,35 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
 
   if (!isOpen) return null;
 
+  // Browser print-to-PDF flow specifically formatted for our existing print-friendly CSS rules
+  const handleDownloadAsPdf = () => {
+    const originalTitle = document.title;
+    const sanitizedVin = (vin || 'RECORD').replace(/[^a-zA-Z0-9]/g, '_');
+    const sanitizedOrder = (orderNumber || 'AA').replace(/[^a-zA-Z0-9]/g, '_');
+    const pdfFilename = `AutoAudit_Report_${sanitizedVin}_${sanitizedOrder}`;
+
+    // Temporarily set document.title so browsers default to this filename for "Save as PDF"
+    document.title = pdfFilename;
+
+    showToast({
+      type: 'info',
+      title: 'Download as PDF Initialized',
+      message: 'In the print dialog, select "Save as PDF" as the Destination to download your official report.',
+      duration: 5000,
+    });
+
+    setTimeout(() => {
+      window.print();
+
+      const restoreTitle = () => {
+        document.title = originalTitle;
+        window.removeEventListener('afterprint', restoreTitle);
+      };
+      window.addEventListener('afterprint', restoreTitle);
+      setTimeout(restoreTitle, 2000);
+    }, 120);
+  };
+
   const handleDownloadPdf = () => {
     showToast({
       type: 'success',
@@ -341,32 +370,60 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
               </div>
             ) : (
               /* SUCCESS STATE: Action buttons once generation finishes with subtle CSS transitions */
-              <div className="space-y-2.5 report-ready-transition report-ready-glow">
-                {/* Print Report Primary Button */}
+              <div className="space-y-3 report-ready-transition report-ready-glow">
+                {/* Primary Button: Download as PDF (Triggers Print-to-PDF flow) */}
                 <button
                   type="button"
-                  onClick={handlePrintReport}
-                  className="w-full py-2.5 sm:py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs sm:text-sm rounded-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-lg active:scale-[0.99] report-stagger-1"
+                  onClick={handleDownloadAsPdf}
+                  className="w-full py-3 px-4 bg-[#2563EB] hover:bg-blue-500 text-white font-bold text-xs sm:text-sm rounded-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-lg active:scale-[0.99] report-stagger-1 group"
                 >
-                  <Printer className="w-4 h-4" />
-                  <span>Print Report (Paper Copy)</span>
+                  <Download className="w-4 h-4 transition-transform group-hover:-translate-y-0.5" />
+                  <span>Download as PDF</span>
+                  <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-blue-700/60 text-blue-100 border border-blue-400/30">
+                    Print to PDF
+                  </span>
                 </button>
 
-                {/* Download HTML / PDF Report File */}
-                <button
-                  type="button"
-                  onClick={handleDownloadPdf}
-                  className="w-full py-2.5 sm:py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm rounded-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-lg active:scale-[0.99] report-stagger-2"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Download HTML / PDF Report</span>
-                </button>
+                {/* Print-to-PDF browser guidance tip */}
+                <div className="bg-slate-800/80 border border-slate-700/80 rounded-xl p-3 text-left flex items-start gap-2.5 text-xs text-slate-300">
+                  <Printer className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <p className="font-semibold text-white">Print-to-PDF Instructions:</p>
+                    <p className="text-[11px] text-slate-400 leading-normal">
+                      In the browser print prompt, select <strong className="text-slate-200">"Save as PDF"</strong> as your destination. AutoAudit's print-friendly CSS automatically formats title brands, odometer checks, and official seal onto paper and PDF without screen UI.
+                    </p>
+                  </div>
+                </div>
 
-                <div className="flex gap-2 report-stagger-3">
+                {/* Secondary Actions Row */}
+                <div className="grid grid-cols-2 gap-2 report-stagger-2">
+                  {/* Paper Print Direct Button */}
+                  <button
+                    type="button"
+                    onClick={handlePrintReport}
+                    className="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-slate-700"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Paper Print</span>
+                  </button>
+
+                  {/* Standalone HTML File */}
+                  <button
+                    type="button"
+                    onClick={handleDownloadPdf}
+                    className="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-slate-700"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>HTML Archive</span>
+                  </button>
+                </div>
+
+                {/* Footer Controls: Re-run & Close */}
+                <div className="flex gap-2 report-stagger-3 pt-1">
                   <button
                     type="button"
                     onClick={handleRegenerate}
-                    className="flex-1 py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer border border-slate-700"
+                    className="flex-1 py-2 px-3 bg-slate-800/60 hover:bg-slate-700/80 text-slate-400 hover:text-slate-200 font-medium text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer border border-slate-800"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
                     <span>Re-run Generation</span>
@@ -374,7 +431,7 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
                   <button
                     type="button"
                     onClick={onClose}
-                    className="flex-1 py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-xs rounded-xl transition-colors cursor-pointer border border-slate-700"
+                    className="flex-1 py-2 px-3 bg-slate-800/60 hover:bg-slate-700/80 text-slate-400 hover:text-slate-200 font-medium text-xs rounded-xl transition-colors cursor-pointer border border-slate-800"
                   >
                     Close
                   </button>

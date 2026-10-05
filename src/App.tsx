@@ -157,15 +157,22 @@ function AppContent() {
   };
 
   const handleOrderCompleted = (newOrder: Order) => {
-    // Optimistically update local state
-    setOrders((prev) => [newOrder, ...prev]);
+    // Update local state without duplicating
+    setOrders((prev) => [newOrder, ...prev.filter((o) => o.id !== newOrder.id && o.orderNumber !== newOrder.orderNumber)]);
 
-    // Sync to backend REST API
-    api.createOrder(newOrder).catch((err) => {
-      console.warn('Backend order sync notification:', err);
-    });
+    // Query emails dispatched by the automated mock SMTP service
+    api.getEmails({ orderNumber: newOrder.orderNumber })
+      .then((serverEmails) => {
+        if (serverEmails && serverEmails.length > 0) {
+          setEmails((prev) => [
+            ...serverEmails,
+            ...prev.filter((e) => e.orderNumber !== newOrder.orderNumber)
+          ]);
+        }
+      })
+      .catch(() => {});
 
-    // Dispatch simulated confirmation emails
+    // Immediate local representation
     const now = new Date().toISOString();
     
     // 1. Alert to Admin
@@ -182,16 +189,17 @@ function AppContent() {
       read: false
     };
 
-    // 2. Confirmation to Customer
+    // 2. Confirmation to Customer via Mock SMTP
     const customerConf: EmailNotification = {
       id: `em-${Date.now()}-cust`,
       orderId: newOrder.id,
       orderNumber: newOrder.orderNumber,
       recipientEmail: newOrder.customer.email,
       recipientType: 'customer',
-      subject: `Order Confirmation: Your AutoAudit Report #${newOrder.orderNumber} is in Queue`,
+      subject: `Order Confirmed: AutoAudit Report for ${newOrder.vehicle.vinOrReg} (${newOrder.orderNumber})`,
       type: 'order_confirmation',
-      body: `Dear ${newOrder.customer.fullName},\n\nWe have received your order for the ${newOrder.serviceName}.\n\nVehicle: ${newOrder.vehicle.year} ${newOrder.vehicle.make} ${newOrder.vehicle.model} (VIN: ${newOrder.vehicle.vinOrReg})\nEstimated Delivery: 30–60 minutes.\n\nYour report link and PDF will be dispatched directly to this email address once our records team completes the NMVTIS and title clearing checks.\n\nThank you for choosing AutoAudit!`,
+      body: `Dear ${newOrder.customer.fullName},\n\nWe have received your order for the ${newOrder.serviceName}.\n\nVehicle: ${newOrder.vehicle.year} ${newOrder.vehicle.make} ${newOrder.vehicle.model} (VIN: ${newOrder.vehicle.vinOrReg})\nEstimated Delivery: 30–60 minutes.\n\nYour order confirmation email has been dispatched directly to ${newOrder.customer.email} via AutoAudit Mock SMTP service.`,
+      smtpTransport: 'Nodemailer Mock SMTP (JSON Transporter)',
       sentAt: now,
       read: true
     };
@@ -203,6 +211,15 @@ function AppContent() {
     setOrders((prev) => prev.map((o) => (o.id === updatedOrder.id ? updatedOrder : o)));
     // Sync status change to backend
     api.updateOrderStatus(updatedOrder.id, updatedOrder.status, updatedOrder.internalNotes).catch(console.warn);
+  };
+
+  const handleBatchUpdateOrders = (updatedOrders: Order[]) => {
+    const updatedMap = new Map(updatedOrders.map((o) => [o.id, o]));
+    setOrders((prev) => prev.map((o) => updatedMap.get(o.id) || o));
+    // Sync status changes to backend
+    updatedOrders.forEach((o) => {
+      api.updateOrderStatus(o.id, o.status, o.internalNotes).catch(console.warn);
+    });
   };
 
   const handleSendEmail = (newEmail: EmailNotification) => {
@@ -235,6 +252,7 @@ function AppContent() {
           coupons={coupons}
           emails={emails}
           onUpdateOrder={handleUpdateOrder}
+          onBatchUpdateOrders={handleBatchUpdateOrders}
           onUpdateServices={setServices}
           onUpdateCoupons={setCoupons}
           onSendEmail={handleSendEmail}

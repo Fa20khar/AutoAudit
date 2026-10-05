@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { ServicePlan, Order, Coupon, AuditLog } from '../types';
+import { ServicePlan, Order, Coupon, AuditLog, EmailNotification } from '../types';
 import { 
   X, Check, ArrowRight, ArrowLeft, ShieldCheck, Lock, CreditCard, 
   Sparkles, AlertCircle, FileCheck, CheckCircle2, Building, Wallet, CheckCircle,
-  Clock, AlertTriangle, ShieldAlert, RotateCcw, MessageSquare, Loader2
+  Clock, AlertTriangle, ShieldAlert, RotateCcw, MessageSquare, Loader2,
+  Mail, Eye, EyeOff, Send, ExternalLink, Tag, Percent
 } from 'lucide-react';
 import { OrderTrackingProgressBar } from './OrderTrackingProgressBar';
 import { WhatsAppButton } from './WhatsAppButton';
+import { CheckoutStepper } from './CheckoutStepper';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { validateVinFormat, VinValidationResult } from '../utils/vinValidator';
+import { validateCouponRealTime, calculateDiscount } from '../utils/couponValidator';
+import { INITIAL_COUPONS } from '../data/initialData';
 
 interface OrderModalProps {
   isOpen: boolean;
@@ -74,6 +79,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const [cardCvc, setCardCvc] = useState<string>('•••');
   const [isProcessingPayment, setIsProcessingPayment] = useState<boolean>(false);
   const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
+  const [confirmationEmail, setConfirmationEmail] = useState<EmailNotification | null>(null);
+  const [showEmailDetails, setShowEmailDetails] = useState<boolean>(false);
 
   const formatTime = (secs: number) => {
     const mins = Math.floor(secs / 60);
@@ -175,62 +182,72 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const currentPlan = services.find((s) => s.id === serviceId) || services[1] || services[0];
   const subtotal = currentPlan ? currentPlan.price : 28.99;
   
-  // Calculate discount
-  let discountAmount = 0;
-  if (appliedCoupon) {
-    if (appliedCoupon.discountPercent) {
-      discountAmount = (subtotal * appliedCoupon.discountPercent) / 100;
-    } else if (appliedCoupon.discountFixed) {
-      discountAmount = appliedCoupon.discountFixed;
-    }
-  }
-  const total = Math.max(0, subtotal - discountAmount);
+  // Calculate real-time discount and total order amount
+  const discountAmount = appliedCoupon ? calculateDiscount(appliedCoupon, subtotal) : 0;
+  const total = Math.max(0, Number((subtotal - discountAmount).toFixed(2)));
 
-  // Apply Coupon Code via Backend API with local fallback
-  const handleApplyCoupon = async () => {
+  // Real-time coupon validation helper: validates input code as user types or pastes
+  const handleCouponInputChange = (inputCode: string) => {
+    const cleanCode = inputCode.toUpperCase();
+    setCouponCode(cleanCode);
+
+    if (!cleanCode.trim()) {
+      setAppliedCoupon(null);
+      setCouponError('');
+      return;
+    }
+
+    // Evaluate real-time against INITIAL_COUPONS and passed coupons
+    const validation = validateCouponRealTime(cleanCode, subtotal, coupons || INITIAL_COUPONS);
+
+    if (validation.isValid && validation.coupon) {
+      setAppliedCoupon(validation.coupon);
+      setCouponError('');
+    } else if (
+      validation.status === 'invalid' ||
+      validation.status === 'expired' ||
+      validation.status === 'max_usage' ||
+      validation.status === 'min_order'
+    ) {
+      setAppliedCoupon(null);
+      setCouponError(validation.message);
+    } else {
+      // User is still typing (< 3 characters)
+      setAppliedCoupon(null);
+      setCouponError('');
+    }
+  };
+
+  const handleApplyCouponChip = (code: string) => {
+    handleCouponInputChange(code);
+  };
+
+  const handleRemoveCoupon = () => {
+    setCouponCode('');
+    setAppliedCoupon(null);
     setCouponError('');
+  };
+
+  // Explicit apply button fallback
+  const handleApplyCoupon = async () => {
     if (!couponCode.trim()) {
       setCouponError('Please enter a coupon code.');
       return;
     }
-
-    try {
-      const res = await api.validateCoupon(couponCode, subtotal);
-      setAppliedCoupon({
-        code: res.code,
-        discountPercent: res.discountPercent,
-        discountFixed: res.discountFixed,
-        usageCount: 1,
-        expiryDate: '2026-12-31',
-        active: true
-      });
-    } catch (err: any) {
-      // Check local coupons fallback if offline
-      const found = coupons.find(
-        (c) => c.code.toUpperCase() === couponCode.trim().toUpperCase() && c.active
-      );
-      if (found) {
-        setAppliedCoupon(found);
-      } else {
-        setCouponError(err?.message || 'Invalid coupon code or expired.');
-      }
-    }
+    handleCouponInputChange(couponCode);
   };
 
   const validateStep2 = () => {
     setVinError('');
     const clean = vinOrReg.trim().toUpperCase();
     if (!clean) {
-      setVinError(isVin ? 'Please enter a 17-digit VIN.' : 'Please enter a registration plate number.');
+      setVinError(isVin ? 'Please enter your 17-character VIN number.' : 'Please enter a registration plate number.');
       return false;
     }
     if (isVin) {
-      if (/[IOQ]/i.test(clean)) {
-        setVinError('Invalid VIN: Letters I, O, and Q are never used in 17-character VINs.');
-        return false;
-      }
-      if (clean.length !== 17) {
-        setVinError(`VIN must be exactly 17 characters (currently ${clean.length}/17).`);
+      const validation = validateVinFormat(clean);
+      if (!validation.isValid) {
+        setVinError(validation.message);
         return false;
       }
     }
@@ -239,7 +256,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
   const { showToast } = useToast();
 
-  const handleProcessPayment = () => {
+  const handleProcessPayment = async () => {
     // Prevent duplicate submissions while an order is processing
     if (isProcessingPayment) return;
 
@@ -254,30 +271,98 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
     setIsProcessingPayment(true);
 
-    setTimeout(() => {
-      const now = new Date().toISOString();
-      const orderNum = `AA-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    try {
+      const cleanVin = vinOrReg.trim().toUpperCase() || '1HGCM82633A004352';
+      const customerEmail = email.trim().toLowerCase() || 'customer@example.com';
+      const customerName = fullName.trim() || 'Verified Customer';
 
-      const newAuditLog: AuditLog[] = [
-        {
-          id: `log-${Date.now()}-1`,
-          timestamp: now,
-          actor: `Customer (${fullName || 'Guest'})`,
-          action: 'Order Placed',
-          details: `Service: ${currentPlan.name}, Total: $${total.toFixed(2)}`
+      const orderPayload: Partial<Order> = {
+        serviceId: currentPlan.id,
+        serviceName: currentPlan.name,
+        subtotal: Number(subtotal.toFixed(2)),
+        discountAmount: Number(discountAmount.toFixed(2)),
+        total: Number(total.toFixed(2)),
+        couponCode: appliedCoupon ? appliedCoupon.code : undefined,
+        customer: {
+          fullName: customerName,
+          email: customerEmail,
+          phone: phone.trim() || '+1 (555) 019-2834',
+          smsNotifications
         },
-        {
-          id: `log-${Date.now()}-2`,
-          timestamp: now,
-          actor: 'Payment Gateway',
-          action: 'Payment Confirmed',
-          details: `Verified $${total.toFixed(2)} USD via encrypted checkout.`
+        smsNotifications,
+        vehicle: {
+          vinOrReg: cleanVin,
+          isVin,
+          make: make.trim() || 'Verified Vehicle',
+          model: model.trim() || 'Series',
+          year: year || 2021,
+          mileage: mileage.trim() || 'Actual Certified',
+          countryOrState: countryOrState.trim() || 'US',
+          customerNotes: customerNotes.trim() || undefined
+        },
+        payment: {
+          status: 'Paid',
+          gatewayRef: `PAY-TXN-${Math.floor(10000000 + Math.random() * 90000000)}`,
+          paidAt: new Date().toISOString(),
+          method: paymentMethod === 'card' ? 'Secure Card Payment' : paymentMethod === 'bank_transfer' ? 'Direct Bank Transfer' : 'Digital Wallet'
         }
-      ];
+      };
 
-      const newOrder: Order = {
+      // Call backend REST endpoint: saves order and fires automated mock SMTP email sequence to customer's address
+      const serverOrder = await api.createOrder(orderPayload);
+      setCreatedOrder(serverOrder);
+
+      // Save customer email for instant dashboard retrieval
+      if (serverOrder.customer?.email) {
+        try {
+          localStorage.setItem('autoaudit_customer_email', serverOrder.customer.email.toLowerCase().trim());
+        } catch {
+          // ignore
+        }
+      }
+
+      // Query the dispatched confirmation email from Mock SMTP service
+      try {
+        const emails = await api.getEmails({ orderNumber: serverOrder.orderNumber });
+        const conf = emails.find(e => e.type === 'order_confirmation');
+        if (conf) {
+          setConfirmationEmail(conf);
+        } else {
+          setConfirmationEmail({
+            id: `em-${Date.now()}-mock`,
+            orderId: serverOrder.id,
+            orderNumber: serverOrder.orderNumber,
+            recipientEmail: customerEmail,
+            recipientType: 'customer',
+            subject: `Order Confirmed: AutoAudit Report for ${cleanVin} (${serverOrder.orderNumber})`,
+            type: 'order_confirmation',
+            body: `Hello ${customerName},\n\nThank you for choosing AutoAudit! Your order #${serverOrder.orderNumber} for ${serverOrder.vehicle.year} ${serverOrder.vehicle.make} ${serverOrder.vehicle.model} (VIN: ${cleanVin}) has been confirmed and payment has been processed successfully ($${serverOrder.total.toFixed(2)} USD).\n\nOur automated systems are now querying the NMVTIS federal title clearinghouse, 50-state DMV registries, and salvage auto auctions.`,
+            smtpTransport: 'Nodemailer Mock SMTP (JSON Transporter)',
+            sentAt: new Date().toISOString(),
+            read: false
+          });
+        }
+      } catch {
+        // Fallback email object
+      }
+
+      showToast({
+        title: 'Order Confirmed & Email Dispatched',
+        message: `Order confirmation email sent to ${customerEmail} via AutoAudit Mock SMTP service.`,
+        type: 'success',
+        duration: 5000
+      });
+
+      onOrderCompleted(serverOrder);
+      setStep(5); // Advance to Step 5: Confirmation screen
+    } catch (err: any) {
+      console.warn('Backend order processing fallback:', err);
+      // Client-side fallback if server is temporarily unreachable
+      const now = new Date().toISOString();
+      const fallbackOrderNum = `AA-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+      const fallbackOrder: Order = {
         id: `ord-${Date.now()}`,
-        orderNumber: orderNum,
+        orderNumber: fallbackOrderNum,
         serviceId: currentPlan.id,
         serviceName: currentPlan.name,
         status: 'Processing',
@@ -287,7 +372,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
         couponCode: appliedCoupon ? appliedCoupon.code : undefined,
         customer: {
           fullName: fullName.trim() || 'Verified Customer',
-          email: email.trim() || 'customer@example.com',
+          email: email.trim().toLowerCase() || 'customer@example.com',
           phone: phone.trim() || '+1 (555) 019-2834',
           smsNotifications
         },
@@ -311,21 +396,50 @@ export const OrderModal: React.FC<OrderModalProps> = ({
         internalNotes: 'Order received via online checkout. Processing report compilation.',
         createdAt: now,
         updatedAt: now,
-        auditLogs: newAuditLog
+        auditLogs: [
+          {
+            id: `log-${Date.now()}-1`,
+            timestamp: now,
+            actor: `Customer (${fullName || 'Guest'})`,
+            action: 'Order Placed',
+            details: `Service: ${currentPlan.name}, Total: $${total.toFixed(2)}`
+          },
+          {
+            id: `log-${Date.now()}-2`,
+            timestamp: now,
+            actor: 'Payment Gateway',
+            action: 'Payment Confirmed',
+            details: `Verified $${total.toFixed(2)} USD via encrypted checkout.`
+          }
+        ]
       };
 
-      setCreatedOrder(newOrder);
+      setCreatedOrder(fallbackOrder);
+      setConfirmationEmail({
+        id: `em-${Date.now()}-fallback`,
+        orderId: fallbackOrder.id,
+        orderNumber: fallbackOrder.orderNumber,
+        recipientEmail: fallbackOrder.customer.email,
+        recipientType: 'customer',
+        subject: `Order Confirmed: AutoAudit Report for ${fallbackOrder.vehicle.vinOrReg} (${fallbackOrder.orderNumber})`,
+        type: 'order_confirmation',
+        body: `Hello ${fallbackOrder.customer.fullName},\n\nYour order #${fallbackOrder.orderNumber} has been received and confirmed.`,
+        smtpTransport: 'Nodemailer Mock SMTP (JSON Transporter)',
+        sentAt: now,
+        read: false
+      });
+
+      showToast({
+        title: 'Order Confirmed',
+        message: `Order confirmation recorded for ${fallbackOrder.customer.email}.`,
+        type: 'success'
+      });
+
+      onOrderCompleted(fallbackOrder);
+      setStep(5);
+    } finally {
       setIsProcessingPayment(false);
-      if (newOrder.customer?.email) {
-        try {
-          localStorage.setItem('autoaudit_customer_email', newOrder.customer.email.toLowerCase().trim());
-        } catch {
-          // ignore
-        }
-      }
-      onOrderCompleted(newOrder);
-      setStep(5); // Step 5: Payment Success / Confirmation
-    }, 1200);
+    }
   };
 
   const stepLabels = [
@@ -416,40 +530,16 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           </div>
         )}
 
-        {/* 5-Step Stepper Progress Bar */}
-        {!isSessionExpired && step <= 4 && (
-          <div className="bg-[#0F172A] px-2.5 sm:px-6 py-2 sm:py-2.5 border-b border-[#1E293B] flex items-center justify-between text-[10px] sm:text-[11px] font-mono font-medium text-slate-400">
-            {stepLabels.map((lbl, idx) => {
-              const num = idx + 1;
-              const isPast = step > num;
-              const isCurrent = step === num;
-              return (
-                <div
-                  key={idx}
-                  className={`flex items-center gap-1 sm:gap-1.5 ${
-                    isCurrent
-                      ? 'text-[#FB2C36] font-bold'
-                      : isPast
-                      ? 'text-[#10B981]'
-                      : 'text-slate-500'
-                  }`}
-                >
-                  <span
-                    className={`w-4.5 h-4.5 sm:w-5 sm:h-5 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] font-bold ${
-                      isPast
-                        ? 'bg-[#059669] text-white'
-                        : isCurrent
-                        ? 'bg-[#FB2C36] text-white'
-                        : 'bg-[#1E293B] text-slate-400'
-                    }`}
-                  >
-                    {isPast ? '✓' : num}
-                  </span>
-                  <span className="hidden sm:inline">{lbl.split(' ')[1]}</span>
-                </div>
-              );
-            })}
-          </div>
+        {/* Multi-Step Stepper Component: Plan -> VIN Entry -> Customer Info -> Payment Details -> Confirmation */}
+        {!isSessionExpired && (
+          <CheckoutStepper
+            currentStep={step}
+            onStepClick={(targetStep) => {
+              if (targetStep < step && step !== 5) {
+                setStep(targetStep);
+              }
+            }}
+          />
         )}
 
         {/* Step Content */}
@@ -602,30 +692,154 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
-                <div className="sm:col-span-2 space-y-1">
-                  <label className="text-[11px] sm:text-xs font-bold text-slate-800">
-                    {isVin ? '17-Character VIN *' : 'License / Registration Plate *'}
-                  </label>
-                  <input
-                    type="text"
-                    value={vinOrReg}
-                    onChange={(e) => {
-                      setVinOrReg(e.target.value.toUpperCase());
-                      setVinError('');
-                    }}
-                    placeholder={isVin ? 'e.g. 1HGCM82633A004352' : 'e.g. ABC-1234'}
-                    maxLength={isVin ? 17 : 20}
-                    className="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 bg-slate-50 border border-slate-300 rounded-[8px] font-mono text-xs sm:text-sm tracking-wider uppercase focus:outline-none focus:border-[#FB2C36]"
-                  />
-                  {vinError ? (
-                    <p className="text-rose-600 text-[11px] font-semibold">{vinError}</p>
-                  ) : (
-                    <p className="text-slate-500 text-[10px] sm:text-[11px] leading-tight">
-                      {isVin
-                        ? 'Standard 17-character serial found on your registration slip, title, or dashboard.'
-                        : 'Official registration plate number with state or province.'}
-                    </p>
-                  )}
+                <div className="sm:col-span-2 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] sm:text-xs font-bold text-slate-800">
+                      {isVin ? '17-Character VIN *' : 'License / Registration Plate *'}
+                    </label>
+                    {isVin && (
+                      <div className="flex items-center gap-1.5">
+                        {(() => {
+                          const val = validateVinFormat(vinOrReg);
+                          return (
+                            <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-[6px] border transition-all duration-200 ${
+                              val.status === 'valid'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                                : val.status === 'invalid_chars' || val.status === 'invalid_length'
+                                ? 'bg-rose-50 text-rose-700 border-rose-300'
+                                : val.charCount > 0
+                                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                : 'bg-slate-100 text-slate-500 border-slate-200'
+                            }`}>
+                              {val.charCount}/17 {val.status === 'valid' ? '✓ VALID' : val.status === 'invalid_chars' ? '✕ INVALID' : ''}
+                            </span>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </div>
+
+                  {(() => {
+                    const val = isVin ? validateVinFormat(vinOrReg) : null;
+                    return (
+                      <div className="space-y-1.5">
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={vinOrReg}
+                            onChange={(e) => {
+                              setVinOrReg(e.target.value.toUpperCase());
+                              setVinError('');
+                            }}
+                            placeholder={isVin ? 'e.g. 1HGCM82633A004352' : 'e.g. ABC-1234'}
+                            maxLength={isVin ? 17 : 20}
+                            className={`w-full px-3 py-2 sm:px-3.5 sm:py-2.5 pr-10 bg-slate-50 border rounded-[8px] font-mono text-xs sm:text-sm tracking-wider uppercase transition-all duration-150 focus:outline-none ${
+                              !isVin
+                                ? 'border-slate-300 focus:border-[#FB2C36]'
+                                : val?.status === 'valid'
+                                ? 'border-emerald-500 bg-emerald-50/20 text-slate-900 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500/30'
+                                : val?.status === 'invalid_chars' || val?.status === 'invalid_length'
+                                ? 'border-rose-500 bg-rose-50/20 text-rose-950 focus:border-rose-600 focus:ring-1 focus:ring-rose-500/30'
+                                : val && val.charCount > 0
+                                ? 'border-blue-400 bg-blue-50/15 text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30'
+                                : 'border-slate-300 focus:border-[#FB2C36]'
+                            }`}
+                          />
+                          {/* Real-time Trailing Status Icon */}
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none flex items-center">
+                            {isVin && val?.status === 'valid' && (
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600 animate-in fade-in zoom-in-75 duration-200" />
+                            )}
+                            {isVin && (val?.status === 'invalid_chars' || val?.status === 'invalid_length') && (
+                              <AlertCircle className="w-4 h-4 text-rose-600 animate-in fade-in zoom-in-75 duration-200" />
+                            )}
+                            {isVin && val?.status === 'incomplete' && (
+                              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                            )}
+                          </div>
+                        </div>
+
+                        {/* 17-character segmented progress indicator */}
+                        {isVin && (
+                          <div className="space-y-1 pt-0.5">
+                            <div className="grid grid-cols-17 gap-0.5 sm:gap-1 h-1.5 w-full bg-slate-100 rounded-full p-0.5">
+                              {Array.from({ length: 17 }).map((_, i) => {
+                                const char = vinOrReg[i];
+                                const isFilled = i < (val?.charCount || 0);
+                                const isForbidden = char && /[IOQ]/i.test(char);
+                                return (
+                                  <div
+                                    key={i}
+                                    className={`h-full rounded-xs transition-all duration-150 ${
+                                      isForbidden
+                                        ? 'bg-rose-500'
+                                        : isFilled
+                                        ? val?.status === 'valid'
+                                          ? 'bg-emerald-500'
+                                          : 'bg-blue-500'
+                                        : 'bg-slate-200'
+                                    }`}
+                                    title={`Pos ${i + 1}: ${char || 'empty'}`}
+                                  />
+                                );
+                              })}
+                            </div>
+
+                            {/* Real-Time Diagnostic Message */}
+                            {val && val.status === 'valid' && (
+                              <div className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50/80 border border-emerald-200 rounded-[8px] p-2 text-[11px] font-semibold animate-in fade-in duration-150">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                <span>
+                                  Valid 17-character VIN verified (WMI: <span className="font-mono">{val.wmi}</span>, VDS: <span className="font-mono">{val.vds}</span>, Year: <span className="font-mono">{val.modelYear}</span>).
+                                </span>
+                              </div>
+                            )}
+
+                            {val && (val.status === 'invalid_chars' || val.status === 'invalid_length') && (
+                              <div className="flex items-start gap-1.5 text-rose-700 bg-rose-50/90 border border-rose-200 rounded-[8px] p-2 text-[11px] font-medium animate-in fade-in duration-150">
+                                <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
+                                <div className="space-y-0.5">
+                                  <p className="font-semibold">{val.message}</p>
+                                  {val.forbiddenLetters.length > 0 && (
+                                    <p className="text-[10.5px] text-rose-600">
+                                      Tip: Letters <strong>I</strong> (replaced by 1), <strong>O</strong> (replaced by 0), and <strong>Q</strong> are excluded from ISO 3779 VINs to prevent reading confusion.
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {val && val.status === 'incomplete' && (
+                              <div className="flex items-center justify-between text-slate-500 text-[10.5px]">
+                                <span>{val.message}</span>
+                                <span className="font-mono text-slate-400">NHTSA Standard</span>
+                              </div>
+                            )}
+
+                            {val && val.status === 'empty' && (
+                              <p className="text-slate-500 text-[10px] sm:text-[11px] leading-tight">
+                                Standard 17-character serial found on your registration slip, title, or dashboard.
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        {!isVin && (
+                          vinError ? (
+                            <p className="text-rose-600 text-[11px] font-semibold">{vinError}</p>
+                          ) : (
+                            <p className="text-slate-500 text-[10px] sm:text-[11px] leading-tight">
+                              Official registration plate number with state or province.
+                            </p>
+                          )
+                        )}
+
+                        {vinError && isVin && val?.status === 'empty' && (
+                          <p className="text-rose-600 text-[11px] font-semibold">{vinError}</p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div className="space-y-1">
@@ -909,46 +1123,129 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-slate-500">Subtotal:</span>
-                    <span className="font-mono text-slate-800">${subtotal.toFixed(2)}</span>
+                    <span className={`font-mono ${appliedCoupon ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
+                      ${subtotal.toFixed(2)}
+                    </span>
                   </div>
 
                   {appliedCoupon && (
-                    <div className="flex justify-between items-center text-[#059669] font-semibold">
-                      <span>Discount ({appliedCoupon.code}):</span>
-                      <span>-${discountAmount.toFixed(2)}</span>
+                    <div className="flex justify-between items-center text-[#059669] font-bold bg-emerald-50/80 px-2 py-1 rounded-md border border-emerald-200 text-[11px]">
+                      <span className="flex items-center gap-1">
+                        <Tag className="w-3 h-3 text-[#059669]" />
+                        <span>Discount ({appliedCoupon.code}):</span>
+                      </span>
+                      <span className="font-mono">-${discountAmount.toFixed(2)} USD</span>
                     </div>
                   )}
 
                   <div className="flex justify-between items-center text-xs sm:text-sm font-black text-slate-900 pt-2 sm:pt-3 border-t border-slate-200">
-                    <span>Total:</span>
+                    <div className="flex items-center gap-1.5">
+                      <span>Total:</span>
+                      {appliedCoupon && (
+                        <span className="text-[10px] font-normal text-[#059669] bg-emerald-100/60 px-1.5 py-0.5 rounded">
+                          Save ${discountAmount.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
                     <span className="text-[#FB2C36] font-mono text-sm sm:text-base">${total.toFixed(2)} USD</span>
                   </div>
                 </div>
 
-                {/* Coupon Code Input */}
-                <div className="space-y-1 pt-1">
-                  <div className="flex gap-1.5">
+                {/* Coupon Code Input & Real-Time Helper */}
+                <div className="space-y-2 pt-1 border-t border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] sm:text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <Tag className="w-3 h-3 text-[#2563EB]" />
+                      <span>Promo / Coupon Code</span>
+                    </label>
+                    {appliedCoupon && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveCoupon}
+                        className="text-[10px] text-rose-600 hover:text-rose-800 font-semibold cursor-pointer underline transition-colors"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="relative">
                     <input
                       type="text"
                       value={couponCode}
-                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                      placeholder="Promo Code"
-                      className="flex-1 px-2.5 py-1.5 bg-white border border-slate-300 rounded-[8px] text-xs font-mono uppercase focus:outline-none focus:border-[#FB2C36]"
+                      onChange={(e) => handleCouponInputChange(e.target.value)}
+                      placeholder="e.g. FAKHAR20 or WELCOME10"
+                      className={`w-full pl-8 pr-8 py-2 bg-white border rounded-[8px] text-xs font-mono uppercase tracking-wider transition-all focus:outline-none ${
+                        appliedCoupon
+                          ? 'border-emerald-500 bg-emerald-50/20 text-emerald-950 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500/30'
+                          : couponError
+                          ? 'border-rose-400 bg-rose-50/20 text-rose-950 focus:border-rose-500 focus:ring-1 focus:ring-rose-500/30'
+                          : 'border-slate-300 focus:border-[#FB2C36]'
+                      }`}
                     />
-                    <button
-                      type="button"
-                      onClick={handleApplyCoupon}
-                      className="px-3 py-1.5 bg-[#000000] hover:bg-slate-800 text-white rounded-[8px] text-xs font-medium cursor-pointer min-h-[36px]"
-                    >
-                      Apply
-                    </button>
+                    <Tag className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+
+                    {/* Right Trailing Status Indicator */}
+                    <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none flex items-center">
+                      {appliedCoupon && (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 animate-in zoom-in-75 duration-150" />
+                      )}
+                      {couponError && (
+                        <AlertCircle className="w-4 h-4 text-rose-500 animate-in zoom-in-75 duration-150" />
+                      )}
+                    </div>
                   </div>
+
+                  {/* Real-time Applied Success Badge */}
                   {appliedCoupon && (
-                    <p className="text-[10px] sm:text-[11px] text-[#059669] font-medium">✓ Coupon applied</p>
+                    <div className="p-2 bg-emerald-50/90 border border-emerald-200 rounded-[8px] flex items-center justify-between text-[11px] text-emerald-800 animate-in fade-in duration-150">
+                      <div className="flex items-center gap-1.5 font-medium truncate">
+                        <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 stroke-[3]" />
+                        <span>
+                          <strong>{appliedCoupon.code}</strong> applied: {appliedCoupon.discountPercent ? `${appliedCoupon.discountPercent}% OFF` : `$${appliedCoupon.discountFixed?.toFixed(2)} OFF`} (-${discountAmount.toFixed(2)})
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-200/70 text-emerald-900 shrink-0">
+                        SAVED
+                      </span>
+                    </div>
                   )}
+
+                  {/* Real-time Validation Error */}
                   {couponError && (
-                    <p className="text-[10px] sm:text-[11px] text-rose-600">{couponError}</p>
+                    <p className="text-[10.5px] text-rose-600 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      <span>{couponError}</span>
+                    </p>
                   )}
+
+                  {/* Quick-Apply Promo Chips from INITIAL_COUPONS */}
+                  <div className="pt-0.5">
+                    <span className="text-[10px] text-slate-400 block mb-1">Available Promotions:</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {INITIAL_COUPONS.filter(c => c.active).map(c => {
+                        const isThisApplied = appliedCoupon?.code === c.code;
+                        return (
+                          <button
+                            key={c.code}
+                            type="button"
+                            onClick={() => handleApplyCouponChip(c.code)}
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                              isThisApplied
+                                ? 'bg-emerald-600 text-white shadow-xs'
+                                : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+                            }`}
+                          >
+                            <span>{c.code}</span>
+                            <span className={isThisApplied ? 'text-emerald-100' : 'text-[#FB2C36]'}>
+                              ({c.discountPercent ? `${c.discountPercent}% OFF` : `$${c.discountFixed} OFF`})
+                            </span>
+                            {isThisApplied && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Primary Button: Submit Order (#FB2C36 accent, 8px radius, micro-shadow) */}
@@ -1030,8 +1327,90 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 />
               </div>
 
-              <div className="p-2.5 sm:p-3 bg-blue-50/70 border border-blue-100 rounded-xl text-[11px] sm:text-xs text-blue-900 leading-snug report-stagger-3">
-                A confirmation has been dispatched to <strong>{createdOrder.customer.email}</strong>. You will receive your PDF report as soon as records are verified.
+              {/* Automated Mock SMTP Confirmation Email Dispatch Card */}
+              <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-xl sm:rounded-2xl p-3.5 sm:p-4 text-left space-y-2.5 shadow-xs report-stagger-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                      <Mail className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs sm:text-sm font-bold text-emerald-950">
+                        Confirmation Email Dispatched
+                      </h4>
+                      <p className="text-[11px] text-emerald-800">
+                        Sent to: <strong className="font-semibold">{createdOrder.customer.email}</strong>
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
+                    MOCK SMTP (JSON)
+                  </span>
+                </div>
+
+                <div className="text-[11px] text-slate-600 bg-white/80 border border-emerald-100 rounded-lg p-2.5 space-y-1">
+                  <div className="flex justify-between items-center text-[10.5px]">
+                    <span className="text-slate-500 font-medium">Service:</span>
+                    <span className="font-mono text-slate-800">AutoAudit Mock SMTP Integration</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[10.5px]">
+                    <span className="text-slate-500 font-medium">Subject:</span>
+                    <span className="font-semibold text-slate-800 truncate max-w-[240px]">
+                      {confirmationEmail?.subject || `Order Confirmed: AutoAudit Report for ${createdOrder.vehicle.vinOrReg} (${createdOrder.orderNumber})`}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-[10.5px]">
+                    <span className="text-slate-500 font-medium">Delivery Status:</span>
+                    <span className="inline-flex items-center gap-1 font-bold text-emerald-700">
+                      <Check className="w-3 h-3 stroke-[3]" />
+                      <span>Instant Zero-Latency Mock Delivery</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Email Preview Toggle */}
+                <div className="pt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowEmailDetails(!showEmailDetails)}
+                    className="w-full py-1.5 px-3 rounded-lg bg-emerald-100/70 hover:bg-emerald-200/80 text-emerald-900 text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    {showEmailDetails ? (
+                      <>
+                        <EyeOff className="w-3.5 h-3.5" />
+                        <span>Hide Dispatched Email</span>
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Preview Dispatched Confirmation Email</span>
+                      </>
+                    )}
+                  </button>
+
+                  {/* Expandable Email Content Drawer */}
+                  {showEmailDetails && (
+                    <div className="mt-2.5 p-3.5 bg-slate-900 text-slate-100 rounded-xl border border-slate-800 text-[11px] font-mono space-y-2.5 animate-in fade-in duration-200 shadow-inner">
+                      <div className="border-b border-slate-800 pb-2 space-y-1 text-[10.5px] text-slate-400">
+                        <div><strong className="text-slate-200">From:</strong> AutoAudit Notifications &lt;noreply@autoaudit.intelligence&gt;</div>
+                        <div><strong className="text-slate-200">To:</strong> {createdOrder.customer.email}</div>
+                        <div><strong className="text-slate-200">Subject:</strong> {confirmationEmail?.subject || `Order Confirmed: AutoAudit Report for ${createdOrder.vehicle.vinOrReg}`}</div>
+                        <div><strong className="text-slate-200">Transport:</strong> Nodemailer Mock SMTP JSON Transporter</div>
+                      </div>
+
+                      <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 text-[10.5px] text-slate-300 font-sans leading-relaxed whitespace-pre-line max-h-48 overflow-y-auto">
+                        {confirmationEmail?.body || `Hello ${createdOrder.customer.fullName},
+
+Thank you for choosing AutoAudit! Your order #${createdOrder.orderNumber} for ${createdOrder.vehicle.year} ${createdOrder.vehicle.make} ${createdOrder.vehicle.model} (VIN: ${createdOrder.vehicle.vinOrReg}) has been confirmed and payment has been processed successfully ($${createdOrder.total.toFixed(2)} USD).
+
+Our automated systems are now querying the NMVTIS federal title clearinghouse, 50-state DMV registries, and salvage auto auctions.
+
+We will notify you the moment your report advances to processing.`}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Action Buttons: View Order, WhatsApp Help, Back to Home */}
