@@ -9,6 +9,7 @@ interface FooterProps {
   onOpenTrack: () => void;
   onScrollTo: (sectionId: string) => void;
   onToggleAdmin: () => void;
+  onRequestReport?: () => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({
@@ -18,6 +19,7 @@ export const Footer: React.FC<FooterProps> = ({
   onOpenTrack,
   onScrollTo,
   onToggleAdmin,
+  onRequestReport,
 }) => {
   return (
     <footer className="bg-[#0B132B] text-slate-400 text-xs border-t border-[#1E293B]">
@@ -120,6 +122,17 @@ export const Footer: React.FC<FooterProps> = ({
                   Pricing
                 </button>
               </li>
+              {onRequestReport && (
+                <li>
+                  <button
+                    type="button"
+                    onClick={onRequestReport}
+                    className="text-amber-400 hover:text-amber-300 font-semibold transition-colors cursor-pointer"
+                  >
+                    Request Vehicle Report (Intake Form)
+                  </button>
+                </li>
+              )}
             </ul>
           </div>
 

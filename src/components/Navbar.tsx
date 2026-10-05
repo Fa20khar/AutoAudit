@@ -11,6 +11,7 @@ interface NavbarProps {
   isAdminView: boolean;
   onToggleAdminView: () => void;
   newOrdersCount: number;
+  onRequestReport?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -22,6 +23,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   isAdminView,
   onToggleAdminView,
   newOrdersCount,
+  onRequestReport,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -83,6 +85,14 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             FAQ
           </button>
+          {onRequestReport && (
+            <button
+              onClick={onRequestReport}
+              className="text-amber-400 hover:text-amber-300 font-semibold transition-colors cursor-pointer flex items-center gap-1 text-xs px-2.5 py-1 rounded bg-amber-400/10 border border-amber-400/20"
+            >
+              <span>Request Vehicle Report</span>
+            </button>
+          )}
         </nav>
 
         {/* Right: Actions */}
@@ -165,6 +175,17 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               FAQ
             </button>
+            {onRequestReport && (
+              <button
+                onClick={() => {
+                  onRequestReport();
+                  setMobileMenuOpen(false);
+                }}
+                className="text-left px-3 py-2 rounded-[8px] bg-amber-500/10 text-amber-300 border border-amber-500/30 font-semibold"
+              >
+                Request Vehicle Report (Intake Form)
+              </button>
+            )}
             <button
               onClick={() => {
                 onOpenTrack();

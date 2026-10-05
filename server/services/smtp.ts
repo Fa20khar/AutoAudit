@@ -225,12 +225,12 @@ function generateEmailHtml(order: Order, type: 'order_confirmation' | 'processin
       </div>
 
       <div style="text-align: center; margin: 24px 0;">
-        <p style="font-size: 13px; color: #475569; margin-bottom: 12px;">You can view and generate a paper copy directly:</p>
-        <span class="cta-btn">✓ View & Print Vehicle Report</span>
+        <p style="font-size: 13px; color: #475569; margin-bottom: 12px;">Your certified PDF report has been generated and attached to this message:</p>
+        <a href="${order.resultFile?.fileUrl || `/api/reports/download/${order.id}`}" class="cta-btn" style="color: #ffffff !important; text-decoration: none;">✓ Download Certified PDF Report</a>
       </div>
 
       <p style="font-size: 12px; color: #64748b; border-top: 1px solid #f1f5f9; padding-top: 14px;">
-        Order Reference: <strong>${orderNum}</strong> &nbsp;|&nbsp; File: <code>AutoAudit_Report_${vin}.html</code>
+        Order Reference: <strong>${orderNum}</strong> &nbsp;|&nbsp; File: <code>${order.resultFile?.fileName || `AutoAudit_Report_${vin}.pdf`}</code>
       </p>
     </div>
     <div class="footer">
@@ -249,17 +249,22 @@ function generateEmailHtml(order: Order, type: 'order_confirmation' | 'processin
 export async function sendMockEmail(params: {
   order: Order;
   type: 'order_confirmation' | 'processing' | 'report_ready';
+  attachments?: Array<{ filename: string; content: Buffer | string; contentType?: string }>;
 }): Promise<{ success: boolean; messageId: string; email: EmailNotification }> {
-  const { order, type } = params;
+  const { order, type, attachments } = params;
   const { subject, html, text } = generateEmailHtml(order, type);
 
-  const mailOptions = {
+  const mailOptions: any = {
     from: SYSTEM_FROM_EMAIL,
     to: order.customer.email,
     subject,
     text,
     html
   };
+
+  if (attachments && attachments.length > 0) {
+    mailOptions.attachments = attachments;
+  }
 
   const info = await transporter.sendMail(mailOptions);
   const messageId = info.messageId || `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;

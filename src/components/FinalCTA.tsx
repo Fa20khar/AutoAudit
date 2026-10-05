@@ -4,11 +4,13 @@ import { ArrowRight, FileCheck, ShieldCheck } from 'lucide-react';
 interface FinalCTAProps {
   onStartOrder: () => void;
   onOpenSample: () => void;
+  onRequestReport?: () => void;
 }
 
 export const FinalCTA: React.FC<FinalCTAProps> = ({
   onStartOrder,
   onOpenSample,
+  onRequestReport,
 }) => {
   return (
     <section className="py-20 bg-[#0B132B] text-white relative overflow-hidden border-t border-[#1E293B]">
@@ -49,6 +51,16 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({
             <FileCheck className="w-4 h-4 text-emerald-400" />
             <span>View Sample Report</span>
           </button>
+
+          {onRequestReport && (
+            <button
+              type="button"
+              onClick={onRequestReport}
+              className="px-6 py-3.5 rounded-[8px] text-sm font-semibold bg-blue-950/60 hover:bg-blue-900/80 text-blue-300 border border-blue-800 transition-colors flex items-center gap-2 cursor-pointer leading-[1.43]"
+            >
+              <span>Request Vehicle Report Form</span>
+            </button>
+          )}
         </div>
 
         {/* Subtle trust badge underneath */}

@@ -6,6 +6,7 @@ import { supabaseDb } from '../supabase';
 import { requireAdminAuth } from '../middleware/auth';
 import { Order, AuditLog, EmailNotification } from '../../src/types';
 import { triggerAutomatedEmailSequence, sendMockEmail } from '../services/smtp';
+import { handleNewOrderCreation, processOrderReport } from '../services/mockReportGenerator';
 
 export const ordersRouter = Router();
 
@@ -249,6 +250,9 @@ ordersRouter.post('/', (req: Request, res: Response) => {
 
   db.createOrder(newOrder);
 
+  // Trigger Mock Report Generator Service (triggers when order is Paid)
+  handleNewOrderCreation(newOrder);
+
   // Trigger automated mock SMTP email sequence (Confirmation -> In-Progress -> Ready)
   triggerAutomatedEmailSequence(newOrder, {
     stageDelaySeconds: { stage2: 4, stage3: 8 },
@@ -281,14 +285,14 @@ ordersRouter.patch('/:id/status', requireAdminAuth, (req: Request, res: Response
     return;
   }
 
-  // Trigger corresponding stage email via Mock SMTP transporter
+  // Trigger corresponding stage email via Mock SMTP transporter and auto-generate report if Ready/Delivered
   if (status === 'In Progress') {
     sendMockEmail({ order: updated, type: 'processing' }).catch(err => {
       console.error('[SMTP] Error dispatching processing email:', err);
     });
   } else if (status === 'Delivered' || status === 'Ready') {
-    sendMockEmail({ order: updated, type: 'report_ready' }).catch(err => {
-      console.error('[SMTP] Error dispatching report ready email:', err);
+    processOrderReport(updated, { autoNotifyUser: true, targetStatus: status as 'Ready' | 'Delivered' }).catch(err => {
+      console.error('[MockReportGenerator] Error auto-generating report on status change:', err);
     });
   }
 

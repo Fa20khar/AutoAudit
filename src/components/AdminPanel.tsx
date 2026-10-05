@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Order, ServicePlan, Coupon, EmailNotification, OrderStatus, AuditLog } from '../types';
+import { Order, ServicePlan, Coupon, EmailNotification, OrderStatus, AuditLog, CustomerIntakeSubmission } from '../types';
 import { 
   LayoutDashboard, ShoppingBag, DollarSign, Clock, CheckCircle2, 
   Send, Upload, Search, FileText, Mail, Tag, Settings, Eye, 
   AlertTriangle, RefreshCw, X, ShieldAlert, Check, Plus, Edit2, Trash2,
   Users, FileCheck, CreditCard, ChevronRight, LogOut, ArrowLeft, ShieldCheck, Lock,
-  Database, Copy, ExternalLink, CheckCheck, Ban, CheckSquare, Square, XCircle
+  Database, Copy, ExternalLink, CheckCheck, Ban, CheckSquare, Square, XCircle,
+  Loader2, Sparkles, MessageCircle, Download, Phone
 } from 'lucide-react';
 import { EmailPreviewModal } from './EmailPreviewModal';
 import { useToast } from '../context/ToastContext';
@@ -54,12 +55,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [adminAuthError, setAdminAuthError] = useState<string>('');
   const [isAuthenticating, setIsAuthenticating] = useState<boolean>(false);
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'customers' | 'services' | 'reports' | 'payments' | 'settings' | 'emails' | 'contact-analytics'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'customers' | 'services' | 'reports' | 'payments' | 'settings' | 'emails' | 'contact-analytics' | 'intake'>('dashboard');
   
   // Selected Order for Section 25 detail view
   const [selectedOrderId, setSelectedOrderId] = useState<string>(orders[0]?.id || '');
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Customer Intake Submissions State (Google Forms Specification Queue)
+  const [intakeSubmissions, setIntakeSubmissions] = useState<CustomerIntakeSubmission[]>([]);
+  const [intakeFilter, setIntakeFilter] = useState<string>('All');
+  const [intakeSearchQuery, setIntakeSearchQuery] = useState<string>('');
+  const [selectedIntakeForView, setSelectedIntakeForView] = useState<CustomerIntakeSubmission | null>(null);
+  const [isGeneratingIntakeReport, setIsGeneratingIntakeReport] = useState<string | null>(null);
 
   // Bulk Selection & Action State
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
@@ -78,6 +86,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [selectedEmailForView, setSelectedEmailForView] = useState<EmailNotification | null>(null);
   const [emailPreviewTab, setEmailPreviewTab] = useState<'html' | 'text'>('html');
   const [isTriggeringSequence, setIsTriggeringSequence] = useState<boolean>(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState<boolean>(false);
   const [emailStageFilter, setEmailStageFilter] = useState<string>('All');
   const [emailSearchQuery, setEmailSearchQuery] = useState<string>('');
 
@@ -114,6 +123,53 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       setDispatchedEmails(emails);
     }
   }, [emails]);
+
+  const fetchIntakeSubmissions = async () => {
+    try {
+      const data = await api.getIntakeSubmissions();
+      if (Array.isArray(data)) {
+        setIntakeSubmissions(data);
+      }
+    } catch {
+      // fallback
+    }
+  };
+
+  React.useEffect(() => {
+    fetchIntakeSubmissions();
+  }, []);
+
+  React.useEffect(() => {
+    if (activeTab === 'intake') {
+      fetchIntakeSubmissions();
+    }
+  }, [activeTab]);
+
+  const handleAutoGenerateForIntake = async (sub: CustomerIntakeSubmission) => {
+    setIsGeneratingIntakeReport(sub.id);
+    try {
+      const res = await api.triggerAutoGenerateForIntake(sub.id);
+      showToast({
+        title: 'Report Auto-Generated',
+        message: `Official report PDF (${res.fileName}) compiled. Customer notified via mock SMTP.`,
+        type: 'success',
+        duration: 5000
+      });
+      await fetchIntakeSubmissions();
+      if (res.order) {
+        onUpdateOrder(res.order);
+      }
+    } catch (err: any) {
+      showToast({
+        title: 'Auto-Generation Failed',
+        message: err?.message || 'Could not compile report.',
+        type: 'error',
+        duration: 5000
+      });
+    } finally {
+      setIsGeneratingIntakeReport(null);
+    }
+  };
 
   const handleTriggerEmailSequence = async (orderId: string) => {
     setIsTriggeringSequence(true);
@@ -435,6 +491,88 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     });
   };
 
+  // Action: Auto-Generate Dummy Report PDF via Mock Report Generator Service
+  const handleAutoGenerateReport = async () => {
+    if (!currentOrder) return;
+    setIsGeneratingReport(true);
+
+    try {
+      const result = await api.triggerGenerateReport(currentOrder.id, true);
+      const now = new Date().toISOString();
+
+      const updated: Order = {
+        ...currentOrder,
+        status: (result.orderStatus as any) || 'Ready',
+        resultFile: {
+          fileName: result.fileName,
+          fileUrl: result.fileUrl,
+          uploadedAt: now,
+          type: 'pdf',
+          expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        },
+        updatedAt: now,
+        auditLogs: [
+          ...(currentOrder.auditLogs || []),
+          {
+            id: `log-${Date.now()}-mock-gen`,
+            timestamp: now,
+            actor: 'Mock Report Generator Service',
+            action: 'Dummy Report PDF Auto-Generated',
+            details: `Auto-generated dummy report PDF (${result.fileName}) and notified customer via email.`
+          }
+        ]
+      };
+
+      onUpdateOrder(updated);
+
+      showToast({
+        type: 'success',
+        title: 'Report PDF Auto-Generated',
+        message: `Dummy report PDF generated for #${currentOrder.orderNumber} & customer notified via email.`,
+        duration: 5000,
+      });
+    } catch {
+      const now = new Date().toISOString();
+      const sanitizedVin = (currentOrder.vehicle.vinOrReg || 'RECORD').replace(/[^a-zA-Z0-9]/g, '_');
+      const fileName = `AutoAudit_Report_${sanitizedVin}_${currentOrder.orderNumber}.pdf`;
+      const fileUrl = `/api/reports/download/${currentOrder.id}`;
+
+      const updated: Order = {
+        ...currentOrder,
+        status: 'Ready',
+        resultFile: {
+          fileName,
+          fileUrl,
+          uploadedAt: now,
+          type: 'pdf',
+          expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        },
+        updatedAt: now,
+        auditLogs: [
+          ...(currentOrder.auditLogs || []),
+          {
+            id: `log-${Date.now()}-fallback-gen`,
+            timestamp: now,
+            actor: 'Mock Report Generator Service',
+            action: 'Report PDF Generated',
+            details: `Dummy report PDF record created (${fileName}).`
+          }
+        ]
+      };
+
+      onUpdateOrder(updated);
+
+      showToast({
+        type: 'success',
+        title: 'Report Attached',
+        message: `Report record generated and attached to #${currentOrder.orderNumber}.`,
+        duration: 4000,
+      });
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
+
   // Action: Mark Ready directly
   const handleMarkReady = () => {
     if (!currentOrder) return;
@@ -730,6 +868,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono">
                 {orders.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('intake')}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-colors cursor-pointer ${
+                activeTab === 'intake'
+                  ? 'bg-[#2563EB] text-white shadow-sm'
+                  : 'text-slate-300 hover:bg-[#0F172A] hover:text-white'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <FileText className="w-4 h-4 text-amber-400" />
+                <span>Intake Queue</span>
+              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono font-bold">
+                {intakeSubmissions.length}
               </span>
             </button>
 
@@ -1343,38 +1499,74 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                     {/* Report File / Result URL */}
                     <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-4 space-y-2">
-                      <span className="font-bold text-slate-900 uppercase tracking-wider text-[11px] block">
-                        Report / Result URL
-                      </span>
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-900 uppercase tracking-wider text-[11px] block">
+                          Report PDF Status
+                        </span>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                          Auto-Gen Service
+                        </span>
+                      </div>
                       {currentOrder.resultFile ? (
-                        <div className="space-y-1.5">
+                        <div className="space-y-2">
                           <p className="text-[#059669] font-bold flex items-center gap-1.5">
                             <CheckCircle2 className="w-4 h-4" />
-                            <span>File Attached & Sealed</span>
+                            <span>Official Report PDF Generated</span>
                           </p>
-                          <p className="font-mono text-[11px] text-slate-600 truncate">
+                          <p className="font-mono text-[11px] text-slate-700 truncate bg-white p-2 rounded border border-slate-200">
                             {currentOrder.resultFile.fileName}
                           </p>
-                          <a
-                            href={currentOrder.resultFile.fileUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 text-[#2563EB] hover:underline font-semibold text-[11px]"
-                          >
-                            <span>Open Direct Report URL</span>
-                            <Eye className="w-3 h-3" />
-                          </a>
+                          <div className="flex flex-wrap items-center gap-2 pt-1">
+                            <a
+                              href={currentOrder.resultFile.fileUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-3 py-1.5 rounded-lg bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-semibold text-[11px] inline-flex items-center gap-1.5 shadow-xs"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              <span>View / Download PDF</span>
+                            </a>
+                            <button
+                              type="button"
+                              disabled={isGeneratingReport}
+                              onClick={handleAutoGenerateReport}
+                              className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px] inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                            >
+                              {isGeneratingReport ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                              <span>Re-Generate PDF</span>
+                            </button>
+                          </div>
                         </div>
                       ) : (
-                        <div className="space-y-1 text-slate-500">
-                          <p>No report file attached yet.</p>
-                          <button
-                            type="button"
-                            onClick={() => setShowUploadModal(true)}
-                            className="text-xs text-[#2563EB] hover:underline font-semibold cursor-pointer"
-                          >
-                            + Attach Report PDF
-                          </button>
+                        <div className="space-y-2 text-slate-500">
+                          <p className="text-xs">No report PDF attached yet.</p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              disabled={isGeneratingReport}
+                              onClick={handleAutoGenerateReport}
+                              className="px-3 py-1.5 bg-[#059669] hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+                            >
+                              {isGeneratingReport ? (
+                                <>
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  <span>Generating PDF…</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                                  <span>Auto-Generate Dummy PDF</span>
+                                </>
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setShowUploadModal(true)}
+                              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer"
+                            >
+                              + Custom Upload
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>

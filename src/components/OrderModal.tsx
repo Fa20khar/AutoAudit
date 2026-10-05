@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import confetti from 'canvas-confetti';
 import { ServicePlan, Order, Coupon, AuditLog, EmailNotification } from '../types';
 import { 
   X, Check, ArrowRight, ArrowLeft, ShieldCheck, Lock, CreditCard, 
@@ -25,6 +26,7 @@ interface OrderModalProps {
   coupons: Coupon[];
   onOrderCompleted: (order: Order) => void;
   onOpenTrack: () => void;
+  onDownloadReport?: (vin: string, vehicleTitle: string, orderNumber: string) => void;
 }
 
 export const OrderModal: React.FC<OrderModalProps> = ({
@@ -37,6 +39,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   coupons,
   onOrderCompleted,
   onOpenTrack,
+  onDownloadReport,
 }) => {
   // 5 Step Flow: 1: Service -> 2: Vehicle -> 3: Customer -> 4: Payment -> 5: Confirmation
   const [step, setStep] = useState<number>(1);
@@ -151,6 +154,72 @@ export const OrderModal: React.FC<OrderModalProps> = ({
       setIsSessionExpired(false);
     }
   }, [isOpen]);
+
+  // Celebration Confetti Trigger for Successful Order Placement
+  const celebrationFiredRef = useRef<boolean>(false);
+
+  const triggerCelebration = () => {
+    try {
+      if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        return;
+      }
+
+      // AutoAudit Brand Color Palette: Accent Red (#FB2C36), Electric Blue (#2563EB), Emerald (#059669), Gold (#F59E0B), Navy (#0B132B), White
+      const brandColors = ['#FB2C36', '#2563EB', '#059669', '#F59E0B', '#0B132B', '#FFFFFF'];
+
+      // Burst 1: High-energy center explosion
+      confetti({
+        particleCount: 70,
+        spread: 75,
+        origin: { y: 0.52 },
+        colors: brandColors,
+        ticks: 260,
+        gravity: 1.1,
+        scalar: 1.1,
+        zIndex: 9999
+      });
+
+      // Burst 2: Left cannon
+      setTimeout(() => {
+        confetti({
+          particleCount: 45,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0.15, y: 0.65 },
+          colors: brandColors,
+          ticks: 240,
+          zIndex: 9999
+        });
+      }, 160);
+
+      // Burst 3: Right cannon
+      setTimeout(() => {
+        confetti({
+          particleCount: 45,
+          angle: 120,
+          spread: 55,
+          origin: { x: 0.85, y: 0.65 },
+          colors: brandColors,
+          ticks: 240,
+          zIndex: 9999
+        });
+      }, 320);
+    } catch (e) {
+      console.warn('Confetti effect unavailable:', e);
+    }
+  };
+
+  // Trigger celebration animation when arriving at Step 5
+  useEffect(() => {
+    if (step === 5 && isOpen && createdOrder) {
+      if (!celebrationFiredRef.current) {
+        celebrationFiredRef.current = true;
+        triggerCelebration();
+      }
+    } else if (step !== 5) {
+      celebrationFiredRef.current = false;
+    }
+  }, [step, isOpen, createdOrder?.id]);
 
   // Sync props
   useEffect(() => {
@@ -1276,10 +1345,28 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
           {/* STEP 5: Payment Success / Order Confirmed (Section 15) */}
           {step === 5 && createdOrder && (
-            <div className="text-center space-y-3.5 sm:space-y-5 py-2 sm:py-4 max-w-lg mx-auto report-ready-transition report-ready-glow">
-              {/* Large Emerald Check Icon */}
-              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-emerald-100 border border-emerald-200 text-[#059669] flex items-center justify-center mx-auto shadow-xs report-checkmark-pop">
-                <CheckCircle2 className="w-7 h-7 sm:w-10 sm:h-10 stroke-[2.2]" />
+            <div className="text-center space-y-3.5 sm:space-y-4 py-2 sm:py-3 max-w-lg mx-auto report-ready-transition report-ready-glow">
+              
+              {/* Celebration Pill with Sparkles & Replay */}
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-bold tracking-wide shadow-xs report-stagger-1 mx-auto">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                <span>🎉 Order Placed Successfully!</span>
+                <button
+                  type="button"
+                  onClick={triggerCelebration}
+                  className="ml-1 text-[11px] text-emerald-700 hover:text-emerald-950 underline font-bold cursor-pointer"
+                  title="Replay Celebration Confetti"
+                >
+                  Replay
+                </button>
+              </div>
+
+              {/* Large Celebratory Emerald Check Icon with Pulsing Halo */}
+              <div className="relative w-14 h-14 sm:w-16 sm:h-16 mx-auto flex items-center justify-center my-0.5">
+                <div className="absolute inset-0 rounded-full bg-emerald-400/30 animate-ping opacity-60 pointer-events-none" style={{ animationDuration: '2.5s' }} />
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-tr from-emerald-600 via-emerald-500 to-teal-400 text-white flex items-center justify-center shadow-lg report-checkmark-pop">
+                  <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10 stroke-[2.4]" />
+                </div>
               </div>
 
               <div className="space-y-0.5 sm:space-y-1">
@@ -1287,7 +1374,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   Order Confirmed
                 </h3>
                 <p className="text-xs sm:text-sm text-slate-600">
-                  Your vehicle report order has been received successfully.
+                  Your vehicle report order has been received and verified.
                 </p>
               </div>
 
@@ -1413,8 +1500,26 @@ We will notify you the moment your report advances to processing.`}
                 </div>
               </div>
 
-              {/* Action Buttons: View Order, WhatsApp Help, Back to Home */}
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-3 pt-1 report-stagger-3">
+              {/* Action Buttons: Auto-Generate Report, View Order, WhatsApp Help, Back to Home */}
+              <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-2.5 sm:gap-3 pt-1 report-stagger-3">
+                {onDownloadReport && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onDownloadReport(
+                        createdOrder.vehicle.vinOrReg,
+                        `${createdOrder.vehicle.year} ${createdOrder.vehicle.make} ${createdOrder.vehicle.model}`,
+                        createdOrder.orderNumber
+                      );
+                    }}
+                    className="w-full sm:w-auto px-5 sm:px-6 py-2.5 bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-bold text-xs rounded-[8px] shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors cursor-pointer min-h-[44px] flex items-center justify-center gap-1.5 leading-[1.43]"
+                  >
+                    <FileCheck className="w-4 h-4" />
+                    <span>Auto-Generate & Download Report</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={() => {
@@ -1440,6 +1545,18 @@ We will notify you the moment your report advances to processing.`}
                   className="w-full sm:w-auto px-5 sm:px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs rounded-[8px] transition-colors cursor-pointer min-h-[44px] flex items-center justify-center leading-[1.43]"
                 >
                   Back to Home
+                </button>
+              </div>
+
+              {/* Celebration Replay Link */}
+              <div className="pt-0.5">
+                <button
+                  type="button"
+                  onClick={triggerCelebration}
+                  className="text-[11px] text-slate-400 hover:text-slate-600 font-medium inline-flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  <Sparkles className="w-3 h-3 text-amber-500" />
+                  <span>Replay celebration confetti</span>
                 </button>
               </div>
             </div>

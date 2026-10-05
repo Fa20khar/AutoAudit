@@ -23,6 +23,7 @@ import { MyOrdersModal } from './components/MyOrdersModal';
 import { LegalModal } from './components/LegalModal';
 import { AdminPanel } from './components/AdminPanel';
 import { ReportDownloadModal } from './components/ReportDownloadModal';
+import { CustomerIntakeModal } from './components/CustomerIntakeModal';
 import { WhatsAppWidget } from './components/WhatsAppWidget';
 import { ToastProvider } from './context/ToastContext';
 import { api } from './services/api';
@@ -65,6 +66,9 @@ function AppContent() {
   const [selectedServiceIdForOrder, setSelectedServiceIdForOrder] = useState<string>('comprehensive-vin');
   const [orderInitialVin, setOrderInitialVin] = useState<string>('');
   const [orderInitialIsVin, setOrderInitialIsVin] = useState<boolean>(true);
+
+  const [isIntakeModalOpen, setIsIntakeModalOpen] = useState<boolean>(false);
+  const [intakeInitialVin, setIntakeInitialVin] = useState<string>('');
 
   const [isSampleModalOpen, setIsSampleModalOpen] = useState<boolean>(false);
   const [isTrackModalOpen, setIsTrackModalOpen] = useState<boolean>(false);
@@ -271,6 +275,7 @@ function AppContent() {
             isAdminView={isAdminView}
             onToggleAdminView={() => setIsAdminView(!isAdminView)}
             newOrdersCount={newOrdersCount}
+            onRequestReport={() => setIsIntakeModalOpen(true)}
           />
 
           <main className="flex-1">
@@ -278,6 +283,7 @@ function AppContent() {
             <Hero
               onStartOrderWithVin={handleStartOrderWithVin}
               onOpenSample={() => setIsSampleModalOpen(true)}
+              onRequestReport={() => setIsIntakeModalOpen(true)}
             />
 
             {/* Section 9: Trust Strip */}
@@ -310,6 +316,7 @@ function AppContent() {
             <FinalCTA
               onStartOrder={() => handleOpenOrder()}
               onOpenSample={() => setIsSampleModalOpen(true)}
+              onRequestReport={() => setIsIntakeModalOpen(true)}
             />
           </main>
 
@@ -320,6 +327,7 @@ function AppContent() {
             onOpenTrack={() => setIsTrackModalOpen(true)}
             onScrollTo={handleScrollTo}
             onToggleAdmin={() => setIsAdminView(true)}
+            onRequestReport={() => setIsIntakeModalOpen(true)}
           />
         </>
       )}
@@ -338,6 +346,7 @@ function AppContent() {
         coupons={coupons}
         onOrderCompleted={handleOrderCompleted}
         onOpenTrack={() => setIsTrackModalOpen(true)}
+        onDownloadReport={handleDownloadReport}
       />
 
       <SampleReportModal
@@ -370,6 +379,18 @@ function AppContent() {
         vin={downloadModalState.vin}
         vehicleTitle={downloadModalState.vehicleTitle}
         orderNumber={downloadModalState.orderNumber}
+      />
+
+      {/* Customer Intake & Auto-Generate Modal (Google Forms Specification) */}
+      <CustomerIntakeModal
+        isOpen={isIntakeModalOpen}
+        onClose={() => {
+          setIsIntakeModalOpen(false);
+          setIntakeInitialVin('');
+        }}
+        onOpenReportDownload={handleDownloadReport}
+        onOpenLegal={(tab) => setLegalModalState({ isOpen: true, tab })}
+        initialVin={intakeInitialVin}
       />
 
       {/* Persistent Floating WhatsApp Support Widget */}

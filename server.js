@@ -237,6 +237,80 @@ import { Router as Router2 } from "express";
 import fs from "fs";
 import path from "path";
 
+// src/data/initialData.ts
+var INITIAL_WHATSAPP_CONFIG = {
+  phoneNumber: "18005552886",
+  displayNumber: "+1 (800) 555-AUTO",
+  defaultGreeting: "Hello AutoAudit Support, I would like assistance with a vehicle history report.",
+  supportAvailability: "Mon\u2013Sun \xB7 24/7 Coverage \xB7 Avg Response < 5 Mins",
+  active: true
+};
+var INITIAL_CONTACT_EVENTS = [
+  {
+    id: "evt_101",
+    channel: "whatsapp",
+    source: "floating_widget",
+    intent: "vin_check",
+    vin: "1HGCR2F83HA029184",
+    messagePreview: "Hi AutoAudit, I have a question regarding vehicle with VIN: 1HGCR2F83HA029184.",
+    timestamp: new Date(Date.now() - 1e3 * 60 * 35).toISOString(),
+    deviceType: "mobile",
+    pageUrl: "/"
+  },
+  {
+    id: "evt_102",
+    channel: "whatsapp",
+    source: "pricing",
+    intent: "pricing",
+    messagePreview: "Hi AutoAudit, what is the difference between Complete and Premium auction records?",
+    timestamp: new Date(Date.now() - 1e3 * 60 * 140).toISOString(),
+    deviceType: "desktop",
+    pageUrl: "/#services"
+  },
+  {
+    id: "evt_103",
+    channel: "whatsapp",
+    source: "hero",
+    intent: "vin_check",
+    messagePreview: "Can you verify if Copart auction photos are included for Canadian vehicles?",
+    timestamp: new Date(Date.now() - 1e3 * 60 * 320).toISOString(),
+    deviceType: "desktop",
+    pageUrl: "/#hero"
+  },
+  {
+    id: "evt_104",
+    channel: "whatsapp",
+    source: "order_modal",
+    intent: "general_support",
+    messagePreview: "Need assistance verifying my payment method during checkout.",
+    timestamp: new Date(Date.now() - 1e3 * 60 * 540).toISOString(),
+    deviceType: "mobile",
+    pageUrl: "/checkout"
+  },
+  {
+    id: "evt_105",
+    channel: "whatsapp",
+    source: "my_orders",
+    intent: "order_tracking",
+    orderNumber: "AA-10025",
+    vin: "1G1YY22U965104921",
+    messagePreview: "Hello AutoAudit Support, I need an update on my order #AA-10025.",
+    timestamp: new Date(Date.now() - 1e3 * 60 * 960).toISOString(),
+    deviceType: "mobile",
+    pageUrl: "/portal/orders"
+  },
+  {
+    id: "evt_106",
+    channel: "whatsapp",
+    source: "faq",
+    intent: "general_support",
+    messagePreview: "Do you offer batch vehicle report discounts for small auto dealerships?",
+    timestamp: new Date(Date.now() - 1e3 * 60 * 1440).toISOString(),
+    deviceType: "desktop",
+    pageUrl: "/#faq"
+  }
+];
+
 // server/supabase.ts
 import { createClient } from "@supabase/supabase-js";
 var supabaseUrl = process.env.SUPABASE_URL || "";
@@ -797,6 +871,8 @@ var Database = class {
   orders = [...INITIAL_ORDERS];
   coupons = [...INITIAL_COUPONS];
   emails = [...INITIAL_EMAILS];
+  contactEvents = [...INITIAL_CONTACT_EVENTS];
+  whatsAppConfig = { ...INITIAL_WHATSAPP_CONFIG };
   constructor() {
     this.hydrateFromSupabase();
   }
@@ -904,7 +980,7 @@ ${note}` : note;
     }
     return order;
   }
-  attachOrderReport(orderId, file) {
+  attachOrderReport(orderId, file, actor = "Admin Specialist") {
     const order = this.getOrderById(orderId);
     if (!order) return null;
     order.resultFile = {
@@ -915,7 +991,7 @@ ${note}` : note;
     order.auditLogs.unshift({
       id: `log-${Date.now()}`,
       timestamp: (/* @__PURE__ */ new Date()).toISOString(),
-      actor: "Admin Specialist",
+      actor,
       action: "Report Attached",
       details: `File attached: ${file.fileName}`
     });
@@ -959,6 +1035,71 @@ ${note}` : note;
         console.error("[Database] Failed to sync email to Supabase:", err);
       });
     }
+  }
+  // Contact Events & Click-to-Chat Analytics
+  getContactEvents() {
+    return this.contactEvents;
+  }
+  logContactEvent(eventData) {
+    const event = {
+      id: eventData.id || `evt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      timestamp: eventData.timestamp || (/* @__PURE__ */ new Date()).toISOString(),
+      channel: eventData.channel || "whatsapp",
+      source: eventData.source || "floating_widget",
+      intent: eventData.intent || "general_support",
+      vin: eventData.vin,
+      orderNumber: eventData.orderNumber,
+      messagePreview: eventData.messagePreview,
+      pageUrl: eventData.pageUrl,
+      deviceType: eventData.deviceType
+    };
+    this.contactEvents.unshift(event);
+    if (this.contactEvents.length > 500) {
+      this.contactEvents = this.contactEvents.slice(0, 500);
+    }
+    return event;
+  }
+  getContactSummary() {
+    const events = this.contactEvents;
+    const now = Date.now();
+    const oneDayAgo = now - 24 * 60 * 60 * 1e3;
+    const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1e3;
+    const clicksLast24h = events.filter((e) => new Date(e.timestamp).getTime() >= oneDayAgo).length;
+    const clicksLast7d = events.filter((e) => new Date(e.timestamp).getTime() >= sevenDaysAgo).length;
+    const bySource = {};
+    const byIntent = {};
+    const byChannel = {};
+    for (const e of events) {
+      bySource[e.source] = (bySource[e.source] || 0) + 1;
+      byIntent[e.intent] = (byIntent[e.intent] || 0) + 1;
+      byChannel[e.channel] = (byChannel[e.channel] || 0) + 1;
+    }
+    const topSource = Object.entries(bySource).sort((a, b) => b[1] - a[1])[0]?.[0] || "floating_widget";
+    const topIntent = Object.entries(byIntent).sort((a, b) => b[1] - a[1])[0]?.[0] || "vin_check";
+    const totalOrders = this.orders.length;
+    const conversionRateEstimate = events.length > 0 ? Math.min(100, Math.round(totalOrders / Math.max(events.length, 1) * 38)) : 32;
+    return {
+      totalClicks: events.length,
+      clicksLast24h,
+      clicksLast7d,
+      topSource,
+      topIntent,
+      conversionRateEstimate,
+      bySource,
+      byIntent,
+      byChannel,
+      recentEvents: events.slice(0, 50)
+    };
+  }
+  getWhatsAppConfig() {
+    return this.whatsAppConfig;
+  }
+  updateWhatsAppConfig(updates) {
+    this.whatsAppConfig = {
+      ...this.whatsAppConfig,
+      ...updates
+    };
+    return this.whatsAppConfig;
   }
 };
 var db = new Database();
@@ -1222,12 +1363,12 @@ You can view, download, and print your official report immediately through the A
       </div>
 
       <div style="text-align: center; margin: 24px 0;">
-        <p style="font-size: 13px; color: #475569; margin-bottom: 12px;">You can view and generate a paper copy directly:</p>
-        <span class="cta-btn">\u2713 View & Print Vehicle Report</span>
+        <p style="font-size: 13px; color: #475569; margin-bottom: 12px;">Your certified PDF report has been generated and attached to this message:</p>
+        <a href="${order.resultFile?.fileUrl || `/api/reports/download/${order.id}`}" class="cta-btn" style="color: #ffffff !important; text-decoration: none;">\u2713 Download Certified PDF Report</a>
       </div>
 
       <p style="font-size: 12px; color: #64748b; border-top: 1px solid #f1f5f9; padding-top: 14px;">
-        Order Reference: <strong>${orderNum}</strong> &nbsp;|&nbsp; File: <code>AutoAudit_Report_${vin}.html</code>
+        Order Reference: <strong>${orderNum}</strong> &nbsp;|&nbsp; File: <code>${order.resultFile?.fileName || `AutoAudit_Report_${vin}.pdf`}</code>
       </p>
     </div>
     <div class="footer">
@@ -1239,7 +1380,7 @@ You can view, download, and print your official report immediately through the A
   return { subject, html, text };
 }
 async function sendMockEmail(params) {
-  const { order, type } = params;
+  const { order, type, attachments } = params;
   const { subject, html, text } = generateEmailHtml(order, type);
   const mailOptions = {
     from: SYSTEM_FROM_EMAIL,
@@ -1248,6 +1389,9 @@ async function sendMockEmail(params) {
     text,
     html
   };
+  if (attachments && attachments.length > 0) {
+    mailOptions.attachments = attachments;
+  }
   const info = await transporter.sendMail(mailOptions);
   const messageId = info.messageId || `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
   const notification = {
@@ -1321,6 +1465,445 @@ function getSmtpStatus() {
     mode: isRealSmtp ? "Live SMTP Transport" : "Mock JSON Transporter (Zero-Network Latency)",
     sender: SYSTEM_FROM_EMAIL,
     totalDispatched: db.getEmails().length
+  };
+}
+
+// server/services/mockReportGenerator.ts
+var pdfCache = /* @__PURE__ */ new Map();
+function generateDummyPdfBuffer(order) {
+  const vehicleName = `${order.vehicle.year} ${order.vehicle.make} ${order.vehicle.model}`.trim();
+  const vin = (order.vehicle.vinOrReg || "UNKNOWN_VIN").toUpperCase();
+  const orderNum = order.orderNumber || "AA-10000";
+  const customerName = order.customer.fullName || "Valued Customer";
+  const customerEmail = order.customer.email || "customer@example.com";
+  const mileage = order.vehicle.mileage || "41,800 mi (Verified)";
+  const jurisdiction = order.vehicle.countryOrState || "California, USA";
+  const serviceTier = order.serviceName || "Comprehensive Vehicle History Report";
+  const generatedTimestamp = (/* @__PURE__ */ new Date()).toUTCString();
+  const esc = (text) => {
+    return text.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+  };
+  const lines = [
+    // Graphic background bar for top header
+    "0.043 0.075 0.169 rg",
+    // Navy #0B132B
+    "0 712 612 80 re",
+    "f",
+    // Gold accent separator line
+    "0.96 0.62 0.07 rg",
+    // Amber #F59E0B
+    "0 708 612 4 re",
+    "f",
+    // Text: Document Title in White
+    "BT",
+    "/F1 18 Tf",
+    "1 1 1 rg",
+    // White
+    "40 754 Td",
+    `(${esc("AUTOAUDIT VEHICLE INTELLIGENCE REPORT")}) Tj`,
+    "ET",
+    // Subtitle
+    "BT",
+    "/F2 9 Tf",
+    "0.7 0.75 0.85 rg",
+    "40 732 Td",
+    `(${esc("Certified NMVTIS National Clearinghouse & 50-State DMV Verification Record")}) Tj`,
+    "ET",
+    // Order number badge on right
+    "BT",
+    "/F1 11 Tf",
+    "1 1 1 rg",
+    "440 746 Td",
+    `(${esc(`REF: ${orderNum}`)}) Tj`,
+    "ET",
+    // Watermark behind content
+    "BT",
+    "/F1 32 Tf",
+    "0.93 0.94 0.96 rg",
+    // Very faint grey
+    "110 440 Td",
+    "30 rotate",
+    `(${esc("OFFICIAL AUTOAUDIT REPORT")}) Tj`,
+    "-30 rotate",
+    "ET",
+    // Clean Title Verified Ribbon
+    "0.925 0.988 0.957 rg",
+    // Emerald light bg
+    "0.05 0.6 0.4 RG",
+    // Emerald border
+    "1 w",
+    "40 655 532 38 re",
+    "B",
+    "BT",
+    "/F1 12 Tf",
+    "0.02 0.37 0.27 rg",
+    // Emerald dark text
+    "52 671 Td",
+    `(${esc("STATUS: CLEAN TITLE CERTIFIED  -  0 TOTAL LOSS OR SALVAGE BRANDS")}) Tj`,
+    "ET",
+    "BT",
+    "/F2 8.5 Tf",
+    "0.2 0.45 0.35 rg",
+    "52 660 Td",
+    `(${esc("All 50 US State Registries, FEMA Flood Databases, and Insurance Clearinghouses Checked")}) Tj`,
+    "ET",
+    // Vehicle Specification Box
+    "0.97 0.98 0.99 rg",
+    "0.88 0.91 0.94 RG",
+    "0.75 w",
+    "40 540 532 100 re",
+    "B",
+    "BT",
+    "/F1 10 Tf",
+    "0.1 0.15 0.25 rg",
+    "52 622 Td",
+    `(${esc("VEHICLE IDENTIFICATION & AUDIT SPECIFICATIONS")}) Tj`,
+    "ET",
+    // Metadata items (2 columns)
+    "BT",
+    "/F2 9 Tf",
+    "0.3 0.35 0.4 rg",
+    "52 602 Td",
+    `(${esc(`Vehicle: ${vehicleName}`)}) Tj`,
+    "0 -15 Td",
+    `(${esc(`VIN / Chassis: ${vin}`)}) Tj`,
+    "0 -15 Td",
+    `(${esc(`Current Odometer: ${mileage}`)}) Tj`,
+    "0 -15 Td",
+    `(${esc(`Jurisdiction: ${jurisdiction}`)}) Tj`,
+    "ET",
+    "BT",
+    "/F2 9 Tf",
+    "0.3 0.35 0.4 rg",
+    "320 602 Td",
+    `(${esc(`Customer: ${customerName}`)}) Tj`,
+    "0 -15 Td",
+    `(${esc(`Account Email: ${customerEmail}`)}) Tj`,
+    "0 -15 Td",
+    `(${esc(`Audit Tier: ${serviceTier}`)}) Tj`,
+    "0 -15 Td",
+    `(${esc(`Certified At: ${generatedTimestamp}`)}) Tj`,
+    "ET",
+    // Section 1: Title Brand & Loss History Table
+    "BT",
+    "/F1 11 Tf",
+    "0.05 0.1 0.2 rg",
+    "40 515 Td",
+    `(${esc("1. STATE TITLE BRAND & TOTAL LOSS CLEARINGHOUSE FINDINGS")}) Tj`,
+    "ET",
+    // Table Header Row
+    "0.94 0.96 0.98 rg",
+    "0.85 0.88 0.92 RG",
+    "0.5 w",
+    "40 488 532 18 re",
+    "B",
+    "BT",
+    "/F1 8.5 Tf",
+    "0.2 0.25 0.3 rg",
+    "48 493 Td",
+    `(${esc("DATABASE REGISTRY")}) Tj`,
+    "150 0 Td",
+    `(${esc("REPORTING SOURCE")}) Tj`,
+    "160 0 Td",
+    `(${esc("RESULT")}) Tj`,
+    "70 0 Td",
+    `(${esc("DETAILS")}) Tj`,
+    "ET",
+    // Rows
+    "BT",
+    "/F2 8 Tf",
+    "0.15 0.2 0.25 rg",
+    // Row 1
+    "48 472 Td",
+    `(${esc("Salvage / Total Loss")}) Tj`,
+    "150 0 Td",
+    `(${esc("Insurance Clearinghouses & Auctions")}) Tj`,
+    "160 0 Td",
+    `(${esc("PASSED")}) Tj`,
+    "70 0 Td",
+    `(${esc("No total loss claims or auction transfers")}) Tj`,
+    // Row 2
+    "-380 -16 Td",
+    `(${esc("Flood / Water Damage")}) Tj`,
+    "150 0 Td",
+    `(${esc("FEMA Emergency Registries & DMVs")}) Tj`,
+    "160 0 Td",
+    `(${esc("PASSED")}) Tj`,
+    "70 0 Td",
+    `(${esc("Zero flood or storm damage flags")}) Tj`,
+    // Row 3
+    "-380 -16 Td",
+    `(${esc("Junk / Dismantler Record")}) Tj`,
+    "150 0 Td",
+    `(${esc("NMVTIS National Motor Clearinghouse")}) Tj`,
+    "160 0 Td",
+    `(${esc("PASSED")}) Tj`,
+    "70 0 Td",
+    `(${esc("Vehicle never scrapped or crushed")}) Tj`,
+    // Row 4
+    "-380 -16 Td",
+    `(${esc("Stolen Vehicle Registry")}) Tj`,
+    "150 0 Td",
+    `(${esc("NICB & Federal Law Enforcement")}) Tj`,
+    "160 0 Td",
+    `(${esc("PASSED")}) Tj`,
+    "70 0 Td",
+    `(${esc("No active police theft records")}) Tj`,
+    // Row 5
+    "-380 -16 Td",
+    `(${esc("Safety Recall Registry")}) Tj`,
+    "150 0 Td",
+    `(${esc("NHTSA Federal Safety Bureau")}) Tj`,
+    "160 0 Td",
+    `(${esc("PASSED")}) Tj`,
+    "70 0 Td",
+    `(${esc("0 open safety recalls requiring repair")}) Tj`,
+    "ET",
+    // Section 2: Odometer Progression
+    "BT",
+    "/F1 11 Tf",
+    "0.05 0.1 0.2 rg",
+    "40 375 Td",
+    `(${esc("2. CERTIFIED ODOMETER TIMELINE & INTEGRITY AUDIT")}) Tj`,
+    "ET",
+    // Table Header
+    "0.94 0.96 0.98 rg",
+    "0.85 0.88 0.92 RG",
+    "0.5 w",
+    "40 348 532 18 re",
+    "B",
+    "BT",
+    "/F1 8.5 Tf",
+    "0.2 0.25 0.3 rg",
+    "48 353 Td",
+    `(${esc("READING DATE")}) Tj`,
+    "120 0 Td",
+    `(${esc("MILEAGE")}) Tj`,
+    "100 0 Td",
+    `(${esc("RECORDING FACILITY")}) Tj`,
+    "160 0 Td",
+    `(${esc("AUDIT STATUS")}) Tj`,
+    "ET",
+    // Odometer Rows
+    "BT",
+    "/F2 8 Tf",
+    "0.15 0.2 0.25 rg",
+    "48 332 Td",
+    `(${esc("11/14/2021")}) Tj`,
+    "120 0 Td",
+    `(${esc("12 mi")}) Tj`,
+    "100 0 Td",
+    `(${esc("Authorized Dealer Network")}) Tj`,
+    "160 0 Td",
+    `(${esc("Pre-Delivery Inspection (Certified)")}) Tj`,
+    "-380 -16 Td",
+    `(${esc("10/05/2023")}) Tj`,
+    "120 0 Td",
+    `(${esc("18,420 mi")}) Tj`,
+    "100 0 Td",
+    `(${esc("State DMV Registration Bureau")}) Tj`,
+    "160 0 Td",
+    `(${esc("Registration Renewal (Steady)")}) Tj`,
+    "-380 -16 Td",
+    `(${esc("08/19/2025")}) Tj`,
+    "120 0 Td",
+    `(${esc("36,810 mi")}) Tj`,
+    "100 0 Td",
+    `(${esc("Certified Vehicle Service Center")}) Tj`,
+    "160 0 Td",
+    `(${esc("Scheduled 35k Service (Verified)")}) Tj`,
+    "ET",
+    // Legal / Security Box at Bottom
+    "0.96 0.97 0.98 rg",
+    "0.88 0.9 0.93 RG",
+    "0.5 w",
+    "40 180 532 80 re",
+    "B",
+    "BT",
+    "/F1 9 Tf",
+    "0.1 0.15 0.25 rg",
+    "52 242 Td",
+    `(${esc("LEGAL & CRYPTOGRAPHIC COMPLIANCE NOTICE")}) Tj`,
+    "ET",
+    "BT",
+    "/F2 7.5 Tf",
+    "0.3 0.35 0.4 rg",
+    "52 226 Td",
+    `(${esc("This official vehicle history record was assembled and verified in accordance with the Federal Anti-Car Theft Act.")}) Tj`,
+    "0 -12 Td",
+    `(${esc("National Motor Vehicle Title Information System (NMVTIS) clearinghouse records are protected under federal law.")}) Tj`,
+    "0 -12 Td",
+    `(${esc(`Tamper-Evident SHA-256 Digest: AA-SEAL-${orderNum.replace(/[^a-zA-Z0-9]/g, "")}-${Date.now().toString(16).toUpperCase()}`)}) Tj`,
+    "0 -12 Td",
+    `(${esc(`Sealed for recipient: ${customerName} (${customerEmail}) on ${generatedTimestamp}`)}) Tj`,
+    "ET",
+    // Document Footer
+    "BT",
+    "/F2 8 Tf",
+    "0.55 0.6 0.65 rg",
+    "180 90 Td",
+    `(${esc("AutoAudit Technologies Inc. - Cryptographic Vehicle Intelligence Engine")}) Tj`,
+    "ET"
+  ];
+  const contentStream = lines.join("\n");
+  const streamBuffer = Buffer.from(contentStream, "utf-8");
+  const objects = [
+    // 1: Catalog
+    "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n",
+    // 2: Pages
+    "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n",
+    // 3: Page (US Letter: 612 x 792 pt)
+    `3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>
+endobj
+`,
+    // 4: Contents Stream
+    `4 0 obj
+<< /Length ${streamBuffer.length} >>
+stream
+${contentStream}
+endstream
+endobj
+`,
+    // 5: Bold Font
+    "5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>\nendobj\n",
+    // 6: Regular Font
+    "6 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n"
+  ];
+  let body = "%PDF-1.4\n";
+  const offsets = [];
+  for (let i = 0; i < objects.length; i++) {
+    offsets.push(Buffer.byteLength(body, "utf-8"));
+    body += objects[i];
+  }
+  const xrefOffset = Buffer.byteLength(body, "utf-8");
+  body += `xref
+0 ${objects.length + 1}
+0000000000 65535 f 
+`;
+  for (const off of offsets) {
+    body += String(off).padStart(10, "0") + " 00000 n \n";
+  }
+  body += `trailer
+<< /Size ${objects.length + 1} /Root 1 0 R >>
+startxref
+${xrefOffset}
+%%EOF
+`;
+  return Buffer.from(body, "utf-8");
+}
+function getReportPdfForOrder(orderId) {
+  const cached = pdfCache.get(orderId);
+  if (cached) {
+    return { buffer: cached.buffer, fileName: cached.fileName };
+  }
+  const order = db.getOrderById(orderId);
+  if (!order) return null;
+  const buffer = generateDummyPdfBuffer(order);
+  const sanitizedVin = (order.vehicle.vinOrReg || "RECORD").replace(/[^a-zA-Z0-9]/g, "_");
+  const fileName = `AutoAudit_Report_${sanitizedVin}_${order.orderNumber}.pdf`;
+  pdfCache.set(orderId, {
+    buffer,
+    fileName,
+    generatedAt: (/* @__PURE__ */ new Date()).toISOString()
+  });
+  return { buffer, fileName };
+}
+async function processOrderReport(order, options) {
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  const sanitizedVin = (order.vehicle.vinOrReg || "RECORD").replace(/[^a-zA-Z0-9]/g, "_");
+  const fileName = `AutoAudit_Report_${sanitizedVin}_${order.orderNumber}.pdf`;
+  const fileUrl = `/api/reports/download/${order.id}`;
+  console.log(`[MockReportGenerator] Auto-generating dummy report PDF for Order #${order.orderNumber} (VIN: ${order.vehicle.vinOrReg})...`);
+  const pdfBuffer = generateDummyPdfBuffer(order);
+  pdfCache.set(order.id, {
+    buffer: pdfBuffer,
+    fileName,
+    generatedAt: now
+  });
+  pdfCache.set(order.orderNumber, {
+    buffer: pdfBuffer,
+    fileName,
+    generatedAt: now
+  });
+  const fileMetadata = {
+    fileName,
+    fileUrl,
+    type: "pdf"
+  };
+  const updatedOrder = db.attachOrderReport(
+    order.id,
+    fileMetadata,
+    "AutoAudit Mock Report Generator Service"
+  ) || order;
+  const targetStatus = options?.targetStatus || "Ready";
+  db.updateOrderStatus(
+    order.id,
+    targetStatus,
+    `Official dummy report PDF generated (${fileName}) by AutoAudit automated intelligence engine.`
+  );
+  updatedOrder.status = targetStatus;
+  updatedOrder.resultFile = {
+    ...fileMetadata,
+    uploadedAt: now,
+    expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1e3).toISOString()
+  };
+  let emailMessageId;
+  if (options?.autoNotifyUser !== false) {
+    try {
+      const emailResult = await sendMockEmail({
+        order: updatedOrder,
+        type: "report_ready",
+        attachments: [
+          {
+            filename: fileName,
+            content: pdfBuffer,
+            contentType: "application/pdf"
+          }
+        ]
+      });
+      emailMessageId = emailResult.messageId;
+      console.log(`[MockReportGenerator] Customer ${order.customer.email} notified via report_ready email (MsgID: ${emailMessageId})`);
+    } catch (err) {
+      console.error("[MockReportGenerator] Error notifying customer via email:", err);
+    }
+  }
+  return {
+    success: true,
+    order: updatedOrder,
+    pdfBuffer,
+    fileName,
+    fileUrl,
+    emailMessageId
+  };
+}
+function handleNewOrderCreation(newOrder) {
+  const isPaid = newOrder.payment?.status === "Paid" || newOrder.status === "Paid / New" || newOrder.status === "Processing";
+  if (!isPaid) {
+    console.log(`[MockReportGenerator] Order #${newOrder.orderNumber} is not marked Paid. Skipping auto-report generation.`);
+    return;
+  }
+  setTimeout(async () => {
+    try {
+      await processOrderReport(newOrder, { autoNotifyUser: true, targetStatus: "Ready" });
+    } catch (err) {
+      console.error(`[MockReportGenerator] Error generating report for new order #${newOrder.orderNumber}:`, err);
+    }
+  }, 1500);
+}
+function getReportGeneratorStatus() {
+  return {
+    service: "AutoAudit Mock Report Generator Service",
+    status: "ACTIVE",
+    mode: "Automatic Trigger on Paid Orders",
+    cachedReportsCount: pdfCache.size,
+    supportedFormats: ["application/pdf"],
+    features: [
+      "Automatic PDF 1.4 generation on Paid status",
+      "Attachment support in Nodemailer mock SMTP dispatch",
+      "Direct browser stream endpoint at /api/reports/download/:id",
+      "Tamper-evident verification seal and NMVTIS findings"
+    ]
   };
 }
 
@@ -1513,6 +2096,7 @@ ordersRouter.post("/", (req, res) => {
     auditLogs
   };
   db.createOrder(newOrder);
+  handleNewOrderCreation(newOrder);
   triggerAutomatedEmailSequence(newOrder, {
     stageDelaySeconds: { stage2: 4, stage3: 8 },
     autoAdvanceOrderStatus: true
@@ -1542,8 +2126,8 @@ ordersRouter.patch("/:id/status", requireAdminAuth, (req, res) => {
       console.error("[SMTP] Error dispatching processing email:", err);
     });
   } else if (status === "Delivered" || status === "Ready") {
-    sendMockEmail({ order: updated, type: "report_ready" }).catch((err) => {
-      console.error("[SMTP] Error dispatching report ready email:", err);
+    processOrderReport(updated, { autoNotifyUser: true, targetStatus: status }).catch((err) => {
+      console.error("[MockReportGenerator] Error auto-generating report on status change:", err);
     });
   }
   res.json({
@@ -1807,6 +2391,130 @@ authRouter.get("/verify", (req, res) => {
   }
 });
 
+// server/routes/analytics.ts
+import { Router as Router8 } from "express";
+var analyticsRouter = Router8();
+analyticsRouter.post("/contact-events", (req, res) => {
+  try {
+    const { channel, source, intent, vin, orderNumber, messagePreview, pageUrl, deviceType } = req.body;
+    if (!source) {
+      res.status(400).json({ success: false, error: "Source is required" });
+      return;
+    }
+    const event = db.logContactEvent({
+      channel: channel || "whatsapp",
+      source,
+      intent: intent || "general_support",
+      vin,
+      orderNumber,
+      messagePreview,
+      pageUrl,
+      deviceType
+    });
+    res.status(201).json({ success: true, data: event });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error?.message || "Failed to log contact event" });
+  }
+});
+analyticsRouter.get("/contact-events", requireAdminAuth, (_req, res) => {
+  try {
+    const events = db.getContactEvents();
+    res.json({ success: true, data: events });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error?.message || "Failed to fetch contact events" });
+  }
+});
+analyticsRouter.get("/contact-summary", requireAdminAuth, (_req, res) => {
+  try {
+    const summary = db.getContactSummary();
+    res.json({ success: true, data: summary });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error?.message || "Failed to generate contact summary" });
+  }
+});
+analyticsRouter.get("/whatsapp-config", (_req, res) => {
+  try {
+    const config = db.getWhatsAppConfig();
+    res.json({ success: true, data: config });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error?.message || "Failed to fetch WhatsApp config" });
+  }
+});
+analyticsRouter.put("/whatsapp-config", requireAdminAuth, (req, res) => {
+  try {
+    const updates = req.body;
+    const updated = db.updateWhatsAppConfig(updates);
+    res.json({ success: true, data: updated, message: "WhatsApp configuration updated successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error?.message || "Failed to update WhatsApp config" });
+  }
+});
+
+// server/routes/reports.ts
+import { Router as Router9 } from "express";
+var reportsRouter = Router9();
+reportsRouter.get("/status", (_req, res) => {
+  res.json({
+    success: true,
+    data: getReportGeneratorStatus()
+  });
+});
+reportsRouter.get("/download/:id", (req, res) => {
+  const { id } = req.params;
+  const order = db.getOrderById(id);
+  if (!order) {
+    res.status(404).json({
+      success: false,
+      error: `Order with identifier "${id}" not found.`
+    });
+    return;
+  }
+  const report = getReportPdfForOrder(order.id);
+  if (!report) {
+    res.status(500).json({
+      success: false,
+      error: `Failed to compile PDF report for order ${order.orderNumber}.`
+    });
+    return;
+  }
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `inline; filename="${report.fileName}"`);
+  res.setHeader("Content-Length", report.buffer.length);
+  res.setHeader("Cache-Control", "public, max-age=86400");
+  res.send(report.buffer);
+});
+reportsRouter.post("/generate/:id", async (req, res) => {
+  const { id } = req.params;
+  const order = db.getOrderById(id);
+  if (!order) {
+    res.status(404).json({
+      success: false,
+      error: `Order with identifier "${id}" not found.`
+    });
+    return;
+  }
+  try {
+    const notifyUser = req.body?.notifyUser !== false;
+    const result = await processOrderReport(order, { autoNotifyUser: notifyUser });
+    res.json({
+      success: true,
+      message: `Report PDF auto-generated successfully for order ${order.orderNumber}.`,
+      data: {
+        fileName: result.fileName,
+        fileUrl: result.fileUrl,
+        orderStatus: result.order.status,
+        emailMessageId: result.emailMessageId
+      }
+    });
+  } catch (err) {
+    console.error("[ReportsRouter] Generation error:", err);
+    res.status(500).json({
+      success: false,
+      error: err?.message || "Failed to generate report."
+    });
+  }
+});
+
 // server.ts
 var __filename = fileURLToPath(import.meta.url);
 var __dirname = path2.dirname(__filename);
@@ -1843,6 +2551,8 @@ async function startServer() {
   app.use("/api/coupons", couponsRouter);
   app.use("/api/emails", emailsRouter);
   app.use("/api/stats", statsRouter);
+  app.use("/api/analytics", analyticsRouter);
+  app.use("/api/reports", reportsRouter);
   app.use("/api", (req, res) => {
     res.status(404).json({
       success: false,

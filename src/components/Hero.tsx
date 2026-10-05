@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
-import { Search, ShieldCheck, CheckCircle2, ArrowRight, Car, Lock, Zap, Shield, FileCheck, Check } from 'lucide-react';
+import { Search, ShieldCheck, CheckCircle2, ArrowRight, Car, Lock, Zap, Shield, FileCheck, Check, FileText } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { WhatsAppButton } from './WhatsAppButton';
 
 interface HeroProps {
   onStartOrderWithVin: (vin: string, isVin: boolean) => void;
   onOpenSample: () => void;
+  onRequestReport?: () => void;
 }
 
 // Standard ISO 3779 VIN: 17 alphanumeric characters, excluding I, O, Q
 const VIN_REGEX = /^[A-HJ-NPR-Z0-9]{17}$/i;
 
-export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample }) => {
+export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, onRequestReport }) => {
   const { showToast } = useToast();
   const [vinInput, setVinInput] = useState('');
   const [inputType, setInputType] = useState<'vin' | 'plate'>('vin');
@@ -231,6 +232,21 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample })
                   />
                 </div>
               </form>
+
+              {/* Customer Intake Specification Link */}
+              {onRequestReport && (
+                <div className="pt-3 border-t border-[#334155]/60 flex items-center justify-between text-xs">
+                  <span className="text-slate-400 text-[11px]">Need custom verification or full customer intake?</span>
+                  <button
+                    type="button"
+                    onClick={onRequestReport}
+                    className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition-colors cursor-pointer"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Request Vehicle Report Form →</span>
+                  </button>
+                </div>
+              )}
 
             </div>
 

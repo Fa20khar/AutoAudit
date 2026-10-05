@@ -1,4 +1,4 @@
-import { Order, ServicePlan, Coupon, EmailNotification, ContactEvent, ContactAnalyticsSummary, WhatsAppConfig } from '../types';
+import { Order, ServicePlan, Coupon, EmailNotification, ContactEvent, ContactAnalyticsSummary, WhatsAppConfig, CustomerIntakeSubmission } from '../types';
 
 /**
  * Custom Error class with HTTP status code and timeout details
@@ -255,6 +255,48 @@ export const api = {
   },
 
   /**
+   * Mock Report Generator API Methods
+   */
+  async getReportGeneratorStatus(timeoutMs = 6000): Promise<any> {
+    const res = await request<{ success: boolean; data: any }>(
+      '/api/reports/status',
+      { method: 'GET' },
+      timeoutMs
+    );
+    return res.data;
+  },
+
+  getReportDownloadUrl(orderIdOrNumber: string): string {
+    return `/api/reports/download/${encodeURIComponent(orderIdOrNumber)}`;
+  },
+
+  async triggerGenerateReport(orderId: string, notifyUser = true, timeoutMs = 12000): Promise<{
+    fileName: string;
+    fileUrl: string;
+    orderStatus: string;
+    emailMessageId?: string;
+  }> {
+    const res = await request<{
+      success: boolean;
+      message: string;
+      data: {
+        fileName: string;
+        fileUrl: string;
+        orderStatus: string;
+        emailMessageId?: string;
+      };
+    }>(
+      `/api/reports/generate/${encodeURIComponent(orderId)}`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ notifyUser })
+      },
+      timeoutMs
+    );
+    return res.data;
+  },
+
+  /**
    * Email Dispatch Notification Logs & Mock SMTP Management
    */
   async getEmails(query?: { email?: string; orderNumber?: string }, timeoutMs = 6000): Promise<EmailNotification[]> {
@@ -462,5 +504,107 @@ export const api = {
       timeoutMs
     );
     return res.data;
+  },
+
+  /**
+   * Customer Intake Form & Auto-Generated Reports
+   */
+  async submitIntakeForm(
+    formData: Partial<CustomerIntakeSubmission> & { autoGenerateReport?: boolean },
+    timeoutMs = 12000
+  ): Promise<{
+    success: boolean;
+    message: string;
+    data: {
+      submission: CustomerIntakeSubmission;
+      order?: Order;
+      reportDownloadUrl?: string;
+      confirmation: {
+        title: string;
+        message: string;
+        tagline: string;
+      };
+    };
+  }> {
+    return await request(
+      '/api/intake',
+      {
+        method: 'POST',
+        body: JSON.stringify(formData)
+      },
+      timeoutMs
+    );
+  },
+
+  async getIntakeSubmissions(
+    filters?: { email?: string; status?: string },
+    timeoutMs = 8000
+  ): Promise<CustomerIntakeSubmission[]> {
+    const params = new URLSearchParams();
+    if (filters?.email) params.append('email', filters.email);
+    if (filters?.status) params.append('status', filters.status);
+
+    const query = params.toString() ? `?${params.toString()}` : '';
+    const res = await request<{ success: boolean; data: CustomerIntakeSubmission[] }>(
+      `/api/intake${query}`,
+      { method: 'GET' },
+      timeoutMs
+    );
+    return res.data;
+  },
+
+  async updateIntakeStatus(
+    id: string,
+    status: string,
+    internalNotes?: string,
+    timeoutMs = 8000
+  ): Promise<CustomerIntakeSubmission> {
+    const res = await request<{ success: boolean; data: CustomerIntakeSubmission }>(
+      `/api/intake/${encodeURIComponent(id)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ status, internalNotes })
+      },
+      timeoutMs
+    );
+    return res.data;
+  },
+
+  async triggerAutoGenerateForIntake(
+    id: string,
+    timeoutMs = 15000
+  ): Promise<{ order: Order; reportUrl: string; fileName: string }> {
+    const res = await request<{
+      success: boolean;
+      data: { order: Order; reportUrl: string; fileName: string };
+    }>(
+      `/api/intake/${encodeURIComponent(id)}/auto-generate`,
+      { method: 'POST' },
+      timeoutMs
+    );
+    return res.data;
+  },
+
+  async generateReport(
+    orderId: string,
+    notifyUser = true,
+    timeoutMs = 15000
+  ): Promise<{ fileName: string; fileUrl: string; orderStatus: string; emailMessageId?: string }> {
+    const res = await request<{
+      success: boolean;
+      data: { fileName: string; fileUrl: string; orderStatus: string; emailMessageId?: string };
+    }>(
+      `/api/reports/generate/${encodeURIComponent(orderId)}`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ notifyUser })
+      },
+      timeoutMs
+    );
+    return res.data;
+  },
+
+  getReportDownloadUrl(orderId: string): string {
+    return `/api/reports/download/${encodeURIComponent(orderId)}`;
   }
 };
