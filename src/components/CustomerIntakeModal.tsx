@@ -14,11 +14,13 @@ import {
   AlertCircle,
   ExternalLink,
   MessageCircle,
+  QrCode,
   Clock,
   Send,
   HelpCircle,
   Check
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import confetti from 'canvas-confetti';
 import { CustomerIntakeSubmission } from '../types';
 import { api } from '../services/api';
@@ -424,20 +426,46 @@ export const CustomerIntakeModal: React.FC<CustomerIntakeModalProps> = ({
                   </div>
                 )}
 
+                {/* WhatsApp QR Code Card */}
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
+                  <div className="p-2.5 bg-white rounded-xl shadow-xs border border-slate-200 shrink-0">
+                    <QRCodeSVG
+                      value={`https://wa.me/923420617217?text=${encodeURIComponent(`Hi AutoAudit, I just submitted an intake report request #${submittedData.submission.submissionNumber} for VIN: ${submittedData.submission.vinOrChassis}.`)}`}
+                      size={120}
+                      level="H"
+                      includeMargin={true}
+                    />
+                  </div>
+                  <div className="space-y-1.5 flex-1">
+                    <div className="flex items-center justify-center sm:justify-start gap-1.5 text-xs font-bold text-slate-900">
+                      <QrCode className="w-4 h-4 text-emerald-600" />
+                      <span>WhatsApp QR Code: 03420617217</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                      Scan with your mobile camera or WhatsApp to track your submission or chat with our auditors immediately.
+                    </p>
+                    <div className="pt-0.5">
+                      <span className="text-[10px] font-mono text-emerald-800 bg-emerald-100/60 py-0.5 px-2 rounded font-semibold inline-block">
+                        Helpline: 03420617217 (+92 342 0617217)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <a
-                    href={`https://wa.me/18005552886?text=${encodeURIComponent(`Hi AutoAudit, I just submitted an intake report request #${submittedData.submission.submissionNumber} for VIN: ${submittedData.submission.vinOrChassis}.`)}`}
+                    href={`https://wa.me/923420617217?text=${encodeURIComponent(`Hi AutoAudit, I just submitted an intake report request #${submittedData.submission.submissionNumber} for VIN: ${submittedData.submission.vinOrChassis}.`)}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="py-2.5 px-4 bg-[#25D366] hover:bg-[#20ba59] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+                    className="py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-sm"
                   >
-                    <MessageCircle className="w-4 h-4" />
-                    Open WhatsApp Support
+                    <QrCode className="w-4 h-4" />
+                    Open WhatsApp Chat (03420617217)
                   </a>
                   <button
                     type="button"
                     onClick={handleResetForm}
-                    className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors"
+                    className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
                   >
                     Submit Another Vehicle Request
                   </button>
@@ -578,8 +606,8 @@ export const CustomerIntakeModal: React.FC<CustomerIntakeModalProps> = ({
                               : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                           }`}
                         >
-                          {method === 'WhatsApp' && <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />}
-                          <span>{method}</span>
+                          {method === 'WhatsApp' && <QrCode className="w-3.5 h-3.5 text-emerald-600" />}
+                          <span>{method === 'WhatsApp' ? 'WhatsApp (QR)' : method}</span>
                         </button>
                       ))}
                     </div>

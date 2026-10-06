@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { 
   MessageSquare, BarChart3, TrendingUp, Users, ArrowUpRight, Search, 
   Filter, Smartphone, Monitor, Globe, ShieldCheck, Check, RefreshCw, 
-  ExternalLink, PhoneCall, Clock, Calendar, Sparkles, Send, Copy, AlertCircle
+  ExternalLink, PhoneCall, Clock, Calendar, Sparkles, Send, Copy, AlertCircle, QrCode
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { WhatsAppIcon, getWhatsAppUrl } from './WhatsAppWidget';
 import { ContactEvent, ContactAnalyticsSummary, WhatsAppConfig, ContactSource, ContactIntent } from '../types';
 import { api } from '../services/api';
@@ -103,8 +104,13 @@ export const ContactAnalyticsTab: React.FC = () => {
     e.preventDefault();
     setIsSavingConfig(true);
     try {
+      let cleanPhone = editPhone.replace(/[^0-9]/g, '');
+      if (cleanPhone.startsWith('03') && cleanPhone.length === 11) {
+        cleanPhone = '92' + cleanPhone.slice(1);
+      }
+
       const updated = await api.updateWhatsAppConfig({
-        phoneNumber: editPhone.replace(/[^0-9]/g, ''),
+        phoneNumber: cleanPhone,
         displayNumber: editDisplayNumber.trim(),
         defaultGreeting: editGreeting.trim(),
         supportAvailability: editAvailability.trim(),
@@ -402,12 +408,12 @@ export const ContactAnalyticsTab: React.FC = () => {
                 type="text"
                 value={editPhone}
                 onChange={(e) => setEditPhone(e.target.value)}
-                placeholder="18005552886"
+                placeholder="923420617217 (or 03420617217)"
                 required
                 className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono text-xs focus:outline-none focus:border-[#25D366]"
               />
               <span className="text-[10px] text-slate-400 block">
-                Numbers only with country code (e.g. 18005552886 for US/CA).
+                Numbers with country code (e.g. 923420617217 or 03420617217 for Pakistan).
               </span>
             </div>
 
@@ -419,7 +425,7 @@ export const ContactAnalyticsTab: React.FC = () => {
                 type="text"
                 value={editDisplayNumber}
                 onChange={(e) => setEditDisplayNumber(e.target.value)}
-                placeholder="+1 (800) 555-AUTO"
+                placeholder="+92 342 0617217"
                 required
                 className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:outline-none focus:border-[#25D366]"
               />
@@ -472,9 +478,23 @@ export const ContactAnalyticsTab: React.FC = () => {
                 )}
               </button>
 
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-500 space-y-1">
-                <span className="font-semibold text-slate-700 block">Live Preview URL:</span>
-                <code className="font-mono text-[10px] break-all text-slate-800 block">
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-600 flex flex-col items-center text-center gap-2">
+                <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                  <QrCode className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Scannable WhatsApp QR Code Preview:</span>
+                </div>
+                <div className="p-2 bg-white rounded-xl border border-slate-200 shadow-xs">
+                  <QRCodeSVG
+                    value={getWhatsAppUrl(editGreeting || 'AutoAudit Support', editPhone)}
+                    size={110}
+                    level="H"
+                    includeMargin={true}
+                  />
+                </div>
+                <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  Phone: {editPhone}
+                </span>
+                <code className="font-mono text-[9.5px] break-all text-slate-600 block mt-1">
                   {getWhatsAppUrl('Preview test', editPhone)}
                 </code>
               </div>

@@ -38,8 +38,9 @@ export const Footer: React.FC<FooterProps> = ({
             <div className="pt-2">
               <WhatsAppButton
                 variant="secondary"
-                label="Chat with Support on WhatsApp"
-                className="bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border-emerald-800 text-xs"
+                label="Scan WhatsApp QR: 03420617217"
+                openQrModal={true}
+                className="bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border-emerald-800 text-xs font-semibold"
               />
             </div>
           </div>
@@ -154,7 +155,8 @@ export const Footer: React.FC<FooterProps> = ({
               <li>
                 <WhatsAppButton
                   variant="text"
-                  label="WhatsApp: +1 (800) 555-AUTO"
+                  openQrModal={true}
+                  label="WhatsApp QR: 03420617217 (+92 342 0617217)"
                   className="hover:text-emerald-400 text-slate-400"
                 />
               </li>

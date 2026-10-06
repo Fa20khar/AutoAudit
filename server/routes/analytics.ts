@@ -65,6 +65,13 @@ analyticsRouter.get('/whatsapp-config', (_req: Request, res: Response) => {
 analyticsRouter.put('/whatsapp-config', requireAdminAuth, (req: Request, res: Response) => {
   try {
     const updates = req.body;
+    if (updates.phoneNumber && typeof updates.phoneNumber === 'string') {
+      let clean = updates.phoneNumber.replace(/[^0-9]/g, '');
+      if (clean.startsWith('03') && clean.length === 11) {
+        clean = '92' + clean.slice(1);
+      }
+      updates.phoneNumber = clean;
+    }
     const updated = db.updateWhatsAppConfig(updates);
     res.json({ success: true, data: updated, message: 'WhatsApp configuration updated successfully' });
   } catch (error: any) {

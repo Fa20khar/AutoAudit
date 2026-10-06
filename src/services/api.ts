@@ -8,8 +8,14 @@ export class ApiError extends Error {
   public isTimeout: boolean;
   public details?: any;
 
-  constructor(message: string, status: number = 500, isTimeout: boolean = false, details?: any) {
-    super(message);
+  constructor(message: any, status: number = 500, isTimeout: boolean = false, details?: any) {
+    let cleanMsg = 'An unexpected API error occurred.';
+    if (typeof message === 'string' && message !== '[object Object]') {
+      cleanMsg = message;
+    } else if (message && typeof message === 'object') {
+      cleanMsg = message.message || message.error || message.details || JSON.stringify(message);
+    }
+    super(cleanMsg);
     this.name = 'ApiError';
     this.status = status;
     this.isTimeout = isTimeout;
@@ -61,10 +67,23 @@ async function request<T>(
     }
 
     if (!response.ok) {
-      const errorMessage =
-        jsonResponse?.error ||
-        jsonResponse?.message ||
-        `Request to ${endpoint} failed with status ${response.status} (${response.statusText})`;
+      let errorMessage = `Request to ${endpoint} failed with status ${response.status} (${response.statusText})`;
+
+      if (typeof jsonResponse?.error === 'string') {
+        errorMessage = jsonResponse.error;
+      } else if (typeof jsonResponse?.error?.message === 'string') {
+        errorMessage = jsonResponse.error.message;
+      } else if (typeof jsonResponse?.message === 'string') {
+        errorMessage = jsonResponse.message;
+      } else if (typeof jsonResponse?.details === 'string') {
+        errorMessage = jsonResponse.details;
+      } else if (jsonResponse?.error && typeof jsonResponse.error === 'object') {
+        try {
+          errorMessage = jsonResponse.error.message || JSON.stringify(jsonResponse.error);
+        } catch {
+          // fallback
+        }
+      }
       
       throw new ApiError(errorMessage, response.status, false, jsonResponse);
     }
@@ -602,9 +621,5 @@ export const api = {
       timeoutMs
     );
     return res.data;
-  },
-
-  getReportDownloadUrl(orderId: string): string {
-    return `/api/reports/download/${encodeURIComponent(orderId)}`;
   }
 };

@@ -456,8 +456,8 @@ export const TESTIMONIALS = [
 ];
 
 export const INITIAL_WHATSAPP_CONFIG: WhatsAppConfig = {
-  phoneNumber: '18005552886',
-  displayNumber: '+1 (800) 555-AUTO',
+  phoneNumber: '923420617217',
+  displayNumber: '+92 342 0617217',
   defaultGreeting: 'Hello AutoAudit Support, I would like assistance with a vehicle history report.',
   supportAvailability: 'Mon–Sun · 24/7 Coverage · Avg Response < 5 Mins',
   active: true,

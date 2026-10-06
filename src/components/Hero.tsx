@@ -130,7 +130,8 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
                 variant="secondary"
                 source="hero"
                 intent="vin_check"
-                label="WhatsApp Chat"
+                label="WhatsApp QR: 03420617217"
+                openQrModal={true}
                 className="px-4 py-3 rounded-[8px] bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 border-emerald-800/80 font-medium text-sm leading-[1.43]"
               />
             </div>
@@ -227,7 +228,8 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
                     variant="text"
                     source="hero"
                     intent="vin_check"
-                    label="Need VIN Help? Chat on WhatsApp"
+                    openQrModal={true}
+                    label="Need VIN Help? WhatsApp QR: 03420617217"
                     className="text-emerald-400 hover:text-emerald-300 font-medium text-[11px]"
                   />
                 </div>

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Menu, X, Shield, ArrowRight } from 'lucide-react';
+import { Menu, X, Shield, ArrowRight, MessageCircle, QrCode } from 'lucide-react';
 import { Logo } from './Logo';
+import { WhatsAppButton } from './WhatsAppButton';
+import { WhatsAppIcon } from './WhatsAppWidget';
 
 interface NavbarProps {
   onOpenOrder: (serviceId?: string) => void;
@@ -34,6 +36,30 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="sticky top-0 z-40 bg-[#0B132B] text-white border-b border-[#1E293B] shadow-md">
+      {/* Top Support Banner featuring WhatsApp QR 03420617217 */}
+      <div className="bg-[#061e14] text-slate-300 text-xs py-1.5 px-4 border-b border-emerald-900/60 hidden sm:block">
+        <div className="max-w-7xl mx-auto flex items-center justify-between text-[11px] sm:text-xs">
+          <div className="flex items-center gap-2">
+            <QrCode className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span className="text-slate-300">Live Support & VIN Verification:</span>
+            <a
+              href="https://wa.me/923420617217?text=Hello%20AutoAudit%20Support%2C%20I%20would%20like%20assistance%20with%20a%20vehicle%20history%20report."
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-emerald-400 font-bold hover:text-emerald-300 flex items-center gap-1 transition-colors group cursor-pointer"
+            >
+              <span>WhatsApp QR: 03420617217</span>
+              <span className="text-slate-400 font-normal group-hover:text-emerald-300">(+92 342 0617217)</span>
+            </a>
+          </div>
+          <div className="flex items-center gap-3 text-slate-400">
+            <span className="text-emerald-400/90 font-medium">⚡ Avg Response &lt; 5 Mins</span>
+            <span className="text-slate-600">•</span>
+            <span>24/7 Dedicated Support</span>
+          </div>
+        </div>
+      </div>
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
         
         {/* Left: AutoAudit logo + wordmark */}
@@ -104,6 +130,16 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             My Reports
           </button>
+
+          {/* WhatsApp Direct QR Support Button: 03420617217 */}
+          <WhatsAppButton
+            variant="secondary"
+            source="navbar"
+            intent="general_support"
+            label="QR: 03420617217"
+            openQrModal={true}
+            className="hidden xl:inline-flex bg-emerald-950/50 hover:bg-emerald-900/70 text-emerald-300 border border-emerald-800/80 px-3 py-2 rounded-[8px] font-semibold text-xs leading-[1.43]"
+          />
 
           {/* Secondary: Admin Portal */}
           <button
@@ -204,6 +240,28 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               Admin Portal
             </button>
+
+            {/* Mobile WhatsApp Quick Support: 03420617217 */}
+            <div className="pt-2 border-t border-[#1E293B] mt-2">
+              <a
+                href="https://wa.me/923420617217?text=Hello%20AutoAudit%20Support%2C%20I%20would%20like%20assistance%20with%20a%20vehicle%20history%20report."
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-between p-3 rounded-xl bg-emerald-950/40 border border-emerald-900/60 text-emerald-300 hover:text-emerald-200 transition-colors"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-[#25D366] text-white flex items-center justify-center shrink-0">
+                    <WhatsAppIcon className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-white">WhatsApp Support</div>
+                    <div className="text-[11px] text-emerald-400 font-mono">03420617217</div>
+                  </div>
+                </div>
+                <span className="text-[11px] bg-emerald-800/60 px-2 py-1 rounded text-white font-medium">Chat</span>
+              </a>
+            </div>
           </nav>
         </div>
       )}

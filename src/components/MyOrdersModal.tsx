@@ -256,8 +256,9 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
           <div className="pt-4 border-t border-[#1E293B] space-y-2">
             <WhatsAppButton
               variant="secondary"
-              label="Live WhatsApp Help"
-              className="w-full justify-center bg-emerald-950/50 text-emerald-300 border-emerald-800/60 hover:bg-emerald-900/60 text-xs py-2"
+              openQrModal={true}
+              label="WhatsApp QR: 03420617217"
+              className="w-full justify-center bg-emerald-950/50 text-emerald-300 border-emerald-800/60 hover:bg-emerald-900/60 text-xs py-2 font-semibold"
             />
             <button
               type="button"
@@ -387,7 +388,8 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
 
                         <WhatsAppButton
                           variant="primary"
-                          label="WhatsApp Help"
+                          label="Scan WhatsApp QR"
+                          openQrModal={true}
                           orderNumber={selectedOrder.orderNumber}
                           vin={selectedOrder.vehicle.vinOrReg}
                           className="px-3.5 py-2.5 rounded-xl font-bold"
@@ -439,7 +441,8 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
                         </span>
                         <WhatsAppButton
                           variant="primary"
-                          label="Ask on WhatsApp"
+                          label="WhatsApp QR Help"
+                          openQrModal={true}
                           orderNumber={selectedOrder.orderNumber}
                           vin={selectedOrder.vehicle.vinOrReg}
                           className="px-3 py-1.5 rounded-xl font-semibold text-xs"
