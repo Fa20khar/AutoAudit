@@ -13,7 +13,6 @@ import {
   Loader2, 
   AlertCircle,
   ExternalLink,
-  MessageCircle,
   QrCode,
   Clock,
   Send,
@@ -25,6 +24,7 @@ import confetti from 'canvas-confetti';
 import { CustomerIntakeSubmission } from '../types';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { downloadReportPdfBlob } from '../utils/pdfGenerator';
 
 interface CustomerIntakeModalProps {
   isOpen: boolean;
@@ -407,11 +407,24 @@ export const CustomerIntakeModal: React.FC<CustomerIntakeModalProps> = ({
                         onClose();
                         onOpenReportDownload(
                           submittedData.submission.vinOrChassis,
-                          `${submittedData.submission.modelYear} ${submittedData.submission.make} ${submittedData.submission.model}`,
+                          `${submittedData.submission.modelYear || ''} ${submittedData.submission.make || ''} ${submittedData.submission.model || ''}`.trim() || 'Vehicle Record',
                           submittedData.orderNumber
                         );
                       } else {
-                        window.open(submittedData.reportDownloadUrl, '_blank');
+                        downloadReportPdfBlob({
+                          orderNumber: submittedData.orderNumber || 'AA-10025',
+                          vehicle: {
+                            vinOrReg: submittedData.submission.vinOrChassis,
+                            year: submittedData.submission.modelYear,
+                            make: submittedData.submission.make,
+                            model: submittedData.submission.model,
+                          },
+                          customer: {
+                            fullName: submittedData.submission.fullName,
+                            email: submittedData.submission.email,
+                          },
+                          serviceName: 'Certified AutoAudit Vehicle Report'
+                        });
                       }
                     }}
                     className="w-full py-3.5 px-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"

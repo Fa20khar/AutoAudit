@@ -9,6 +9,7 @@ import { OrderTrackingProgressBar } from './OrderTrackingProgressBar';
 import { WhatsAppButton } from './WhatsAppButton';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { downloadReportPdfBlob } from '../utils/pdfGenerator';
 
 interface MyOrdersModalProps {
   isOpen: boolean;
@@ -373,13 +374,23 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
 
                         <button
                           type="button"
-                          onClick={() =>
-                            onDownloadReport(
-                              selectedOrder.vehicle.vinOrReg,
-                              `${selectedOrder.vehicle.year} ${selectedOrder.vehicle.make} ${selectedOrder.vehicle.model}`,
-                              selectedOrder.orderNumber
-                            )
-                          }
+                          onClick={() => {
+                            try {
+                              const fileName = downloadReportPdfBlob(selectedOrder);
+                              showToast({
+                                type: 'success',
+                                title: 'Report Downloaded',
+                                message: `Saved official certified PDF: ${fileName}`,
+                                duration: 4500,
+                              });
+                            } catch {
+                              onDownloadReport(
+                                selectedOrder.vehicle.vinOrReg,
+                                `${selectedOrder.vehicle.year} ${selectedOrder.vehicle.make} ${selectedOrder.vehicle.model}`,
+                                selectedOrder.orderNumber
+                              );
+                            }
+                          }}
                           className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-all active:scale-[0.98]"
                         >
                           <Download className="w-3.5 h-3.5" />

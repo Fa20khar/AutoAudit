@@ -1,4 +1,4 @@
-import { Order, OrderFile } from '../../src/types';
+import { Order, OrderFile } from '../../src/types/index';
 import { db } from '../db';
 import { sendMockEmail } from './smtp';
 
@@ -71,14 +71,12 @@ export function generateDummyPdfBuffer(order: Order): Buffer {
     `(${esc(`REF: ${orderNum}`)}) Tj`,
     'ET',
 
-    // Watermark behind content
+    // Watermark behind content (using standard PDF 1.4 text transformation matrix)
     'BT',
     '/F1 32 Tf',
     '0.93 0.94 0.96 rg', // Very faint grey
-    '110 440 Td',
-    '30 rotate',
+    '0.866 0.5 -0.5 0.866 110 440 Tm',
     `(${esc('OFFICIAL AUTOAUDIT REPORT')}) Tj`,
-    '-30 rotate',
     'ET',
 
     // Clean Title Verified Ribbon

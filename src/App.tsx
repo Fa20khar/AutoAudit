@@ -26,13 +26,16 @@ import { ReportDownloadModal } from './components/ReportDownloadModal';
 import { CustomerIntakeModal } from './components/CustomerIntakeModal';
 import { WhatsAppWidget } from './components/WhatsAppWidget';
 import { ToastProvider } from './context/ToastContext';
+import { LanguageProvider } from './context/LanguageContext';
 import { api } from './services/api';
 
 export default function App() {
   return (
-    <ToastProvider>
-      <AppContent />
-    </ToastProvider>
+    <LanguageProvider>
+      <ToastProvider>
+        <AppContent />
+      </ToastProvider>
+    </LanguageProvider>
   );
 }
 
@@ -262,6 +265,7 @@ function AppContent() {
           onSendEmail={handleSendEmail}
           onCloseAdmin={() => setIsAdminView(false)}
           onViewSampleReport={() => setIsSampleModalOpen(true)}
+          onDownloadReport={handleDownloadReport}
         />
       ) : (
         /* Public Customer Experience */

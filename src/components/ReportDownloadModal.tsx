@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { GearboxLoader } from './GearLoader';
 import { X, CheckCircle2, Download, FileText, ArrowRight, Printer, RefreshCw } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
+import { downloadReportPdfBlob } from '../utils/pdfGenerator';
 
 interface ReportDownloadModalProps {
   isOpen: boolean;
@@ -130,91 +131,31 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
   };
 
   const handleDownloadPdf = () => {
-    showToast({
-      type: 'success',
-      title: 'Report Download Started',
-      message: `Downloading official record for VIN: ${vin}. Check your browser downloads or print preview.`,
-      duration: 4500,
-    });
-
     try {
-      const reportHtml = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>AutoAudit Official Report - ${vin}</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 40px; color: #0F172A; max-width: 800px; margin: 0 auto; }
-    .header { border-bottom: 3px solid #0B132B; padding-bottom: 20px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; }
-    .title { font-size: 24px; font-weight: 800; color: #0B132B; }
-    .vin { font-family: monospace; font-size: 16px; color: #2563EB; font-weight: 700; margin-top: 6px; }
-    .badge { display: inline-block; padding: 4px 12px; background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0; border-radius: 6px; font-weight: bold; font-size: 12px; }
-    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin: 20px 0; }
-    .card { background: #F8FAFC; border: 1px solid #E2E8F0; padding: 14px; border-radius: 8px; }
-    .card h4 { margin: 0 0 6px 0; color: #64748B; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
-    .card p { margin: 0; font-size: 15px; font-weight: 700; color: #0F172A; }
-    .section-title { font-size: 15px; font-weight: bold; margin-top: 24px; border-bottom: 1px solid #E2E8F0; padding-bottom: 8px; }
-    .footer { margin-top: 40px; font-size: 11px; color: #94A3B8; text-align: center; border-top: 1px solid #E2E8F0; padding-top: 16px; }
-    .print-watermark { display: none; }
-    @media print {
-      .print-watermark {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        position: fixed !important;
-        top: 48% !important;
-        left: 50% !important;
-        transform: translate(-50%, -50%) rotate(-32deg) !important;
-        font-size: 38pt !important;
-        font-weight: 900 !important;
-        letter-spacing: 0.16em !important;
-        color: rgba(15, 23, 42, 0.045) !important;
-        text-transform: uppercase !important;
-        white-space: nowrap !important;
-        pointer-events: none !important;
-        z-index: 0 !important;
-        border: 3.5px dashed rgba(15, 23, 42, 0.045) !important;
-        padding: 12px 40px !important;
-        border-radius: 16px !important;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="print-watermark" aria-hidden="true">OFFICIAL AUTOAUDIT REPORT</div>
-  <div class="header">
-    <div>
-      <div class="title">AutoAudit™ Vehicle History Report</div>
-      <div class="vin">VIN: ${vin}</div>
-    </div>
-    <div class="badge">CLEAN TITLE VERIFIED</div>
-  </div>
-  <p style="font-size: 13px; color: #334155;"><strong>Vehicle:</strong> ${vehicleTitle} &nbsp;|&nbsp; <strong>Order:</strong> ${orderNumber} &nbsp;|&nbsp; <strong>Generated:</strong> ${new Date().toLocaleDateString()}</p>
-  <div class="grid">
-    <div class="card"><h4>Title Brands</h4><p>0 Brands Reported (Clean Title)</p></div>
-    <div class="card"><h4>Accident History</h4><p>0 Severe Accidents Reported</p></div>
-    <div class="card"><h4>Odometer Status</h4><p>Actual Mileage Certified (No Rollback)</p></div>
-    <div class="card"><h4>Safety Recalls</h4><p>0 Open Safety Recalls</p></div>
-  </div>
-  <div class="section-title">NMVTIS Federal Database Cross-Check</div>
-  <p style="font-size: 13px; color: #475569; line-height: 1.6;">AutoAudit has cross-referenced national motor vehicle title information systems across all 50 states, state insurance clearinghouses, salvage auto auctions, and municipal records. No flood, salvage, hail damage, or lemon brands were identified for this vehicle.</p>
-  <div class="footer">AutoAudit Technologies Inc. · Cryptographically Sealed Document · Order Ref: ${orderNumber}</div>
-</body>
-</html>`;
+      const parts = (vehicleTitle || '').trim().split(' ');
+      const year = parts[0] || '2021';
+      const make = parts[1] || 'Vehicle';
+      const model = parts.slice(2).join(' ') || 'Record';
 
-      const blob = new Blob([reportHtml], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `AutoAudit_Report_${vin}.html`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      const fileName = downloadReportPdfBlob({
+        orderNumber: orderNumber || 'AA-10025',
+        vehicle: {
+          vinOrReg: vin,
+          year,
+          make,
+          model,
+        },
+        serviceName: 'Comprehensive Vehicle History Report',
+      });
+
+      showToast({
+        type: 'success',
+        title: 'Certified PDF Downloaded',
+        message: `Saved official report: ${fileName}`,
+        duration: 4500,
+      });
     } catch {
-      window.print();
+      handleDownloadAsPdf();
     }
   };
 
@@ -371,16 +312,16 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
             ) : (
               /* SUCCESS STATE: Action buttons once generation finishes with subtle CSS transitions */
               <div className="space-y-3 report-ready-transition report-ready-glow">
-                {/* Primary Button: Download as PDF (Triggers Print-to-PDF flow) */}
+                {/* Primary Button: Instant Certified PDF File (.pdf) */}
                 <button
                   type="button"
-                  onClick={handleDownloadAsPdf}
-                  className="w-full py-3 px-4 bg-[#2563EB] hover:bg-blue-500 text-white font-bold text-xs sm:text-sm rounded-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-lg active:scale-[0.99] report-stagger-1 group"
+                  onClick={handleDownloadPdf}
+                  className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm rounded-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-lg active:scale-[0.99] report-stagger-1 group"
                 >
                   <Download className="w-4 h-4 transition-transform group-hover:-translate-y-0.5" />
-                  <span>Download as PDF</span>
-                  <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-blue-700/60 text-blue-100 border border-blue-400/30">
-                    Print to PDF
+                  <span>Download Certified PDF File (.pdf)</span>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-800 text-emerald-100 border border-emerald-400/30">
+                    Instant
                   </span>
                 </button>
 
@@ -388,33 +329,33 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
                 <div className="bg-slate-800/80 border border-slate-700/80 rounded-xl p-3 text-left flex items-start gap-2.5 text-xs text-slate-300">
                   <Printer className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
                   <div className="space-y-0.5">
-                    <p className="font-semibold text-white">Print-to-PDF Instructions:</p>
+                    <p className="font-semibold text-white">Direct Download or Print:</p>
                     <p className="text-[11px] text-slate-400 leading-normal">
-                      In the browser print prompt, select <strong className="text-slate-200">"Save as PDF"</strong> as your destination. AutoAudit's print-friendly CSS automatically formats title brands, odometer checks, and official seal onto paper and PDF without screen UI.
+                      Click the green button above for an instant <strong className="text-slate-200">.pdf</strong> download, or use Print-to-PDF below to format with your local print destination.
                     </p>
                   </div>
                 </div>
 
                 {/* Secondary Actions Row */}
                 <div className="grid grid-cols-2 gap-2 report-stagger-2">
-                  {/* Paper Print Direct Button */}
+                  {/* Print to PDF */}
+                  <button
+                    type="button"
+                    onClick={handleDownloadAsPdf}
+                    className="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-slate-700"
+                  >
+                    <Download className="w-3.5 h-3.5 text-blue-400" />
+                    <span>Print to PDF</span>
+                  </button>
+
+                  {/* Paper Print */}
                   <button
                     type="button"
                     onClick={handlePrintReport}
                     className="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-slate-700"
                   >
-                    <Printer className="w-3.5 h-3.5 text-slate-400" />
+                    <Printer className="w-3.5 h-3.5 text-amber-400" />
                     <span>Paper Print</span>
-                  </button>
-
-                  {/* Standalone HTML File */}
-                  <button
-                    type="button"
-                    onClick={handleDownloadPdf}
-                    className="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-slate-700"
-                  >
-                    <FileText className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>HTML Archive</span>
                   </button>
                 </div>
 

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Menu, X, Shield, ArrowRight, MessageCircle, QrCode } from 'lucide-react';
+import { Menu, X, Shield, ArrowRight, QrCode, Globe } from 'lucide-react';
 import { Logo } from './Logo';
 import { WhatsAppButton } from './WhatsAppButton';
 import { WhatsAppIcon } from './WhatsAppWidget';
+import { useTranslation } from '../context/LanguageContext';
 
 interface NavbarProps {
   onOpenOrder: (serviceId?: string) => void;
@@ -28,6 +29,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onRequestReport,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { language, setLanguage, t } = useTranslation();
 
   const handleNavClick = (sectionId: string) => {
     onScrollTo(sectionId);
@@ -41,21 +43,21 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="max-w-7xl mx-auto flex items-center justify-between text-[11px] sm:text-xs">
           <div className="flex items-center gap-2">
             <QrCode className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span className="text-slate-300">Live Support & VIN Verification:</span>
+            <span className="text-slate-300">{t('topBannerLive')}</span>
             <a
               href="https://wa.me/923420617217?text=Hello%20AutoAudit%20Support%2C%20I%20would%20like%20assistance%20with%20a%20vehicle%20history%20report."
               target="_blank"
               rel="noopener noreferrer"
               className="text-emerald-400 font-bold hover:text-emerald-300 flex items-center gap-1 transition-colors group cursor-pointer"
             >
-              <span>WhatsApp QR: 03420617217</span>
+              <span>{t('whatsAppQr')}</span>
               <span className="text-slate-400 font-normal group-hover:text-emerald-300">(+92 342 0617217)</span>
             </a>
           </div>
           <div className="flex items-center gap-3 text-slate-400">
-            <span className="text-emerald-400/90 font-medium">⚡ Avg Response &lt; 5 Mins</span>
+            <span className="text-emerald-400/90 font-medium">{t('topBannerResponse')}</span>
             <span className="text-slate-600">•</span>
-            <span>24/7 Dedicated Support</span>
+            <span>{t('topBannerCoverage')}</span>
           </div>
         </div>
       </div>
@@ -79,56 +81,90 @@ export const Navbar: React.FC<NavbarProps> = ({
             onClick={() => handleNavClick('hero')}
             className="hover:text-white transition-colors cursor-pointer"
           >
-            Home
+            {t('navHome')}
           </button>
           <button
             onClick={() => handleNavClick('services')}
             className="hover:text-white transition-colors cursor-pointer"
           >
-            Vehicle Reports
+            {t('navVehicleReports')}
           </button>
           <button
             onClick={() => handleNavClick('services')}
             className="hover:text-white transition-colors cursor-pointer"
           >
-            Pricing
+            {t('navPricing')}
           </button>
           <button
             onClick={() => handleNavClick('how-it-works')}
             className="hover:text-white transition-colors cursor-pointer"
           >
-            How It Works
+            {t('navHowItWorks')}
           </button>
           <button
             onClick={onOpenSample}
             className="hover:text-white transition-colors cursor-pointer"
           >
-            Sample Report
+            {t('navSampleReport')}
           </button>
           <button
             onClick={() => handleNavClick('faq')}
             className="hover:text-white transition-colors cursor-pointer"
           >
-            FAQ
+            {t('navFaq')}
           </button>
           {onRequestReport && (
             <button
               onClick={onRequestReport}
               className="text-amber-400 hover:text-amber-300 font-semibold transition-colors cursor-pointer flex items-center gap-1 text-xs px-2.5 py-1 rounded bg-amber-400/10 border border-amber-400/20"
             >
-              <span>Request Vehicle Report</span>
+              <span>{t('navRequestReport')}</span>
             </button>
           )}
         </nav>
 
         {/* Right: Actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          {/* Language Switcher (EN / ES) */}
+          <div
+            className="flex items-center bg-[#0F172A] border border-[#334155] rounded-[8px] p-0.5"
+            title={language === 'en' ? 'Cambiar a Español' : 'Switch to English'}
+          >
+            <div className="pl-1.5 pr-1 text-slate-400">
+              <Globe className="w-3.5 h-3.5 text-blue-400" />
+            </div>
+            <button
+              type="button"
+              onClick={() => setLanguage('en')}
+              className={`px-2 py-1 rounded-[6px] text-xs font-bold transition-all cursor-pointer ${
+                language === 'en'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              aria-label="Switch to English"
+            >
+              EN
+            </button>
+            <button
+              type="button"
+              onClick={() => setLanguage('es')}
+              className={`px-2 py-1 rounded-[6px] text-xs font-bold transition-all cursor-pointer ${
+                language === 'es'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              aria-label="Cambiar a Español"
+            >
+              ES
+            </button>
+          </div>
+
           {/* Customer Portal Quick Track */}
           <button
             onClick={onOpenTrack}
             className="hidden sm:inline-flex text-xs text-slate-300 hover:text-white px-3 py-2 rounded-[8px] hover:bg-[#1E293B] transition-colors cursor-pointer"
           >
-            My Reports
+            {t('navMyReports')}
           </button>
 
           {/* WhatsApp Direct QR Support Button: 03420617217 */}
@@ -147,7 +183,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[8px] text-xs font-semibold text-slate-300 hover:text-white bg-[#0F172A] hover:bg-[#1E293B] border border-[#334155] transition-colors cursor-pointer"
             title="Toggle Admin Fulfillment Console"
           >
-            <span>Admin Portal</span>
+            <span>{t('navAdminPortal')}</span>
             {newOrdersCount > 0 && (
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             )}
@@ -158,7 +194,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             onClick={() => onOpenOrder()}
             className="px-4 sm:px-5 py-2.5 rounded-[8px] text-xs sm:text-sm font-medium bg-[#FB2C36] hover:bg-[#E0242E] text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-all duration-150 flex items-center gap-1.5 cursor-pointer active:scale-95 leading-[1.43]"
           >
-            <span>Get Report</span>
+            <span>{t('navGetReport')}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
 
@@ -177,24 +213,52 @@ export const Navbar: React.FC<NavbarProps> = ({
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
         <div className="lg:hidden bg-[#0B132B] border-b border-[#1E293B] px-4 pt-3 pb-6 space-y-3 animate-fade-in text-sm">
+          {/* Mobile Language Switcher */}
+          <div className="flex items-center justify-between p-3 rounded-xl bg-[#0F172A] border border-[#334155]">
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-300">
+              <Globe className="w-4 h-4 text-blue-400" />
+              <span>{t('languageLabel')}:</span>
+            </div>
+            <div className="flex items-center gap-1 bg-[#1E293B] p-0.5 rounded-lg text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setLanguage('en')}
+                className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
+                  language === 'en' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                English
+              </button>
+              <button
+                type="button"
+                onClick={() => setLanguage('es')}
+                className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
+                  language === 'es' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Español
+              </button>
+            </div>
+          </div>
+
           <nav className="flex flex-col space-y-2 text-slate-300 font-medium">
             <button
               onClick={() => handleNavClick('hero')}
               className="text-left px-3 py-2 rounded-[8px] hover:bg-[#1E293B] hover:text-white transition-colors"
             >
-              Home
+              {t('navHome')}
             </button>
             <button
               onClick={() => handleNavClick('services')}
               className="text-left px-3 py-2 rounded-[8px] hover:bg-[#1E293B] hover:text-white transition-colors"
             >
-              Vehicle Reports & Pricing
+              {t('navVehicleReports')}
             </button>
             <button
               onClick={() => handleNavClick('how-it-works')}
               className="text-left px-3 py-2 rounded-[8px] hover:bg-[#1E293B] hover:text-white transition-colors"
             >
-              How It Works
+              {t('navHowItWorks')}
             </button>
             <button
               onClick={() => {
@@ -203,13 +267,13 @@ export const Navbar: React.FC<NavbarProps> = ({
               }}
               className="text-left px-3 py-2 rounded-[8px] hover:bg-[#1E293B] hover:text-white transition-colors"
             >
-              Sample Report
+              {t('navSampleReport')}
             </button>
             <button
               onClick={() => handleNavClick('faq')}
               className="text-left px-3 py-2 rounded-[8px] hover:bg-[#1E293B] hover:text-white transition-colors"
             >
-              FAQ
+              {t('navFaq')}
             </button>
             {onRequestReport && (
               <button
@@ -219,7 +283,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 }}
                 className="text-left px-3 py-2 rounded-[8px] bg-amber-500/10 text-amber-300 border border-amber-500/30 font-semibold"
               >
-                Request Vehicle Report (Intake Form)
+                {t('navRequestReport')}
               </button>
             )}
             <button
@@ -229,7 +293,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }}
               className="text-left px-3 py-2 rounded-[8px] hover:bg-[#1E293B] hover:text-white transition-colors"
             >
-              Customer Order Portal
+              {t('navCustomerPortal')}
             </button>
             <button
               onClick={() => {
@@ -238,7 +302,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }}
               className="text-left px-3 py-2 rounded-[8px] bg-[#0F172A] text-slate-200 border border-[#334155] font-semibold"
             >
-              Admin Portal
+              {t('navAdminPortal')}
             </button>
 
             {/* Mobile WhatsApp Quick Support: 03420617217 */}
@@ -255,11 +319,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <WhatsAppIcon className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-white">WhatsApp Support</div>
+                    <div className="text-xs font-bold text-white">WhatsApp QR Support</div>
                     <div className="text-[11px] text-emerald-400 font-mono">03420617217</div>
                   </div>
                 </div>
-                <span className="text-[11px] bg-emerald-800/60 px-2 py-1 rounded text-white font-medium">Chat</span>
+                <span className="text-[11px] bg-emerald-800/60 px-2 py-1 rounded text-white font-medium">Scan / Chat</span>
               </a>
             </div>
           </nav>

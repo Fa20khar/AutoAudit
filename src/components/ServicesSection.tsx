@@ -2,6 +2,7 @@ import React from 'react';
 import { ServicePlan } from '../types';
 import { Check, X, Clock, ShieldCheck, ArrowRight, Sparkles } from 'lucide-react';
 import { WhatsAppButton } from './WhatsAppButton';
+import { useTranslation } from '../context/LanguageContext';
 
 interface ServicesSectionProps {
   services: ServicePlan[];
@@ -12,6 +13,8 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
   services,
   onSelectService,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <section id="services" className="py-12 sm:py-16 lg:py-20 bg-white border-b border-[#E2E8F0]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
@@ -19,13 +22,13 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto space-y-2.5 sm:space-y-3 mb-8 sm:mb-12">
           <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[#FB2C36] bg-red-50 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full border border-red-100">
-            SIMPLE PLANS
+            {t('pricingBadge')}
           </span>
           <h2 className="text-2xl xs:text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-[-1.2px] leading-tight">
-            Choose the Right Vehicle Report
+            {t('pricingTitle')}
           </h2>
           <p className="text-xs sm:text-base text-slate-600 leading-[1.6] max-w-xl mx-auto">
-            Simple plans with clear pricing and transparent information.
+            {t('pricingSubtitle')}
           </p>
         </div>
 
@@ -52,7 +55,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
                 {isFeatured && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#FB2C36] text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider px-3 sm:px-3.5 py-0.5 sm:py-1 rounded-full shadow-[0_1px_2px_rgba(0,0,0,0.05)] flex items-center gap-1.5 whitespace-nowrap z-10">
                     <Sparkles className="w-3 h-3 text-amber-300" />
-                    <span>MOST POPULAR</span>
+                    <span>{t('mostPopular')}</span>
                   </div>
                 )}
 

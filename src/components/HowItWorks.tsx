@@ -1,34 +1,37 @@
 import React from 'react';
 import { ShoppingBag, FileText, Lock, MailCheck, ArrowRight } from 'lucide-react';
+import { useTranslation } from '../context/LanguageContext';
 
 interface HowItWorksProps {
   onStartOrder: () => void;
 }
 
 export const HowItWorks: React.FC<HowItWorksProps> = ({ onStartOrder }) => {
+  const { t } = useTranslation();
+
   const steps = [
     {
       num: '01',
-      title: 'Choose Your Report',
-      desc: 'Select the vehicle report or service that fits your purchase needs.',
+      title: t('howStep1Title'),
+      desc: t('howStep1Desc'),
       icon: ShoppingBag,
     },
     {
       num: '02',
-      title: 'Enter Vehicle Details',
-      desc: 'Enter the 17-digit VIN or required vehicle registration information.',
+      title: t('howStep2Title'),
+      desc: t('howStep2Desc'),
       icon: FileText,
     },
     {
       num: '03',
-      title: 'Pay Securely',
-      desc: 'Complete checkout using the available secure, encrypted payment method.',
+      title: t('howStep3Title'),
+      desc: t('howStep3Desc'),
       icon: Lock,
     },
     {
       num: '04',
-      title: 'Receive Your Report',
-      desc: 'Receive the completed result through email and access it through your account when available.',
+      title: t('howStep4Title'),
+      desc: t('howStep4Desc'),
       icon: MailCheck,
     },
   ];
@@ -40,13 +43,13 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({ onStartOrder }) => {
         {/* Section Heading */}
         <div className="text-center max-w-2xl mx-auto space-y-3 mb-16">
           <span className="text-xs font-bold uppercase tracking-wider text-[#FB2C36] bg-red-50 px-3 py-1 rounded-full border border-red-100">
-            SIMPLE PROCESS
+            {t('howBadge')}
           </span>
           <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-[-1.2px]">
-            How AutoAudit Works
+            {t('howTitle')}
           </h2>
           <p className="text-base text-slate-600 leading-[1.6]">
-            Follow four simple steps from entering your vehicle details to receiving your verified report.
+            {t('howSubtitle')}
           </p>
         </div>
 

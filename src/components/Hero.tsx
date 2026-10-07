@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, ShieldCheck, CheckCircle2, ArrowRight, Car, Lock, Zap, Shield, FileCheck, Check, FileText } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
+import { useTranslation } from '../context/LanguageContext';
 import { WhatsAppButton } from './WhatsAppButton';
 
 interface HeroProps {
@@ -14,6 +15,7 @@ const VIN_REGEX = /^[A-HJ-NPR-Z0-9]{17}$/i;
 
 export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, onRequestReport }) => {
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const [vinInput, setVinInput] = useState('');
   const [inputType, setInputType] = useState<'vin' | 'plate'>('vin');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -92,18 +94,18 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
             {/* Eyebrow */}
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0F172A] border border-[#334155] text-xs font-bold text-emerald-400 tracking-wider uppercase">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>VERIFIED VEHICLE INFORMATION</span>
+              <span>{t('heroBadge')}</span>
             </div>
 
             {/* Headline with -1.2px negative letter-spacing per Acme.ai Display MD Strong rule */}
             <h1 className="text-4xl sm:text-5xl lg:text-[54px] font-extrabold tracking-[-1.2px] text-white leading-[1.15] text-balance">
-              Uncover Any Vehicle’s True History{' '}
-              <span className="text-[#10B981]">Before You Buy</span>
+              {t('heroTitle1')}{' '}
+              <span className="text-[#10B981]">{t('heroTitle2')}</span>
             </h1>
 
             {/* Supporting Copy */}
             <p className="text-base sm:text-lg text-slate-300 max-w-2xl leading-[1.6]">
-              Get the information you need to make a more informed vehicle purchase with a clear, easy-to-understand vehicle history report.
+              {t('heroSubtitle')}
             </p>
 
             {/* CTAs */}
@@ -113,7 +115,7 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
                 onClick={() => onStartOrderWithVin('1HGCM82633A004352', true)}
                 className="px-6 py-3 rounded-[8px] text-sm font-medium bg-[#FB2C36] hover:bg-[#E0242E] text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-all duration-150 flex items-center gap-2 cursor-pointer active:scale-95 leading-[1.43]"
               >
-                <span>Get Your Report</span>
+                <span>{t('checkHistoryBtn')}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 
@@ -123,14 +125,14 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
                 className="px-5 py-3 rounded-[8px] text-sm font-medium bg-[#0F172A] hover:bg-[#1E293B] text-slate-200 border border-[#334155] transition-colors flex items-center gap-2 cursor-pointer leading-[1.43]"
               >
                 <FileCheck className="w-4 h-4 text-emerald-400" />
-                <span>View Sample Report</span>
+                <span>{t('viewSampleBtn')}</span>
               </button>
 
               <WhatsAppButton
                 variant="secondary"
                 source="hero"
                 intent="vin_check"
-                label="WhatsApp QR: 03420617217"
+                label={t('needVinHelp')}
                 openQrModal={true}
                 className="px-4 py-3 rounded-[8px] bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 border-emerald-800/80 font-medium text-sm leading-[1.43]"
               />
@@ -150,7 +152,7 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
                       : 'text-slate-400 hover:text-white bg-[#0B132B]'
                   }`}
                 >
-                  By 17-Digit VIN
+                  {t('tabVin')}
                 </button>
                 <button
                   type="button"
@@ -161,7 +163,7 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
                       : 'text-slate-400 hover:text-white bg-[#0B132B]'
                   }`}
                 >
-                  By License / Reg No
+                  {t('tabPlate')}
                 </button>
               </div>
 
@@ -176,7 +178,7 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
                     type="text"
                     value={vinInput}
                     onChange={(e) => handleInputChange(e.target.value)}
-                    placeholder={inputType === 'vin' ? 'Enter 17-digit VIN' : 'Enter Reg Plate'}
+                    placeholder={inputType === 'vin' ? t('vinPlaceholder') : t('platePlaceholder')}
                     maxLength={inputType === 'vin' ? 17 : 20}
                     className="w-full pl-9 sm:pl-10 pr-26 sm:pr-30 py-2.5 sm:py-3 bg-[#0B132B] border border-[#334155] rounded-[8px] text-white placeholder-slate-400 font-mono text-xs sm:text-sm tracking-wider uppercase focus:outline-none focus:border-[#FB2C36] transition-colors"
                   />
@@ -186,7 +188,7 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
                       type="submit"
                       className="h-full px-3 sm:px-4 rounded-[8px] bg-[#FB2C36] hover:bg-[#E0242E] text-white text-xs font-medium flex items-center gap-1 sm:gap-1.5 transition-colors cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.05)] active:scale-95 leading-[1.43]"
                     >
-                      <span>Order Report</span>
+                      <span>{t('orderReportBtn')}</span>
                       <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                     </button>
                   </div>
@@ -200,7 +202,7 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
 
                 {/* Quick Examples */}
                 <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 pt-0.5 sm:pt-1 text-[10px] sm:text-[11px] text-slate-400">
-                  <span className="text-slate-500">Quick Test VINs:</span>
+                  <span className="text-slate-500">{t('quickSampleVins')}</span>
                   <button
                     type="button"
                     onClick={() => handleQuickFill('1HGCM82633A004352')}
@@ -222,14 +224,14 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
                 <div className="pt-2.5 border-t border-[#334155]/60 flex flex-col sm:flex-row items-center justify-between gap-2 text-[10.5px] sm:text-xs text-slate-400">
                   <div className="flex items-center gap-1.5">
                     <Lock className="w-3 h-3 text-emerald-400 shrink-0" />
-                    <span>Secure checkout • Fast email delivery</span>
+                    <span>{t('secureCheckoutNote')}</span>
                   </div>
                   <WhatsAppButton
                     variant="text"
                     source="hero"
                     intent="vin_check"
                     openQrModal={true}
-                    label="Need VIN Help? WhatsApp QR: 03420617217"
+                    label={t('needVinHelp')}
                     className="text-emerald-400 hover:text-emerald-300 font-medium text-[11px]"
                   />
                 </div>
@@ -238,14 +240,14 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
               {/* Customer Intake Specification Link */}
               {onRequestReport && (
                 <div className="pt-3 border-t border-[#334155]/60 flex items-center justify-between text-xs">
-                  <span className="text-slate-400 text-[11px]">Need custom verification or full customer intake?</span>
+                  <span className="text-slate-400 text-[11px]">{t('customIntakePrompt')}</span>
                   <button
                     type="button"
                     onClick={onRequestReport}
                     className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition-colors cursor-pointer"
                   >
                     <FileText className="w-3.5 h-3.5" />
-                    <span>Request Vehicle Report Form →</span>
+                    <span>{t('fillIntakeBtn')} →</span>
                   </button>
                 </div>
               )}

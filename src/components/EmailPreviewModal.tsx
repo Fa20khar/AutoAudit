@@ -5,6 +5,7 @@ import {
   CheckCircle2, FileText, ExternalLink, AlertCircle 
 } from 'lucide-react';
 import { Logo } from './Logo';
+import { downloadReportPdfBlob } from '../utils/pdfGenerator';
 
 interface EmailPreviewModalProps {
   isOpen: boolean;
@@ -199,17 +200,26 @@ AutoAudit Fulfillment Team`;
 
               {/* Download CTA Button */}
               <div className="text-center py-2 space-y-2">
-                <div className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold text-xs shadow-md">
+                <button
+                  type="button"
+                  onClick={() => downloadReportPdfBlob(order)}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl font-bold text-xs shadow-md cursor-pointer transition-colors"
+                >
                   <FileText className="w-4 h-4" />
-                  <span>View & Download Report PDF</span>
-                </div>
+                  <span>Download Official Report PDF</span>
+                </button>
                 <p className="text-[11px] text-slate-400">
-                  Download link expires in 30 days. You can also view it anytime from your AutoAudit account.
+                  Instant certified PDF download. You can also view it anytime from your AutoAudit account.
                 </p>
               </div>
 
               {/* Attached File Preview Card */}
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between text-xs">
+              <button
+                type="button"
+                onClick={() => downloadReportPdfBlob(order)}
+                className="w-full text-left p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg flex items-center justify-between text-xs cursor-pointer transition-colors"
+                title="Click to download attached PDF report"
+              >
                 <div className="flex items-center gap-2.5 truncate">
                   <div className="w-8 h-8 rounded bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
                     <FileText className="w-4 h-4" />
@@ -218,11 +228,11 @@ AutoAudit Fulfillment Team`;
                     <span className="font-semibold text-slate-800 truncate block">
                       {order.resultFile?.fileName || `${order.vehicle.make}-${order.vehicle.vinOrReg}-Report.pdf`}
                     </span>
-                    <span className="text-[10px] text-slate-400">Adobe PDF Document · 1.4 MB</span>
+                    <span className="text-[10px] text-slate-400">Adobe PDF Document · Click to download</span>
                   </div>
                 </div>
                 <Paperclip className="w-4 h-4 text-slate-400 shrink-0 ml-2" />
-              </div>
+              </button>
 
               {/* Email Footer */}
               <div className="pt-4 border-t border-slate-100 text-[11px] text-slate-400 text-center space-y-1">
