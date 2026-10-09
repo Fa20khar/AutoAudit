@@ -4,18 +4,18 @@ import { TESTIMONIALS } from '../data/initialData';
 
 export const TestimonialsSection: React.FC = () => {
   return (
-    <section className="py-20 bg-[#F8FAFC] border-b border-[#E2E8F0]">
+    <section className="py-20 bg-[#07111F] text-white border-b border-[rgba(148,163,184,0.20)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto space-y-3 mb-14">
-          <span className="text-xs font-bold uppercase tracking-wider text-[#2563EB] bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+          <span className="text-xs font-bold uppercase tracking-wider text-[#10B981] bg-[#059669]/20 px-3 py-1 rounded-full border border-[#059669]/40">
             CUSTOMER EXPERIENCES
           </span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
             What Customers Say
           </h2>
-          <p className="text-base text-slate-600 leading-relaxed">
+          <p className="text-base text-[#CBD5E1] leading-relaxed">
             Real feedback from private buyers who checked vehicle histories before purchasing.
           </p>
         </div>
@@ -25,7 +25,7 @@ export const TestimonialsSection: React.FC = () => {
           {TESTIMONIALS.map((t, idx) => (
             <div
               key={idx}
-              className="bg-white rounded-2xl border border-[#E2E8F0] p-6 sm:p-7 shadow-xs flex flex-col justify-between space-y-5"
+              className="bg-[#0F1B2D] rounded-2xl border border-[rgba(148,163,184,0.20)] p-6 sm:p-7 shadow-lg flex flex-col justify-between space-y-5 hover:border-slate-500 transition-colors"
             >
               <div className="space-y-3">
                 {/* 5 Yellow Stars */}
@@ -36,35 +36,35 @@ export const TestimonialsSection: React.FC = () => {
                 </div>
 
                 {/* Review Copy */}
-                <p className="text-xs sm:text-sm text-slate-700 leading-relaxed italic">
+                <p className="text-xs sm:text-sm text-[#CBD5E1] leading-relaxed italic">
                   "{t.content}"
                 </p>
               </div>
 
               {/* Customer Profile & Green Verified Badge */}
-              <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+              <div className="flex items-center justify-between pt-4 border-t border-[rgba(148,163,184,0.20)]">
                 <div className="flex items-center gap-3">
                   {t.avatar ? (
                     <img
                       src={t.avatar}
                       alt={t.name}
                       referrerPolicy="no-referrer"
-                      className="w-10 h-10 rounded-full object-cover border border-slate-200"
+                      className="w-10 h-10 rounded-full object-cover border border-[rgba(148,163,184,0.20)]"
                     />
                   ) : (
-                    <div className="w-10 h-10 rounded-full bg-[#0B132B] text-white flex items-center justify-center font-bold text-xs">
+                    <div className="w-10 h-10 rounded-full bg-[#0B132B] text-white flex items-center justify-center font-bold text-xs border border-[rgba(148,163,184,0.20)]">
                       {t.name.split(' ').map((n) => n[0]).join('')}
                     </div>
                   )}
 
                   <div>
-                    <h4 className="text-xs font-bold text-slate-900">{t.name}</h4>
-                    <p className="text-[11px] text-slate-500">{t.role}</p>
+                    <h4 className="text-xs font-bold text-white">{t.name}</h4>
+                    <p className="text-[11px] text-slate-400">{t.role}</p>
                   </div>
                 </div>
 
-                <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-[#059669] border border-emerald-200">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#059669]" />
+                <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#059669]/20 text-[#10B981] border border-[#059669]/40">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#10B981]" />
                   <span>Verified</span>
                 </div>
               </div>

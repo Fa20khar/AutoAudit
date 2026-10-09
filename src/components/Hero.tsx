@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Search, ShieldCheck, CheckCircle2, ArrowRight, Car, Lock, Zap, Shield, FileCheck, Check, FileText } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, ShieldCheck, CheckCircle2, ArrowRight, Car, Lock, FileCheck, Check, FileText } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from '../context/LanguageContext';
 import { WhatsAppButton } from './WhatsAppButton';
@@ -20,6 +20,37 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
   const [inputType, setInputType] = useState<'vin' | 'plate'>('vin');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isShaking, setIsShaking] = useState(false);
+
+  // Video playback & accessibility states
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [videoError, setVideoError] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Check for prefers-reduced-motion
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+      setPrefersReducedMotion(mediaQuery.matches);
+      const listener = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
+      if (mediaQuery.addEventListener) {
+        mediaQuery.addEventListener('change', listener);
+        return () => mediaQuery.removeEventListener('change', listener);
+      }
+    }
+  }, []);
+
+  // Ensure autoplay runs reliably without throwing unhandled exceptions
+  useEffect(() => {
+    if (videoRef.current && !prefersReducedMotion && !videoError) {
+      const playPromise = videoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
+          // Silent fallback if browser restricts media autoplay
+          console.warn('Hero video autoplay restricted or deferred:', err);
+        });
+      }
+    }
+  }, [prefersReducedMotion, videoError]);
 
   const triggerShake = (message: string) => {
     setErrorMessage(message);
@@ -84,27 +115,65 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
   };
 
   return (
-    <section id="hero" className="relative pt-12 pb-20 overflow-hidden bg-gradient-to-b from-[#0B132B] via-[#0B132B] to-[#0F172A] text-white">
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section id="hero" className="relative pt-12 pb-20 overflow-hidden bg-[#07111F] text-white">
+      {/* 
+        Background Video & Multi-layer Navy/Emerald Vignette Overlay 
+        - Full-width, muted, looping automotive video asset
+        - Graceful fallback to hero poster if video fails or reduced-motion is requested
+        - Dark navy gradient overlay (#07111F) keeps all text WCAG AA compliant
+      */}
+      <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0" aria-hidden="true">
+        {!prefersReducedMotion && !videoError ? (
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            loop
+            playsInline
+            poster="/videos/hero-poster.jpg"
+            onError={() => setVideoError(true)}
+            className="w-full h-full object-cover object-center scale-[1.01]"
+          >
+            <source src="/videos/hero-background.webm" type="video/webm" />
+            <source src="/videos/hero-background.mp4" type="video/mp4" />
+          </video>
+        ) : (
+          <img
+            src="/videos/hero-poster.jpg"
+            alt=""
+            className="w-full h-full object-cover object-center"
+          />
+        )}
+
+        {/* Navy Gradient Overlay for high text contrast (#07111F base) */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#07111F]/92 via-[#07111F]/82 to-[#07111F]" />
+
+        {/* Ambient Emerald Accent & Horizontal Edge Vignette */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,rgba(16,185,129,0.14),transparent_70%)]" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#07111F]/90 via-transparent to-[#07111F]/80" />
+      </div>
+
+      {/* Hero Content Layer */}
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           
-          {/* Left Column: Eyebrow, Headline, Copy, CTAs & Search Panel (Sections 6 & 7) */}
+          {/* Left Column: Eyebrow, Headline, Copy, CTAs & Search Panel */}
           <div className="lg:col-span-7 space-y-6">
             
             {/* Eyebrow */}
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0F172A] border border-[#334155] text-xs font-bold text-emerald-400 tracking-wider uppercase">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0F1B2D] border border-[rgba(148,163,184,0.20)] text-xs font-bold text-[#10B981] tracking-wider uppercase shadow-xs">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#10B981]" />
               <span>{t('heroBadge')}</span>
             </div>
 
-            {/* Headline with -1.2px negative letter-spacing per Acme.ai Display MD Strong rule */}
+            {/* Headline with -1.2px negative letter-spacing */}
             <h1 className="text-4xl sm:text-5xl lg:text-[54px] font-extrabold tracking-[-1.2px] text-white leading-[1.15] text-balance">
               {t('heroTitle1')}{' '}
               <span className="text-[#10B981]">{t('heroTitle2')}</span>
             </h1>
 
             {/* Supporting Copy */}
-            <p className="text-base sm:text-lg text-slate-300 max-w-2xl leading-[1.6]">
+            <p className="text-base sm:text-lg text-[#CBD5E1] max-w-2xl leading-[1.6]">
               {t('heroSubtitle')}
             </p>
 
@@ -113,7 +182,7 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
               <button
                 type="button"
                 onClick={() => onStartOrderWithVin('1HGCM82633A004352', true)}
-                className="px-6 py-3 rounded-[8px] text-sm font-medium bg-[#FB2C36] hover:bg-[#E0242E] text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-all duration-150 flex items-center gap-2 cursor-pointer active:scale-95 leading-[1.43]"
+                className="px-6 py-3 rounded-[8px] text-sm font-semibold bg-[#2563EB] hover:bg-[#1D4ED8] text-white shadow-[0_1px_2px_rgba(0,0,0,0.1)] transition-all duration-150 flex items-center gap-2 cursor-pointer active:scale-95 leading-[1.43]"
               >
                 <span>{t('checkHistoryBtn')}</span>
                 <ArrowRight className="w-4 h-4" />
@@ -122,9 +191,9 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
               <button
                 type="button"
                 onClick={onOpenSample}
-                className="px-5 py-3 rounded-[8px] text-sm font-medium bg-[#0F172A] hover:bg-[#1E293B] text-slate-200 border border-[#334155] transition-colors flex items-center gap-2 cursor-pointer leading-[1.43]"
+                className="px-5 py-3 rounded-[8px] text-sm font-medium bg-[#0F1B2D] hover:bg-[#162740] text-[#CBD5E1] border border-[rgba(148,163,184,0.20)] transition-colors flex items-center gap-2 cursor-pointer leading-[1.43]"
               >
-                <FileCheck className="w-4 h-4 text-emerald-400" />
+                <FileCheck className="w-4 h-4 text-[#10B981]" />
                 <span>{t('viewSampleBtn')}</span>
               </button>
 
@@ -134,22 +203,22 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
                 intent="vin_check"
                 label={t('needVinHelp')}
                 openQrModal={true}
-                className="px-4 py-3 rounded-[8px] bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 border-emerald-800/80 font-medium text-sm leading-[1.43]"
+                className="px-4 py-3 rounded-[8px] bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-700/60 font-medium text-sm leading-[1.43]"
               />
             </div>
 
-            {/* Section 7: Vehicle Search / Order Component (Card radius = 14px) */}
-            <div className={`mt-4 bg-[#0F172A]/90 border border-[#334155] rounded-[14px] p-4 sm:p-5 md:p-6 shadow-2xl backdrop-blur-sm max-w-xl transition-all ${isShaking ? 'animate-shake border-rose-500' : ''}`}>
+            {/* Section 7: Vehicle Search / Order Component */}
+            <div className={`mt-4 bg-[#0F1B2D]/95 border border-[rgba(148,163,184,0.20)] rounded-[14px] p-4 sm:p-5 md:p-6 shadow-2xl backdrop-blur-md max-w-xl transition-all ${isShaking ? 'animate-shake border-rose-500' : ''}`}>
               
-              {/* Tabs (8px button radius) */}
+              {/* Tabs */}
               <div className="flex items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4">
                 <button
                   type="button"
                   onClick={() => setInputType('vin')}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-[8px] transition-colors cursor-pointer leading-[1.43] ${
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-[8px] transition-colors cursor-pointer leading-[1.43] ${
                     inputType === 'vin'
-                      ? 'bg-[#FB2C36] text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)]'
-                      : 'text-slate-400 hover:text-white bg-[#0B132B]'
+                      ? 'bg-[#2563EB] text-white shadow-[0_1px_2px_rgba(0,0,0,0.1)]'
+                      : 'text-[#CBD5E1] hover:text-white bg-[#0B132B]'
                   }`}
                 >
                   {t('tabVin')}
@@ -157,10 +226,10 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
                 <button
                   type="button"
                   onClick={() => setInputType('plate')}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-[8px] transition-colors cursor-pointer leading-[1.43] ${
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-[8px] transition-colors cursor-pointer leading-[1.43] ${
                     inputType === 'plate'
-                      ? 'bg-[#FB2C36] text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)]'
-                      : 'text-slate-400 hover:text-white bg-[#0B132B]'
+                      ? 'bg-[#2563EB] text-white shadow-[0_1px_2px_rgba(0,0,0,0.1)]'
+                      : 'text-[#CBD5E1] hover:text-white bg-[#0B132B]'
                   }`}
                 >
                   {t('tabPlate')}
@@ -180,13 +249,13 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
                     onChange={(e) => handleInputChange(e.target.value)}
                     placeholder={inputType === 'vin' ? t('vinPlaceholder') : t('platePlaceholder')}
                     maxLength={inputType === 'vin' ? 17 : 20}
-                    className="w-full pl-9 sm:pl-10 pr-26 sm:pr-30 py-2.5 sm:py-3 bg-[#0B132B] border border-[#334155] rounded-[8px] text-white placeholder-slate-400 font-mono text-xs sm:text-sm tracking-wider uppercase focus:outline-none focus:border-[#FB2C36] transition-colors"
+                    className="w-full pl-9 sm:pl-10 pr-26 sm:pr-30 py-2.5 sm:py-3 bg-[#0B132B] border border-[rgba(148,163,184,0.20)] rounded-[8px] text-white placeholder-slate-400 font-mono text-xs sm:text-sm tracking-wider uppercase focus:outline-none focus:border-[#10B981] transition-colors"
                   />
 
                   <div className="absolute inset-y-1 sm:inset-y-1.5 right-1 sm:right-1.5">
                     <button
                       type="submit"
-                      className="h-full px-3 sm:px-4 rounded-[8px] bg-[#FB2C36] hover:bg-[#E0242E] text-white text-xs font-medium flex items-center gap-1 sm:gap-1.5 transition-colors cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.05)] active:scale-95 leading-[1.43]"
+                      className="h-full px-3 sm:px-4 rounded-[8px] bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xs font-semibold flex items-center gap-1 sm:gap-1.5 transition-colors cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.1)] active:scale-95 leading-[1.43]"
                     >
                       <span>{t('orderReportBtn')}</span>
                       <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
@@ -201,16 +270,16 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
                 )}
 
                 {/* Quick Examples */}
-                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 pt-0.5 sm:pt-1 text-[10px] sm:text-[11px] text-slate-400">
-                  <span className="text-slate-500">{t('quickSampleVins')}</span>
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 pt-0.5 sm:pt-1 text-[10px] sm:text-[11px] text-[#CBD5E1]">
+                  <span className="text-slate-400">{t('quickSampleVins')}</span>
                   <button
                     type="button"
                     onClick={() => handleQuickFill('1HGCM82633A004352')}
-                    className="text-emerald-400 hover:underline font-mono cursor-pointer"
+                    className="text-[#10B981] hover:underline font-mono cursor-pointer"
                   >
                     1HGCM82633A004352
                   </button>
-                  <span aria-hidden="true">·</span>
+                  <span aria-hidden="true" className="text-slate-600">·</span>
                   <button
                     type="button"
                     onClick={() => handleQuickFill('WAUZZZF45LA019283')}
@@ -221,9 +290,9 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
                 </div>
 
                 {/* Trust Message & WhatsApp Quick Link Below */}
-                <div className="pt-2.5 border-t border-[#334155]/60 flex flex-col sm:flex-row items-center justify-between gap-2 text-[10.5px] sm:text-xs text-slate-400">
+                <div className="pt-2.5 border-t border-[rgba(148,163,184,0.15)] flex flex-col sm:flex-row items-center justify-between gap-2 text-[10.5px] sm:text-xs text-[#CBD5E1]">
                   <div className="flex items-center gap-1.5">
-                    <Lock className="w-3 h-3 text-emerald-400 shrink-0" />
+                    <Lock className="w-3 h-3 text-[#10B981] shrink-0" />
                     <span>{t('secureCheckoutNote')}</span>
                   </div>
                   <WhatsAppButton
@@ -232,19 +301,19 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
                     intent="vin_check"
                     openQrModal={true}
                     label={t('needVinHelp')}
-                    className="text-emerald-400 hover:text-emerald-300 font-medium text-[11px]"
+                    className="text-[#10B981] hover:text-emerald-300 font-medium text-[11px]"
                   />
                 </div>
               </form>
 
               {/* Customer Intake Specification Link */}
               {onRequestReport && (
-                <div className="pt-3 border-t border-[#334155]/60 flex items-center justify-between text-xs">
+                <div className="pt-3 border-t border-[rgba(148,163,184,0.15)] flex items-center justify-between text-xs">
                   <span className="text-slate-400 text-[11px]">{t('customIntakePrompt')}</span>
                   <button
                     type="button"
                     onClick={onRequestReport}
-                    className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
                   >
                     <FileText className="w-3.5 h-3.5" />
                     <span>{t('fillIntakeBtn')} →</span>
@@ -256,12 +325,12 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
 
           </div>
 
-          {/* Right Column: Hero Right — Vehicle Report Preview (Section 8) (Card radius = 14px) */}
+          {/* Right Column: Hero Right — Vehicle Report Preview */}
           <div className="lg:col-span-5">
-            <div className="bg-[#0F172A] border border-[#334155] rounded-[14px] p-5 sm:p-6 shadow-2xl space-y-5">
+            <div className="bg-[#0F1B2D]/95 border border-[rgba(148,163,184,0.20)] rounded-[14px] p-5 sm:p-6 shadow-2xl space-y-5 backdrop-blur-md">
               
               {/* Header with Title and Verified Badge */}
-              <div className="flex items-center justify-between pb-3.5 border-b border-[#334155]">
+              <div className="flex items-center justify-between pb-3.5 border-b border-[rgba(148,163,184,0.20)]">
                 <div className="flex items-center gap-2">
                   <Car className="w-4 h-4 text-slate-400" />
                   <span className="font-bold text-sm text-slate-200">Vehicle History Report</span>
@@ -280,13 +349,13 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
                 <p className="text-base font-bold text-white font-mono mt-0.5">
                   VIN: 1HGCM82633A004352
                 </p>
-                <p className="text-xs text-slate-300 mt-0.5">
+                <p className="text-xs text-[#CBD5E1] mt-0.5">
                   2020 Honda Accord Touring 2.0T
                 </p>
               </div>
 
               {/* Generic Premium Car Silhouette */}
-              <div className="relative h-28 bg-[#0B132B] rounded-[8px] border border-[#334155]/80 flex items-center justify-center overflow-hidden">
+              <div className="relative h-28 bg-[#0B132B] rounded-[8px] border border-[rgba(148,163,184,0.20)] flex items-center justify-center overflow-hidden">
                 <svg
                   viewBox="0 0 200 70"
                   fill="none"
@@ -318,11 +387,11 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
                 </span>
               </div>
 
-              {/* 4 Metric Cards with Green Check Indicators (8px radius) */}
+              {/* 4 Metric Cards with Green Check Indicators */}
               <div className="grid grid-cols-2 gap-3 text-xs">
                 
                 {/* Metric 1 */}
-                <div className="p-3 bg-[#0B132B] rounded-[8px] border border-[#334155]/80 space-y-1">
+                <div className="p-3 bg-[#0B132B] rounded-[8px] border border-[rgba(148,163,184,0.20)] space-y-1">
                   <span className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase block">
                     TITLE RECORD
                   </span>
@@ -333,7 +402,7 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
                 </div>
 
                 {/* Metric 2 */}
-                <div className="p-3 bg-[#0B132B] rounded-[8px] border border-[#334155]/80 space-y-1">
+                <div className="p-3 bg-[#0B132B] rounded-[8px] border border-[rgba(148,163,184,0.20)] space-y-1">
                   <span className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase block">
                     REPORTED ACCIDENTS
                   </span>
@@ -344,7 +413,7 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
                 </div>
 
                 {/* Metric 3 */}
-                <div className="p-3 bg-[#0B132B] rounded-[8px] border border-[#334155]/80 space-y-1">
+                <div className="p-3 bg-[#0B132B] rounded-[8px] border border-[rgba(148,163,184,0.20)] space-y-1">
                   <span className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase block">
                     ODOMETER TREND
                   </span>
@@ -355,7 +424,7 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
                 </div>
 
                 {/* Metric 4 */}
-                <div className="p-3 bg-[#0B132B] rounded-[8px] border border-[#334155]/80 space-y-1">
+                <div className="p-3 bg-[#0B132B] rounded-[8px] border border-[rgba(148,163,184,0.20)] space-y-1">
                   <span className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase block">
                     SALVAGE STATUS
                   </span>
@@ -372,10 +441,10 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
                 <button
                   type="button"
                   onClick={onOpenSample}
-                  className="text-xs font-semibold text-slate-300 hover:text-white inline-flex items-center gap-1.5 transition-colors cursor-pointer group"
+                  className="text-xs font-semibold text-[#CBD5E1] hover:text-white inline-flex items-center gap-1.5 transition-colors cursor-pointer group"
                 >
                   <span>Sample Report Preview</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform text-[#10B981]" />
                 </button>
               </div>
 

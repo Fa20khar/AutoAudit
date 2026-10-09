@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GearboxLoader } from './GearLoader';
-import { X, CheckCircle2, Download, FileText, ArrowRight, Printer, RefreshCw } from 'lucide-react';
+import { X, CheckCircle2, Download, FileText, ArrowRight, Printer, RefreshCw, ShieldCheck, MessageCircle, Lock } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { downloadReportPdfBlob } from '../utils/pdfGenerator';
 
@@ -319,11 +319,35 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
                   className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm rounded-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-lg active:scale-[0.99] report-stagger-1 group"
                 >
                   <Download className="w-4 h-4 transition-transform group-hover:-translate-y-0.5" />
-                  <span>Download Certified PDF File (.pdf)</span>
+                  <span>Download Certified PDF (Admin Only)</span>
                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-800 text-emerald-100 border border-emerald-400/30">
-                    Instant
+                    Admin Dispatch
                   </span>
                 </button>
+
+                {/* Admin Fulfillment & Payment Protection Policy Banner */}
+                <div className="p-3 bg-blue-950/70 border border-blue-500/40 rounded-xl text-left text-xs space-y-1.5 shadow-inner">
+                  <div className="flex items-center gap-1.5 font-bold text-blue-300 text-[11px]">
+                    <ShieldCheck className="w-4 h-4 text-blue-400 shrink-0" />
+                    <span>Admin Fulfillment & Payment Protection Notice</span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    Client self-downloads on the public website are disabled to prevent customers taking reports without paying. Download this certified PDF and dispatch it directly to the customer via WhatsApp or Email once you have verified their payment.
+                  </p>
+                </div>
+
+                {/* WhatsApp Payment & Delivery Link */}
+                <a
+                  href={`https://wa.me/923420617217?text=${encodeURIComponent(
+                    `Hi, AutoAudit Administration here regarding order #${orderNumber} for ${vehicleTitle} (VIN: ${vin}). Your official report has been verified. Please confirm payment so we can dispatch your certified PDF document.`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-2.5 px-4 bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  <span>Message Customer on WhatsApp (Payment & Report)</span>
+                </a>
 
                 {/* Print-to-PDF browser guidance tip */}
                 <div className="bg-slate-800/80 border border-slate-700/80 rounded-xl p-3 text-left flex items-start gap-2.5 text-xs text-slate-300">

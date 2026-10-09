@@ -6,7 +6,7 @@ import {
   AlertTriangle, RefreshCw, X, ShieldAlert, Check, Plus, Edit2, Trash2,
   Users, FileCheck, CreditCard, ChevronRight, LogOut, ArrowLeft, ShieldCheck, Lock,
   Database, Copy, ExternalLink, CheckCheck, Ban, CheckSquare, Square, XCircle,
-  Loader2, Sparkles, QrCode, Download, Phone, MessageCircle
+  Loader2, Sparkles, QrCode, Download, Phone, MessageCircle, Filter, SlidersHorizontal
 } from 'lucide-react';
 import { EmailPreviewModal } from './EmailPreviewModal';
 import { useToast } from '../context/ToastContext';
@@ -64,6 +64,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [selectedOrderId, setSelectedOrderId] = useState<string>(orders[0]?.id || '');
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchField, setSearchField] = useState<'all' | 'vin' | 'customer' | 'orderNumber'>('all');
+  const [orderSortBy, setOrderSortBy] = useState<'newest' | 'oldest' | 'amount-high' | 'amount-low'>('newest');
 
   // Customer Intake Submissions State (Google Forms Specification Queue)
   const [intakeSubmissions, setIntakeSubmissions] = useState<CustomerIntakeSubmission[]>([]);
@@ -333,17 +335,65 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     .filter((o) => o.status !== 'Refunded' && o.status !== 'Cancelled')
     .reduce((sum, o) => sum + o.total, 0);
 
-  // Filtered orders list
-  const filteredOrders = orders.filter((o) => {
-    const matchesStatus = statusFilter === 'All' || o.status === statusFilter;
-    const q = searchQuery.toLowerCase();
-    const matchesSearch =
-      o.orderNumber.toLowerCase().includes(q) ||
-      o.vehicle.vinOrReg.toLowerCase().includes(q) ||
-      o.customer.fullName.toLowerCase().includes(q) ||
-      o.customer.email.toLowerCase().includes(q);
-    return matchesStatus && matchesSearch;
-  });
+  // Dynamic Status Counts for filtering badges
+  const statusCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {
+      All: orders.length,
+      'Paid / New': 0,
+      Processing: 0,
+      Ready: 0,
+      Delivered: 0,
+      Completed: 0,
+      Cancelled: 0,
+      Refunded: 0,
+    };
+    orders.forEach((o) => {
+      if (counts[o.status] !== undefined) {
+        counts[o.status]++;
+      }
+    });
+    return counts;
+  }, [orders]);
+
+  // Filtered orders list with dynamic multi-field search and sorting
+  const filteredOrders = React.useMemo(() => {
+    const list = orders.filter((o) => {
+      const matchesStatus = statusFilter === 'All' || o.status === statusFilter;
+      const q = searchQuery.trim().toLowerCase();
+      if (!q) return matchesStatus;
+
+      let matchesSearch = false;
+      if (searchField === 'all') {
+        matchesSearch =
+          o.orderNumber.toLowerCase().includes(q) ||
+          o.vehicle.vinOrReg.toLowerCase().includes(q) ||
+          o.customer.fullName.toLowerCase().includes(q) ||
+          o.customer.email.toLowerCase().includes(q) ||
+          (!!o.customer.phone && o.customer.phone.toLowerCase().includes(q)) ||
+          o.vehicle.make.toLowerCase().includes(q) ||
+          o.vehicle.model.toLowerCase().includes(q);
+      } else if (searchField === 'vin') {
+        matchesSearch = o.vehicle.vinOrReg.toLowerCase().includes(q);
+      } else if (searchField === 'customer') {
+        matchesSearch =
+          o.customer.fullName.toLowerCase().includes(q) ||
+          o.customer.email.toLowerCase().includes(q) ||
+          (!!o.customer.phone && o.customer.phone.toLowerCase().includes(q));
+      } else if (searchField === 'orderNumber') {
+        matchesSearch = o.orderNumber.toLowerCase().includes(q);
+      }
+
+      return matchesStatus && matchesSearch;
+    });
+
+    return [...list].sort((a, b) => {
+      if (orderSortBy === 'newest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      if (orderSortBy === 'oldest') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      if (orderSortBy === 'amount-high') return b.total - a.total;
+      if (orderSortBy === 'amount-low') return a.total - b.total;
+      return 0;
+    });
+  }, [orders, statusFilter, searchQuery, searchField, orderSortBy]);
 
   // Filtered intake submissions list (Google Forms Specification Queue)
   const filteredIntake = intakeSubmissions.filter((sub) => {
@@ -705,6 +755,74 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       title: 'Email Dispatched',
       message: `Report sent to ${currentOrder.customer.email}.`,
       duration: 4000,
+    });
+  };
+
+  // Action: Mark as Paid & Delivered (Admin payment verification protocol)
+  const handleMarkPaidAndDelivered = (targetOrder: Order) => {
+    const now = new Date().toISOString();
+    const updated: Order = {
+      ...targetOrder,
+      status: 'Delivered',
+      payment: {
+        ...targetOrder.payment,
+        status: 'Paid',
+        paidAt: now
+      },
+      updatedAt: now,
+      auditLogs: [
+        ...(targetOrder.auditLogs || []),
+        {
+          id: `log-${Date.now()}-admin-paid`,
+          timestamp: now,
+          actor: 'Administrator',
+          action: 'Payment Verified & Order Delivered',
+          details: `Admin verified customer payment ($${targetOrder.total.toFixed(2)}) and dispatched official certified report.`
+        }
+      ]
+    };
+    onUpdateOrder(updated);
+    showToast({
+      type: 'success',
+      title: 'Order Paid & Delivered',
+      message: `Order #${targetOrder.orderNumber} confirmed paid and marked Delivered.`,
+      duration: 4500,
+    });
+  };
+
+  // Action: Toggle Payment Status (Payment protection flow)
+  const handleTogglePaymentStatus = (targetOrder: Order) => {
+    const isNowPaid = targetOrder.payment.status !== 'Paid';
+    const now = new Date().toISOString();
+    const updated: Order = {
+      ...targetOrder,
+      payment: {
+        ...targetOrder.payment,
+        status: isNowPaid ? 'Paid' : 'Pending',
+        paidAt: isNowPaid ? now : undefined
+      },
+      updatedAt: now,
+      auditLogs: [
+        ...(targetOrder.auditLogs || []),
+        {
+          id: `log-${Date.now()}-payment-${isNowPaid ? 'paid' : 'pending'}`,
+          timestamp: now,
+          actor: 'Administrator',
+          action: isNowPaid ? 'Payment Confirmed' : 'Payment Marked Pending',
+          details: isNowPaid 
+            ? `Admin marked customer payment of $${targetOrder.total.toFixed(2)} as received. Report ready for dispatch.` 
+            : 'Admin reverted payment status to pending.'
+        }
+      ]
+    };
+    onUpdateOrder(updated);
+    showToast({
+      type: isNowPaid ? 'success' : 'info',
+      title: isNowPaid ? 'Payment Confirmed' : 'Payment Marked Pending',
+      message: isNowPaid 
+        ? `Order #${targetOrder.orderNumber} payment marked as Paid. You may now download and dispatch the PDF report.`
+        : `Order #${targetOrder.orderNumber} reverted to Pending Payment. Report on hold.`,
+      duration: 4500,
     });
   };
 
@@ -1199,34 +1317,157 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           {(activeTab === 'orders' || activeTab === 'reports') && (
             <div className="space-y-6">
               
-              {/* Filter & Search Bar */}
-              <div className="bg-white p-4 rounded-xl border border-[#E2E8F0] flex flex-col sm:flex-row gap-3 items-center justify-between shadow-xs">
-                <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                  {['All', 'Paid / New', 'Processing', 'Ready', 'Delivered', 'Completed', 'Cancelled', 'Refunded'].map((status) => (
-                    <button
-                      key={status}
-                      type="button"
-                      onClick={() => setStatusFilter(status)}
-                      className={`px-3 py-1.5 rounded-lg font-semibold cursor-pointer transition-colors ${
-                        statusFilter === status
-                          ? 'bg-[#0B132B] text-white'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      }`}
-                    >
-                      {status}
-                    </button>
-                  ))}
+              {/* Dynamic Filter & Search Control Panel */}
+              <div className="bg-white p-4 rounded-xl border border-[#E2E8F0] shadow-xs space-y-3.5">
+                {/* Row 1: Search Input + Field Selector + Sorter + Quick Clear */}
+                <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+                  {/* Left: Input with embedded search icon and clear button */}
+                  <div className="relative flex-1 max-w-lg">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder={
+                        searchField === 'vin'
+                          ? 'Search by VIN or Chassis Number (e.g. 1HECM82633...)'
+                          : searchField === 'customer'
+                          ? 'Search by Customer Name, Email, or Phone...'
+                          : searchField === 'orderNumber'
+                          ? 'Search by Order Number (e.g. AA-10025)...'
+                          : 'Dynamic search by VIN, Customer name, email, or Order #...'
+                      }
+                      className="w-full pl-9 pr-9 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:border-[#2563EB] focus:bg-white transition-all shadow-inner"
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200 transition-colors cursor-pointer"
+                        title="Clear search query"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Right: Search Field Selector & Sorter */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Search Field Target */}
+                    <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-[11px] border border-slate-200">
+                      <span className="text-slate-400 px-1.5 font-semibold flex items-center gap-1">
+                        <Filter className="w-3 h-3" />
+                        <span className="hidden sm:inline">Filter in:</span>
+                      </span>
+                      {(
+                        [
+                          { id: 'all', label: 'All Fields' },
+                          { id: 'vin', label: 'VIN' },
+                          { id: 'customer', label: 'Customer' },
+                          { id: 'orderNumber', label: 'Order #' },
+                        ] as const
+                      ).map((tab) => (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setSearchField(tab.id)}
+                          className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
+                            searchField === tab.id
+                              ? 'bg-white text-blue-700 shadow-xs border border-blue-200'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Sorter */}
+                    <div className="flex items-center gap-1 text-[11px]">
+                      <select
+                        value={orderSortBy}
+                        onChange={(e) => setOrderSortBy(e.target.value as any)}
+                        className="py-1.5 px-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-700 font-semibold focus:outline-none focus:border-blue-600 cursor-pointer"
+                      >
+                        <option value="newest">Newest First</option>
+                        <option value="oldest">Oldest First</option>
+                        <option value="amount-high">Amount: High to Low</option>
+                        <option value="amount-low">Amount: Low to High</option>
+                      </select>
+                    </div>
+
+                    {/* Reset all filters */}
+                    {(searchQuery || statusFilter !== 'All' || searchField !== 'all') && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery('');
+                          setStatusFilter('All');
+                          setSearchField('all');
+                        }}
+                        className="px-2.5 py-1.5 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-xl font-bold transition-colors cursor-pointer flex items-center gap-1 border border-rose-200"
+                        title="Reset all search filters"
+                      >
+                        <X className="w-3 h-3" />
+                        <span>Reset</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                <div className="relative w-full sm:w-72">
-                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search order, VIN, customer..."
-                    className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:border-[#2563EB]"
-                  />
+                {/* Row 2: Status Filter Tabs with Live Dynamic Count Badges */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100 text-xs">
+                  {['All', 'Paid / New', 'Processing', 'Ready', 'Delivered', 'Completed', 'Cancelled', 'Refunded'].map((status) => {
+                    const count = statusCounts[status] || 0;
+                    const isActive = statusFilter === status;
+                    return (
+                      <button
+                        key={status}
+                        type="button"
+                        onClick={() => setStatusFilter(status)}
+                        className={`px-3 py-1.5 rounded-lg font-semibold cursor-pointer transition-all flex items-center gap-1.5 ${
+                          isActive
+                            ? 'bg-[#0B132B] text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        <span>{status}</span>
+                        <span
+                          className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+                            isActive
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-slate-200 text-slate-700'
+                          }`}
+                        >
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Live Match Summary Strip */}
+                <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 pt-0.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span>
+                      Showing <strong className="text-slate-900 font-bold">{filteredOrders.length}</strong> of {orders.length} orders
+                    </span>
+                    {searchQuery && (
+                      <span className="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-md font-medium">
+                        Matching &quot;{searchQuery}&quot; ({searchField === 'all' ? 'All Fields' : searchField.toUpperCase()})
+                      </span>
+                    )}
+                    {statusFilter !== 'All' && (
+                      <span className="bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-md font-medium">
+                        Status: {statusFilter}
+                      </span>
+                    )}
+                  </div>
+                  {filteredOrders.length === 0 && (
+                    <span className="text-rose-600 font-semibold">
+                      No matching orders found. Try adjusting your search term.
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -1408,16 +1649,61 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               {new Date(ord.createdAt).toLocaleDateString()}
                             </td>
                             <td className="py-3 px-4 text-right">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedOrderId(ord.id);
-                                }}
-                                className="px-2.5 py-1 rounded bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-[11px] font-semibold cursor-pointer"
-                              >
-                                Manage
-                              </button>
+                              <div className="flex items-center justify-end gap-1.5">
+                                {/* Quick Admin Download PDF */}
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    try {
+                                      const fileName = downloadReportPdfBlob(ord);
+                                      showToast({
+                                        type: 'success',
+                                        title: 'Report Downloaded by Admin',
+                                        message: `Downloaded official certified PDF: ${fileName}`,
+                                        duration: 4000,
+                                      });
+                                    } catch {
+                                      showToast({
+                                        type: 'error',
+                                        title: 'Download Failed',
+                                        message: 'Could not generate PDF. Please open order to preview.',
+                                        duration: 4000,
+                                      });
+                                    }
+                                  }}
+                                  className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 cursor-pointer transition-colors"
+                                  title="Download certified PDF report to admin computer"
+                                >
+                                  <Download className="w-3.5 h-3.5" />
+                                </button>
+
+                                {/* Quick WhatsApp Customer */}
+                                <a
+                                  href={`https://wa.me/${(ord.customer.phone || '923420617217').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                                    `Hi ${ord.customer.fullName}, AutoAudit Administration here regarding your vehicle report request #${ord.orderNumber} for ${ord.vehicle.year} ${ord.vehicle.make} ${ord.vehicle.model} (VIN: ${ord.vehicle.vinOrReg}). Total amount: $${ord.total.toFixed(2)} USD. Please confirm payment so our admin can release your certified PDF report.`
+                                  )}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="p-1.5 rounded-lg bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] border border-[#25D366]/30 cursor-pointer transition-colors"
+                                  title="Send WhatsApp payment invoice to customer"
+                                >
+                                  <MessageCircle className="w-3.5 h-3.5" />
+                                </a>
+
+                                {/* Manage Order */}
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedOrderId(ord.id);
+                                  }}
+                                  className="px-2.5 py-1 rounded bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-[11px] font-semibold cursor-pointer"
+                                >
+                                  Manage
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -1557,56 +1843,99 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     
                     {/* Payment & Service Summary */}
                     <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-4 space-y-2">
-                      <span className="font-bold text-slate-900 uppercase tracking-wider text-[11px] block">
-                        Service & Payment Status
-                      </span>
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-900 uppercase tracking-wider text-[11px] block">
+                          Service & Payment Status
+                        </span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          currentOrder.payment.status === 'Paid'
+                            ? 'bg-emerald-50 text-[#059669] border border-emerald-200'
+                            : 'bg-amber-50 text-amber-700 border border-amber-200'
+                        }`}>
+                          {currentOrder.payment.status === 'Paid' ? 'PAID / VERIFIED' : 'PENDING PAYMENT'}
+                        </span>
+                      </div>
                       <div className="space-y-1 text-slate-700">
                         <p><strong>Plan:</strong> {currentOrder.serviceName}</p>
-                        <p><strong>Payment Status:</strong> <span className="text-[#059669] font-bold">{currentOrder.payment.status}</span></p>
+                        <p><strong>Payment Status:</strong> <span className={currentOrder.payment.status === 'Paid' ? 'text-[#059669] font-bold' : 'text-amber-600 font-bold'}>{currentOrder.payment.status}</span></p>
                         <p><strong>Total Amount:</strong> <span className="font-mono font-bold text-slate-900">${currentOrder.total.toFixed(2)} USD</span></p>
                         <p><strong>Transaction Ref:</strong> <span className="font-mono text-slate-500">{currentOrder.payment.gatewayRef || 'None'}</span></p>
                       </div>
+
+                      {/* Admin Payment Toggle Action */}
+                      <div className="pt-2 border-t border-slate-200">
+                        <button
+                          type="button"
+                          onClick={() => handleTogglePaymentStatus(currentOrder)}
+                          className={`w-full py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs ${
+                            currentOrder.payment.status === 'Paid'
+                              ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300'
+                              : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                          }`}
+                        >
+                          {currentOrder.payment.status === 'Paid' ? (
+                            <>
+                              <Clock className="w-3.5 h-3.5" />
+                              <span>Revert to Pending Payment</span>
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Mark Payment Received & Verified (${currentOrder.total.toFixed(2)})</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Report File / Result URL */}
-                    <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-4 space-y-2">
+                    {/* Report File / Result URL & Admin Dispatch Actions */}
+                    <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-4 space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-slate-900 uppercase tracking-wider text-[11px] block">
-                          Report PDF Status
+                          Report PDF & Admin Fulfillment
                         </span>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                          Auto-Gen Service
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold">
+                          ADMIN ONLY DISPATCH
                         </span>
                       </div>
+
+                      {/* Protection Notice */}
+                      <div className="p-2.5 bg-blue-50/70 border border-blue-200 rounded-lg text-[11px] text-slate-600 flex items-start gap-2">
+                        <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                        <div>
+                          <strong className="text-slate-900">Payment Protection Policy:</strong> Client self-downloads on the public website are restricted to protect against unpaid report taking. As administrator, verify payment first, then download the PDF and dispatch directly to the customer.
+                        </div>
+                      </div>
+
+                      {/* Payment Status Warning / Confirmation Banner */}
+                      {currentOrder.payment.status !== 'Paid' ? (
+                        <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg text-[11px] text-amber-800 flex items-center gap-1.5 font-medium">
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                          <span>Hold Report: Customer has not paid ($${currentOrder.total.toFixed(2)} USD). Do not send until payment is received.</span>
+                        </div>
+                      ) : (
+                        <div className="p-2 bg-emerald-50 border border-emerald-200 rounded-lg text-[11px] text-emerald-800 flex items-center gap-1.5 font-medium">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span>Payment Confirmed: You may download and dispatch the certified report to the customer.</span>
+                        </div>
+                      )}
+
                       {currentOrder.resultFile ? (
-                        <div className="space-y-2">
-                          <p className="text-[#059669] font-bold flex items-center gap-1.5">
-                            <CheckCircle2 className="w-4 h-4" />
-                            <span>Official Report PDF Generated</span>
-                          </p>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <p className="text-[#059669] font-bold text-xs flex items-center gap-1.5">
+                              <CheckCircle2 className="w-4 h-4" />
+                              <span>Official Certified PDF Ready</span>
+                            </p>
+                            <span className="font-mono text-[10px] text-slate-400">PDF-1.4 Encrypted</span>
+                          </div>
+
                           <p className="font-mono text-[11px] text-slate-700 truncate bg-white p-2 rounded border border-slate-200">
                             {currentOrder.resultFile.fileName}
                           </p>
+
                           <div className="flex flex-wrap items-center gap-2 pt-1">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (onDownloadReport) {
-                                  onDownloadReport(
-                                    currentOrder.vehicle.vinOrReg,
-                                    `${currentOrder.vehicle.year} ${currentOrder.vehicle.make} ${currentOrder.vehicle.model}`.trim() || 'Vehicle Record',
-                                    currentOrder.orderNumber
-                                  );
-                                } else {
-                                  viewReportPdfBlob(currentOrder);
-                                }
-                              }}
-                              className="px-3 py-1.5 rounded-lg bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-semibold text-[11px] inline-flex items-center gap-1.5 shadow-xs cursor-pointer transition-colors active:scale-95"
-                              title="View official report audit modal"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                              <span>View Report</span>
-                            </button>
+                            {/* 1. Admin Direct Download */}
                             <button
                               type="button"
                               onClick={() => {
@@ -1614,8 +1943,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                   const downloadedFile = downloadReportPdfBlob(currentOrder);
                                   showToast({
                                     type: 'success',
-                                    title: 'Report Downloaded',
-                                    message: `Saved official certified PDF: ${downloadedFile}`,
+                                    title: 'Report Downloaded by Admin',
+                                    message: `Downloaded official certified PDF: ${downloadedFile}`,
                                     duration: 4000,
                                   });
                                 } catch {
@@ -1629,11 +1958,61 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                 }
                               }}
                               className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] inline-flex items-center gap-1.5 shadow-xs cursor-pointer transition-colors active:scale-95"
-                              title="Download certified PDF report to your device"
+                              title="Download official PDF to admin computer"
                             >
                               <Download className="w-3.5 h-3.5" />
-                              <span>Download PDF</span>
+                              <span>Download PDF (Admin)</span>
                             </button>
+
+                            {/* 2. Dispatch via WhatsApp */}
+                            <a
+                              href={`https://wa.me/${(currentOrder.customer.phone || '923420617217').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                                `Hi ${currentOrder.customer.fullName}, AutoAudit has verified and compiled your official vehicle history report for ${currentOrder.vehicle.year} ${currentOrder.vehicle.make} ${currentOrder.vehicle.model} (VIN: ${currentOrder.vehicle.vinOrReg}). Total amount: $${currentOrder.total.toFixed(2)} USD. Please confirm payment to receive your certified PDF document.`
+                              )}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-3 py-1.5 rounded-lg bg-[#25D366] hover:bg-[#20ba59] text-white font-semibold text-[11px] inline-flex items-center gap-1.5 shadow-xs cursor-pointer transition-colors active:scale-95"
+                              title="Send report notification directly to customer on WhatsApp"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5" />
+                              <span>Send on WhatsApp</span>
+                            </a>
+
+                            {/* 3. Mark as Paid & Delivered */}
+                            {currentOrder.status !== 'Delivered' && currentOrder.status !== 'Completed' && (
+                              <button
+                                type="button"
+                                onClick={() => handleMarkPaidAndDelivered(currentOrder)}
+                                className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-[11px] inline-flex items-center gap-1.5 shadow-xs cursor-pointer transition-colors active:scale-95"
+                                title="Verify payment received and mark order as Delivered"
+                              >
+                                <CheckCheck className="w-3.5 h-3.5" />
+                                <span>Mark Paid & Delivered</span>
+                              </button>
+                            )}
+
+                            {/* 4. View Report Modal */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (onDownloadReport) {
+                                  onDownloadReport(
+                                    currentOrder.vehicle.vinOrReg,
+                                    `${currentOrder.vehicle.year} ${currentOrder.vehicle.make} ${currentOrder.vehicle.model}`.trim() || 'Vehicle Record',
+                                    currentOrder.orderNumber
+                                  );
+                                } else {
+                                  viewReportPdfBlob(currentOrder);
+                                }
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px] inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+                              title="Preview report modal"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              <span>Preview</span>
+                            </button>
+
+                            {/* 5. Re-generate */}
                             <button
                               type="button"
                               disabled={isGeneratingReport}
@@ -1641,7 +2020,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px] inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                             >
                               {isGeneratingReport ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                              <span>Re-Generate PDF</span>
+                              <span>Re-Generate</span>
                             </button>
                           </div>
                         </div>
@@ -1667,6 +2046,44 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                 </>
                               )}
                             </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                try {
+                                  const downloadedFile = downloadReportPdfBlob(currentOrder);
+                                  showToast({
+                                    type: 'success',
+                                    title: 'Report Downloaded by Admin',
+                                    message: `Downloaded official certified PDF: ${downloadedFile}`,
+                                    duration: 4000,
+                                  });
+                                } catch {
+                                  showToast({
+                                    type: 'error',
+                                    title: 'Download Failed',
+                                    message: 'Could not generate PDF. Please try Auto-Generate.',
+                                    duration: 4000,
+                                  });
+                                }
+                              }}
+                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+                              title="Download certified PDF on the fly"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              <span>Download PDF (Admin)</span>
+                            </button>
+                            <a
+                              href={`https://wa.me/${(currentOrder.customer.phone || '923420617217').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                                `Hi ${currentOrder.customer.fullName}, AutoAudit Administration here regarding your vehicle report request #${currentOrder.orderNumber} for ${currentOrder.vehicle.year} ${currentOrder.vehicle.make} ${currentOrder.vehicle.model} (VIN: ${currentOrder.vehicle.vinOrReg}). Total amount: $${currentOrder.total.toFixed(2)} USD. Please confirm payment so our admin can release your certified PDF report.`
+                              )}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-3 py-1.5 bg-[#25D366] hover:bg-[#20ba59] text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+                              title="Send WhatsApp payment message to customer"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5" />
+                              <span>WhatsApp Customer</span>
+                            </a>
                             <button
                               type="button"
                               onClick={() => setShowUploadModal(true)}

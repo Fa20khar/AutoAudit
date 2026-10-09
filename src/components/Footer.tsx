@@ -22,7 +22,7 @@ export const Footer: React.FC<FooterProps> = ({
   onRequestReport,
 }) => {
   return (
-    <footer className="bg-[#0B132B] text-slate-400 text-xs border-t border-[#1E293B]">
+    <footer className="bg-[#0B132B] text-[#CBD5E1] text-xs border-t border-[rgba(148,163,184,0.20)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-10 mb-12">
           
@@ -202,7 +202,7 @@ export const Footer: React.FC<FooterProps> = ({
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-8 border-t border-[#1E293B] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+        <div className="pt-8 border-t border-[rgba(148,163,184,0.20)] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <p>© 2026 AutoAudit. All rights reserved.</p>
 
           <div className="flex items-center gap-4">

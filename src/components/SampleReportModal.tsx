@@ -13,7 +13,6 @@ export const SampleReportModal: React.FC<SampleReportModalProps> = ({
   isOpen,
   onClose,
   onOrderNow,
-  onDownloadReport,
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'accidents' | 'ownership' | 'service'>('overview');
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -33,11 +32,7 @@ export const SampleReportModal: React.FC<SampleReportModalProps> = ({
   const data = SAMPLE_REPORT_DATA;
 
   const handlePrint = () => {
-    if (onDownloadReport) {
-      onDownloadReport(data.vin, data.vehicle, 'SAMPLE-REPORT');
-    } else {
-      window.print();
-    }
+    window.print();
   };
 
   return (
@@ -109,6 +104,14 @@ export const SampleReportModal: React.FC<SampleReportModalProps> = ({
             </div>
           ) : (
             <div className="space-y-6 report-ready-transition report-ready-glow">
+              {/* Sample Disclaimer Banner */}
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-2">
+                <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div className="leading-relaxed">
+                  <strong>Anonymized Sample Preview:</strong> This preview displays synthetic sample data for layout inspection. Official vehicle history reports are compiled, payment-verified, and released exclusively by AutoAudit Administration.
+                </div>
+              </div>
+
               {/* Vehicle Profile Card */}
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 report-stagger-1">
                 <div className="space-y-1">

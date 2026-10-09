@@ -39,7 +39,6 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   coupons,
   onOrderCompleted,
   onOpenTrack,
-  onDownloadReport,
 }) => {
   // 5 Step Flow: 1: Service -> 2: Vehicle -> 3: Customer -> 4: Payment -> 5: Confirmation
   const [step, setStep] = useState<number>(1);
@@ -1500,25 +1499,31 @@ We will notify you the moment your report advances to processing.`}
                 </div>
               </div>
 
-              {/* Action Buttons: Auto-Generate Report, View Order, WhatsApp Help, Back to Home */}
+              {/* Admin Fulfillment Notice */}
+              <div className="w-full max-w-lg mx-auto p-3.5 bg-blue-50/80 border border-blue-200 rounded-xl text-left space-y-1 text-xs">
+                <div className="flex items-center gap-1.5 font-bold text-blue-900">
+                  <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
+                  <span>Admin Fulfillment & Payment Protection Policy</span>
+                </div>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Your order is registered in our Admin Operations Queue. To prevent unauthorized report harvesting and ensure payment verification, certified PDF documents are dispatched directly by AutoAudit Administration via WhatsApp or email upon payment receipt.
+                </p>
+                <div className="text-[11px] text-emerald-800 bg-emerald-100/70 px-2.5 py-1 rounded font-semibold inline-block">
+                  Admin Support Helpline: 03420617217 (+92 342 0617217)
+                </div>
+              </div>
+
+              {/* Action Buttons: Connect with Admin on WhatsApp, View Order, Back to Home */}
               <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-2.5 sm:gap-3 pt-1 report-stagger-3">
-                {onDownloadReport && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onClose();
-                      onDownloadReport(
-                        createdOrder.vehicle.vinOrReg,
-                        `${createdOrder.vehicle.year} ${createdOrder.vehicle.make} ${createdOrder.vehicle.model}`,
-                        createdOrder.orderNumber
-                      );
-                    }}
-                    className="w-full sm:w-auto px-5 sm:px-6 py-2.5 bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-bold text-xs rounded-[8px] shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors cursor-pointer min-h-[44px] flex items-center justify-center gap-1.5 leading-[1.43]"
-                  >
-                    <FileCheck className="w-4 h-4" />
-                    <span>Auto-Generate & Download Report</span>
-                  </button>
-                )}
+                <WhatsAppButton
+                  variant="primary"
+                  source="order_modal"
+                  intent="order_tracking"
+                  orderNumber={createdOrder.orderNumber}
+                  vin={createdOrder.vehicle.vinOrReg}
+                  label="Connect on WhatsApp to Pay & Receive Report"
+                  className="w-full sm:w-auto px-5 py-2.5 rounded-[8px] min-h-[44px] font-bold"
+                />
 
                 <button
                   type="button"
@@ -1526,19 +1531,10 @@ We will notify you the moment your report advances to processing.`}
                     onClose();
                     onOpenTrack();
                   }}
-                  className="w-full sm:w-auto px-5 sm:px-6 py-2.5 bg-[#FB2C36] hover:bg-[#E0242E] text-white font-medium text-xs rounded-[8px] shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors cursor-pointer min-h-[44px] flex items-center justify-center leading-[1.43]"
+                  className="w-full sm:w-auto px-5 sm:px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs rounded-[8px] shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors cursor-pointer min-h-[44px] flex items-center justify-center leading-[1.43]"
                 >
-                  View Order
+                  View Order Status
                 </button>
-                <WhatsAppButton
-                  variant="primary"
-                  source="order_modal"
-                  intent="order_tracking"
-                  orderNumber={createdOrder.orderNumber}
-                  vin={createdOrder.vehicle.vinOrReg}
-                  label="Chat on WhatsApp"
-                  className="w-full sm:w-auto px-5 py-2.5 rounded-[8px] min-h-[44px]"
-                />
                 <button
                   type="button"
                   onClick={onClose}

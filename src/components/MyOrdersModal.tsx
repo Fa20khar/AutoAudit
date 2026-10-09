@@ -2,21 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { Order } from '../types';
 import { 
   X, LayoutDashboard, FileText, ShoppingBag, User, HelpCircle, 
-  LogOut, CheckCircle2, Clock, Download, Eye, Search, AlertCircle, 
+  LogOut, CheckCircle2, Clock, Search, AlertCircle, 
   FileCheck, Mail, ShieldCheck, ArrowRight, Loader2
 } from 'lucide-react';
 import { OrderTrackingProgressBar } from './OrderTrackingProgressBar';
 import { WhatsAppButton } from './WhatsAppButton';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
-import { downloadReportPdfBlob } from '../utils/pdfGenerator';
 
 interface MyOrdersModalProps {
   isOpen: boolean;
   onClose: () => void;
   orders: Order[];
   onOpenSampleReport: () => void;
-  onDownloadReport: (vin: string, title: string, orderNumber: string) => void;
+  onDownloadReport?: (vin: string, title: string, orderNumber: string) => void;
 }
 
 export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
@@ -24,7 +23,6 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
   onClose,
   orders,
   onOpenSampleReport,
-  onDownloadReport,
 }) => {
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'my-reports' | 'orders' | 'account' | 'support'>('dashboard');
@@ -344,133 +342,132 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
             {selectedOrder && (
               <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 shadow-xs space-y-5">
                 
-                {/* Section 17: When report is ready with subtle CSS transition animations */}
-                {(selectedOrder.status === 'Ready' || selectedOrder.status === 'Delivered' || selectedOrder.status === 'Completed' || selectedOrder.resultFile) ? (
-                  <div key={`ready-${selectedOrder.id}`} className="space-y-4 report-ready-transition report-ready-glow">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
-                      <div>
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-[#059669] mb-1.5 report-checkmark-pop">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>READY</span>
+                {/* Section 17: Admin Verification & Report Delivery Screen */}
+                <div key={`ready-${selectedOrder.id}`} className="space-y-5 report-ready-transition">
+                  {selectedOrder.status === 'Delivered' || selectedOrder.status === 'Completed' ? (
+                    /* Status: Admin Delivered */
+                    <div className="space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                        <div>
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-[#059669] mb-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>DELIVERED & VERIFIED BY ADMIN</span>
+                          </div>
+                          <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                            Your Vehicle Report Is Delivered
+                          </h3>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            Payment verified and document released by AutoAudit Administration to <strong className="text-slate-800">{selectedOrder.customer.email}</strong>.
+                          </p>
                         </div>
-                        <h3 className="text-2xl font-black text-slate-900 tracking-tight">
-                          Your Vehicle Report Is Ready
-                        </h3>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          Report delivered to your registered email address (<strong className="text-slate-800">{selectedOrder.customer.email}</strong>).
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <WhatsAppButton
+                            variant="primary"
+                            label="Request PDF Copy via WhatsApp"
+                            openQrModal={false}
+                            orderNumber={selectedOrder.orderNumber}
+                            vin={selectedOrder.vehicle.vinOrReg}
+                            className="px-4 py-2.5 rounded-xl font-bold text-xs"
+                          />
+
+                          <WhatsAppButton
+                            variant="secondary"
+                            label="Helpline (03420617217)"
+                            openQrModal={true}
+                            orderNumber={selectedOrder.orderNumber}
+                            vin={selectedOrder.vehicle.vinOrReg}
+                            className="px-3.5 py-2.5 rounded-xl font-bold text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Payment Protection & Admin Dispatch Notice */}
+                      <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl text-xs space-y-1.5 text-left">
+                        <div className="flex items-center gap-1.5 font-bold text-blue-900">
+                          <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
+                          <span>Payment Protection & Admin Fulfillment Policy</span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 leading-relaxed">
+                          To ensure payment security and protect official NMVTIS records, reports are delivered directly by AutoAudit Administration upon confirmed payment. Direct website downloads are restricted. Your certified PDF has been dispatched directly to your registered WhatsApp and email. If you need a copy re-sent, contact admin via WhatsApp above.
                         </p>
                       </div>
-
-                      {/* Primary & Secondary CTAs with staggered entrance */}
-                      <div className="flex flex-wrap items-center gap-2 report-stagger-1">
-                        <button
-                          type="button"
-                          onClick={onOpenSampleReport}
-                          className="px-4 py-2.5 rounded-xl bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-all active:scale-[0.98]"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>View Report</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            try {
-                              const fileName = downloadReportPdfBlob(selectedOrder);
-                              showToast({
-                                type: 'success',
-                                title: 'Report Downloaded',
-                                message: `Saved official certified PDF: ${fileName}`,
-                                duration: 4500,
-                              });
-                            } catch {
-                              onDownloadReport(
-                                selectedOrder.vehicle.vinOrReg,
-                                `${selectedOrder.vehicle.year} ${selectedOrder.vehicle.make} ${selectedOrder.vehicle.model}`,
-                                selectedOrder.orderNumber
-                              );
-                            }
-                          }}
-                          className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-all active:scale-[0.98]"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                          <span>Download Report</span>
-                        </button>
-
-                        <WhatsAppButton
-                          variant="primary"
-                          label="Scan WhatsApp QR"
-                          openQrModal={true}
-                          orderNumber={selectedOrder.orderNumber}
-                          vin={selectedOrder.vehicle.vinOrReg}
-                          className="px-3.5 py-2.5 rounded-xl font-bold"
-                        />
-                      </div>
                     </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#F8FAFC] p-4 rounded-xl border border-slate-200 text-xs report-stagger-2">
-                      <div>
-                        <span className="text-slate-400 block">Vehicle</span>
-                        <span className="font-bold text-slate-900">
-                          {selectedOrder.vehicle.year} {selectedOrder.vehicle.make} {selectedOrder.vehicle.model}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-slate-400 block">VIN Identifier</span>
-                        <span className="font-mono font-bold text-slate-900">{selectedOrder.vehicle.vinOrReg}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-400 block">Report Tier</span>
-                        <span className="font-semibold text-slate-900">{selectedOrder.serviceName}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-400 block">Order Number</span>
-                        <span className="font-mono font-bold text-slate-900">{selectedOrder.orderNumber}</span>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  /* Report in Progress View */
-                  <div className="space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
-                      <div>
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 mb-1.5">
-                          <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping" />
-                          <span>Compiling Records</span>
+                  ) : (
+                    /* Status: Under Admin Verification & Pending Payment */
+                    <div className="space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                        <div>
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 mb-1.5">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>ADMIN FULFILLMENT & PAYMENT VERIFICATION</span>
+                          </div>
+                          <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                            Report Being Compiled by Admin Team
+                          </h3>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            Order reference <strong className="text-slate-800">#{selectedOrder.orderNumber}</strong> · Vehicle: <strong className="text-slate-800">{selectedOrder.vehicle.year} {selectedOrder.vehicle.make} {selectedOrder.vehicle.model}</strong>
+                          </p>
                         </div>
-                        <h3 className="text-xl font-bold text-slate-900">
-                          Vehicle Report in Progress
-                        </h3>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          Your records are currently being assembled from official registries.
-                        </p>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <WhatsAppButton
+                            variant="primary"
+                            label="Chat with Admin to Pay & Receive Report"
+                            openQrModal={false}
+                            orderNumber={selectedOrder.orderNumber}
+                            vin={selectedOrder.vehicle.vinOrReg}
+                            className="px-4 py-2.5 rounded-xl font-bold text-xs"
+                          />
+                        </div>
                       </div>
 
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs font-mono text-slate-400">
-                          Placed {new Date(selectedOrder.createdAt).toLocaleDateString()}
-                        </span>
-                        <WhatsAppButton
-                          variant="primary"
-                          label="WhatsApp QR Help"
-                          openQrModal={true}
-                          orderNumber={selectedOrder.orderNumber}
-                          vin={selectedOrder.vehicle.vinOrReg}
-                          className="px-3 py-1.5 rounded-xl font-semibold text-xs"
-                        />
+                      <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl text-xs space-y-1.5 text-left">
+                        <div className="flex items-center gap-1.5 font-bold text-blue-900">
+                          <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
+                          <span>Why is the report dispatched by the Admin?</span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 leading-relaxed">
+                          To protect certified NMVTIS and DMV records and prevent unauthorized access, AutoAudit administrators verify payment and release documents directly to customers via WhatsApp and email.
+                        </p>
+                        <div className="text-[11px] text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded font-semibold inline-block">
+                          Helpline: 03420617217 (+92 342 0617217)
+                        </div>
                       </div>
                     </div>
+                  )}
 
-                    <OrderTrackingProgressBar
-                      status={selectedOrder.status}
-                      hasResultFile={!!selectedOrder.resultFile}
-                      orderNumber={selectedOrder.orderNumber}
-                      createdAt={selectedOrder.createdAt}
-                      updatedAt={selectedOrder.updatedAt}
-                    />
+                  {/* Vehicle details summary grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#F8FAFC] p-4 rounded-xl border border-slate-200 text-xs report-stagger-2">
+                    <div>
+                      <span className="text-slate-400 block">Vehicle</span>
+                      <span className="font-bold text-slate-900">
+                        {selectedOrder.vehicle.year} {selectedOrder.vehicle.make} {selectedOrder.vehicle.model}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block">VIN Identifier</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedOrder.vehicle.vinOrReg}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block">Report Tier</span>
+                      <span className="font-semibold text-slate-900">{selectedOrder.serviceName}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block">Order Number</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedOrder.orderNumber}</span>
+                    </div>
                   </div>
-                )}
 
+                  {/* Progress tracker */}
+                  <OrderTrackingProgressBar
+                    status={selectedOrder.status}
+                    hasResultFile={!!selectedOrder.resultFile}
+                    orderNumber={selectedOrder.orderNumber}
+                    createdAt={selectedOrder.createdAt}
+                    updatedAt={selectedOrder.updatedAt}
+                  />
+                </div>
               </div>
             )}
 
@@ -572,13 +569,11 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedOrder(ord);
-                              if (ord.status === 'Ready' || ord.status === 'Delivered' || ord.status === 'Completed' || ord.resultFile) {
-                                onOpenSampleReport();
-                              }
+                              setActiveTab('dashboard');
                             }}
                             className="px-3 py-1 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-lg text-[11px] font-semibold transition-colors cursor-pointer"
                           >
-                            View
+                            Track
                           </button>
                         </td>
                       </tr>

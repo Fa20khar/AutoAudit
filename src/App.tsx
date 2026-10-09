@@ -249,7 +249,7 @@ function AppContent() {
   const newOrdersCount = orders.filter((o) => o.status === 'Paid / New').length;
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen bg-[#07111F] text-[#CBD5E1] flex flex-col font-sans selection:bg-[#2563EB] selection:text-white">
       
       {/* If in Admin Portal Mode */}
       {isAdminView ? (
@@ -350,7 +350,6 @@ function AppContent() {
         coupons={coupons}
         onOrderCompleted={handleOrderCompleted}
         onOpenTrack={() => setIsTrackModalOpen(true)}
-        onDownloadReport={handleDownloadReport}
       />
 
       <SampleReportModal
@@ -360,7 +359,6 @@ function AppContent() {
           setIsSampleModalOpen(false);
           handleOpenOrder('comprehensive-vin');
         }}
-        onDownloadReport={handleDownloadReport}
       />
 
       <MyOrdersModal
@@ -368,7 +366,6 @@ function AppContent() {
         onClose={() => setIsTrackModalOpen(false)}
         orders={orders}
         onOpenSampleReport={() => setIsSampleModalOpen(true)}
-        onDownloadReport={handleDownloadReport}
       />
 
       <LegalModal
@@ -377,6 +374,7 @@ function AppContent() {
         defaultTab={legalModalState.tab}
       />
 
+      {/* Admin Operations Report Console */}
       <ReportDownloadModal
         isOpen={downloadModalState.isOpen}
         onClose={() => setDownloadModalState({ ...downloadModalState, isOpen: false })}
@@ -385,14 +383,13 @@ function AppContent() {
         orderNumber={downloadModalState.orderNumber}
       />
 
-      {/* Customer Intake & Auto-Generate Modal (Google Forms Specification) */}
+      {/* Customer Intake Modal (Google Forms Specification) */}
       <CustomerIntakeModal
         isOpen={isIntakeModalOpen}
         onClose={() => {
           setIsIntakeModalOpen(false);
           setIntakeInitialVin('');
         }}
-        onOpenReportDownload={handleDownloadReport}
         onOpenLegal={(tab) => setLegalModalState({ isOpen: true, tab })}
         initialVin={intakeInitialVin}
       />

@@ -24,7 +24,6 @@ import confetti from 'canvas-confetti';
 import { CustomerIntakeSubmission } from '../types';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
-import { downloadReportPdfBlob } from '../utils/pdfGenerator';
 
 interface CustomerIntakeModalProps {
   isOpen: boolean;
@@ -397,47 +396,34 @@ export const CustomerIntakeModal: React.FC<CustomerIntakeModalProps> = ({
                 </div>
               </div>
 
-              {/* Direct Report Actions */}
-              <div className="space-y-3 pt-2">
-                {submittedData.reportDownloadUrl ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (onOpenReportDownload && submittedData.orderNumber) {
-                        onClose();
-                        onOpenReportDownload(
-                          submittedData.submission.vinOrChassis,
-                          `${submittedData.submission.modelYear || ''} ${submittedData.submission.make || ''} ${submittedData.submission.model || ''}`.trim() || 'Vehicle Record',
-                          submittedData.orderNumber
-                        );
-                      } else {
-                        downloadReportPdfBlob({
-                          orderNumber: submittedData.orderNumber || 'AA-10025',
-                          vehicle: {
-                            vinOrReg: submittedData.submission.vinOrChassis,
-                            year: submittedData.submission.modelYear,
-                            make: submittedData.submission.make,
-                            model: submittedData.submission.model,
-                          },
-                          customer: {
-                            fullName: submittedData.submission.fullName,
-                            email: submittedData.submission.email,
-                          },
-                          serviceName: 'Certified AutoAudit Vehicle Report'
-                        });
-                      }
-                    }}
-                    className="w-full py-3.5 px-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
-                  >
-                    <Download className="w-5 h-5" />
-                    Download Auto-Generated Report PDF
-                  </button>
-                ) : (
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span>Your request is queued for manual document verification. You will be notified via {submittedData.submission.preferredContactMethod}.</span>
+              {/* Admin Fulfillment & Payment Verification Notice */}
+              <div className="space-y-3 pt-2 text-left">
+                <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-bold text-blue-900">
+                    <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
+                    <span>Admin Fulfillment & Payment Protection Notice</span>
                   </div>
-                )}
+                  <p className="text-xs text-slate-700 leading-relaxed">
+                    Your request has been forwarded directly to the <strong>AutoAudit Admin Operations Console</strong>. To protect records integrity, complete official vehicle history reports are compiled and dispatched directly by AutoAudit Administration upon payment confirmation.
+                  </p>
+                  <div className="flex items-center gap-1.5 text-[11px] text-blue-800 bg-blue-100/60 px-2.5 py-1.5 rounded-lg font-medium">
+                    <span>Reference ID:</span>
+                    <span className="font-mono font-bold text-slate-900">#{submittedData.orderNumber || submittedData.submission.submissionNumber}</span>
+                    <span className="mx-1">•</span>
+                    <span>Status: Pending Admin Payment Verification</span>
+                  </div>
+                </div>
+
+                <a
+                  href={`https://wa.me/923420617217?text=${encodeURIComponent(`Hi AutoAudit Admin, I submitted report request #${submittedData.submission.submissionNumber} for VIN: ${submittedData.submission.vinOrChassis} (${submittedData.submission.make} ${submittedData.submission.model}). Please send payment details so I can receive my official certified report.`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer text-xs sm:text-sm"
+                >
+                  <QrCode className="w-5 h-5 shrink-0" />
+                  <span>Chat with Admin on WhatsApp to Pay & Receive Report</span>
+                </a>
+              </div>
 
                 {/* WhatsApp QR Code Card */}
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
@@ -490,7 +476,6 @@ export const CustomerIntakeModal: React.FC<CustomerIntakeModalProps> = ({
                   </p>
                 </div>
               </div>
-            </div>
           ) : (
             /* ACTIVE FORM STATE */
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -1058,27 +1043,21 @@ export const CustomerIntakeModal: React.FC<CustomerIntakeModalProps> = ({
                     </label>
                   </div>
 
-                  {/* Auto-Generate Callout */}
+                  {/* Admin Priority Verification Callout */}
                   <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-emerald-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between gap-3">
                     <div className="space-y-0.5">
                       <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
-                        <Sparkles className="w-4 h-4 text-blue-600" />
-                        <span>Auto-Generate Official Report PDF</span>
-                        <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 rounded text-[9px] font-bold">RECOMMENDED</span>
+                        <ShieldCheck className="w-4 h-4 text-blue-600" />
+                        <span>Direct Admin Fulfillment Queue</span>
+                        <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 rounded text-[9px] font-bold">SECURE</span>
                       </div>
                       <p className="text-[11px] text-slate-600 leading-tight">
-                        Compiles certified dummy NMVTIS vehicle history report instantly for immediate browser download and email dispatch.
+                        Submits vehicle records directly into the Admin Operations Console for verification. Official PDF report will be delivered by AutoAudit Admin upon payment confirmation.
                       </p>
                     </div>
-                    <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                      <input
-                        type="checkbox"
-                        checked={autoGenerateReport}
-                        onChange={(e) => setAutoGenerateReport(e.target.checked)}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                    </label>
+                    <div className="px-2.5 py-1 bg-white border border-blue-200 rounded-lg text-[10px] font-bold text-blue-700 shrink-0 font-mono">
+                      ADMIN DISPATCH
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between pt-3">
