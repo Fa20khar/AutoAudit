@@ -10,12 +10,16 @@
     "build:server": "esbuild server.ts --bundle --platform=node --format=esm --packages=external --outfile=server.js",
     "build": "npm run build:client && npm run build:server",
     "lint": "tsc --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:auth": "node --loader tsx/cjs ./server/tests/auth.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.2",
+    "bcryptjs": "^2.4.3",
     "canvas-confetti": "^1.9.4",
     "express": "^5.2.1",
+    "express-rate-limit": "^7.1.5",
+    "jsonwebtoken": "^9.1.2",
     "lucide-react": "^1.16.0",
     "nodemailer": "^10.0.13",
     "qrcode.react": "^4.2.0",
@@ -26,8 +30,10 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
+    "@types/bcryptjs": "^2.4.6",
     "@types/canvas-confetti": "^1.9.0",
     "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.6",
     "@types/nodemailer": "^8.0.2",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
