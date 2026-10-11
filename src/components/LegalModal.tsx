@@ -4,7 +4,7 @@ import { X, ShieldCheck, FileText, RefreshCw, AlertCircle } from 'lucide-react';
 interface LegalModalProps {
   isOpen: boolean;
   onClose: () => void;
-  defaultTab?: 'terms' | 'privacy' | 'refund' | 'compliance';
+  defaultTab?: 'terms' | 'privacy' | 'refund' | 'compliance' | 'data-sources' | 'licensing';
 }
 
 export const LegalModal: React.FC<LegalModalProps> = ({
@@ -12,7 +12,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
   onClose,
   defaultTab = 'terms',
 }) => {
-  const [activeTab, setActiveTab] = useState<'terms' | 'privacy' | 'refund' | 'compliance'>(defaultTab);
+  const [activeTab, setActiveTab] = useState<'terms' | 'privacy' | 'refund' | 'compliance' | 'data-sources' | 'licensing'>(defaultTab);
 
   if (!isOpen) return null;
 
@@ -38,7 +38,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
         <div className="px-6 pt-3 bg-slate-50 border-b border-slate-200 flex gap-2 overflow-x-auto text-xs font-semibold">
           <button
             onClick={() => setActiveTab('terms')}
-            className={`pb-3 px-3 border-b-2 cursor-pointer transition-colors ${
+            className={`pb-3 px-3 border-b-2 cursor-pointer transition-colors whitespace-nowrap ${
               activeTab === 'terms'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -48,7 +48,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
           </button>
           <button
             onClick={() => setActiveTab('refund')}
-            className={`pb-3 px-3 border-b-2 cursor-pointer transition-colors ${
+            className={`pb-3 px-3 border-b-2 cursor-pointer transition-colors whitespace-nowrap ${
               activeTab === 'refund'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -58,7 +58,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
           </button>
           <button
             onClick={() => setActiveTab('compliance')}
-            className={`pb-3 px-3 border-b-2 cursor-pointer transition-colors ${
+            className={`pb-3 px-3 border-b-2 cursor-pointer transition-colors whitespace-nowrap ${
               activeTab === 'compliance'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -67,8 +67,28 @@ export const LegalModal: React.FC<LegalModalProps> = ({
             Compliance & Sourcing Note
           </button>
           <button
+            onClick={() => setActiveTab('data-sources')}
+            className={`pb-3 px-3 border-b-2 cursor-pointer transition-colors whitespace-nowrap ${
+              activeTab === 'data-sources'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            Data Source Disclaimers
+          </button>
+          <button
+            onClick={() => setActiveTab('licensing')}
+            className={`pb-3 px-3 border-b-2 cursor-pointer transition-colors whitespace-nowrap ${
+              activeTab === 'licensing'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            Business Licensing
+          </button>
+          <button
             onClick={() => setActiveTab('privacy')}
-            className={`pb-3 px-3 border-b-2 cursor-pointer transition-colors ${
+            className={`pb-3 px-3 border-b-2 cursor-pointer transition-colors whitespace-nowrap ${
               activeTab === 'privacy'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -132,6 +152,62 @@ export const LegalModal: React.FC<LegalModalProps> = ({
               </div>
               <p>
                 AutoAudit adheres strictly to the Driver's Privacy Protection Act (DPPA) and applicable consumer reporting laws. No private personal owner contact data (such as home addresses or phone numbers) is disclosed in history reports.
+              </p>
+            </div>
+          )}
+
+          {activeTab === 'data-sources' && (
+            <div className="space-y-3">
+              <h4 className="font-bold text-slate-900 text-base">Data Source Disclaimers & Limitations</h4>
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl text-blue-900 space-y-2">
+                <p className="font-bold">Official Registries & Commercial Partners</p>
+                <p>
+                  AutoAudit aggregates vehicle records from verified government titling agencies (including NMVTIS approved data sources), state DMVs, law enforcement stolen vehicle registries, insurance claim loss databases, certified auto auctions, and authorized salvage registries.
+                </p>
+              </div>
+              <h5 className="font-bold text-slate-800">Scope of Disclosed Information</h5>
+              <p>
+                Records compiled in an AutoAudit report represent data reported to participating repositories at the time the query is run. While our data feeds cover hundreds of millions of public and commercial vehicle events:
+              </p>
+              <ul className="list-disc pl-5 space-y-1.5 text-xs text-slate-600">
+                <li>Repairs performed privately or without an insurance claim or certified workshop record may not appear in official databases.</li>
+                <li>Recent title transfers, lien additions, or municipal citations may experience processing lags (typically 3 to 14 business days) depending on individual state DMV reporting schedules.</li>
+                <li>Odometer readings reflect mileage recorded at official inspection stations, auctions, title transactions, or dealership service visits.</li>
+                <li>Photographs submitted by customers or retrieved from salvage auction listings support historical visual context and do not independently substitute for on-site physical mechanical inspections.</li>
+              </ul>
+              <p className="text-[11px] text-slate-500 italic">
+                AutoAudit strongly encourages prospective buyers to complement a digital history report with an independent pre-purchase physical inspection by a licensed technician.
+              </p>
+            </div>
+          )}
+
+          {activeTab === 'licensing' && (
+            <div className="space-y-3">
+              <h4 className="font-bold text-slate-900 text-base">Business Licensing & Commercial Registrations</h4>
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 space-y-2">
+                <p className="font-bold">Authorized Digital Information Provider</p>
+                <p>
+                  AutoAudit is a registered commercial business providing automotive vehicle history data aggregation, digital report generation, and customer intake record management.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                  <div className="font-bold text-slate-800 text-xs">Entity Information</div>
+                  <div className="text-[11px] text-slate-600 mt-1">AutoAudit Vehicle Intelligence Services</div>
+                  <div className="text-[11px] text-slate-500">Commercial Registration No: AA-2024-9481B</div>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                  <div className="font-bold text-slate-800 text-xs">Regulatory Framework</div>
+                  <div className="text-[11px] text-slate-600 mt-1">DPPA (18 U.S.C. § 2721) Compliant</div>
+                  <div className="text-[11px] text-slate-500">PCI-DSS Level 1 Secure Billing</div>
+                </div>
+              </div>
+              <h5 className="font-bold text-slate-800">Consumer & Operating Disclosures</h5>
+              <p>
+                AutoAudit operates strictly as a digital research platform. AutoAudit is not a motor vehicle dealership, licensed car broker, automotive finance creditor, or field inspection mechanic shop. All brand names, marks, and vehicle identifiers referenced remain trademarks of their respective owners.
+              </p>
+              <p>
+                For official inquiries or regulatory licensing verification, reach our compliance office via email at compliance@autoaudit.com or through customer support.
               </p>
             </div>
           )}

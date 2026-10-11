@@ -135,3 +135,81 @@ export function validateVinFormat(input: string): VinValidationResult {
     vis: cleanVin.slice(11, 17)
   };
 }
+
+/**
+ * Standard ISO 3779 / NHTSA Position Weights for VIN character positions (1 through 17)
+ */
+const VIN_WEIGHTS = [8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2];
+
+/**
+ * Letter to transliterated numerical value map according to ISO 3779 / 49 CFR Part 565
+ */
+const VIN_LETTER_VALUES: Record<string, number> = {
+  A: 1, B: 2, C: 3, D: 4, E: 5, F: 6, G: 7, H: 8,
+  J: 1, K: 2, L: 3, M: 4, N: 5, P: 7, R: 9,
+  S: 2, T: 3, U: 4, V: 5, W: 6, X: 7, Y: 8, Z: 9
+};
+
+/**
+ * Computes the expected 9th check digit for a 17-character VIN.
+ * Returns the calculated character ('0'-'9' or 'X') or null if invalid format.
+ */
+export function calculateVinCheckDigit(vin: string): string | null {
+  const clean = (vin || '').trim().toUpperCase();
+  if (clean.length !== 17 || !VIN_REGEX.test(clean)) {
+    return null;
+  }
+
+  let weightedSum = 0;
+  for (let i = 0; i < 17; i++) {
+    // 9th character (index 8) has a weight of 0 in the checksum
+    if (i === 8) continue;
+
+    const char = clean[i];
+    let val: number;
+    if (char >= '0' && char <= '9') {
+      val = parseInt(char, 10);
+    } else if (VIN_LETTER_VALUES[char] !== undefined) {
+      val = VIN_LETTER_VALUES[char];
+    } else {
+      return null;
+    }
+
+    weightedSum += val * VIN_WEIGHTS[i];
+  }
+
+  const remainder = weightedSum % 11;
+  return remainder === 10 ? 'X' : remainder.toString();
+}
+
+/**
+ * Validates whether the 9th character check digit matches the ISO 3779 calculated check digit.
+ * Note: ISO 3779 check digits are mandatory in North America (US, Canada, Mexico) and widely
+ * adhered to by global manufacturers (Honda, Toyota, BMW, etc.).
+ */
+export function validateVinChecksum(vin: string): {
+  isValidChecksum: boolean;
+  expectedCheckDigit: string | null;
+  actualCheckDigit: string | null;
+  isFormatValid: boolean;
+} {
+  const clean = (vin || '').trim().toUpperCase();
+  if (clean.length !== 17 || !VIN_REGEX.test(clean)) {
+    return {
+      isValidChecksum: false,
+      expectedCheckDigit: null,
+      actualCheckDigit: clean.length >= 9 ? clean[8] : null,
+      isFormatValid: false
+    };
+  }
+
+  const expected = calculateVinCheckDigit(clean);
+  const actual = clean[8];
+
+  return {
+    isValidChecksum: expected !== null && expected === actual,
+    expectedCheckDigit: expected,
+    actualCheckDigit: actual,
+    isFormatValid: true
+  };
+}

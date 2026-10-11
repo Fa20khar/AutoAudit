@@ -143,8 +143,8 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     viewSampleBtn: 'View Sample Report',
     secureCheckoutNote: 'Secure checkout • Fast email delivery',
     needVinHelp: 'Need VIN Help? WhatsApp QR: 03420617217',
-    customIntakePrompt: 'Need custom verification or full customer intake?',
-    fillIntakeBtn: 'Fill Intake Form',
+    customIntakePrompt: 'Prefer manual intake or custom report review?',
+    fillIntakeBtn: 'Request Vehicle Report',
     quickSampleVins: 'Quick Sample VINs:',
 
     // Trust Benefits
@@ -247,8 +247,8 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     viewSampleBtn: 'Ver Informe de Ejemplo',
     secureCheckoutNote: 'Pago seguro con cifrado • Envío rápido por correo',
     needVinHelp: '¿Ayuda con el VIN? QR de WhatsApp: 03420617217',
-    customIntakePrompt: '¿Necesita verificación personalizada o solicitud completa?',
-    fillIntakeBtn: 'Llenar Formulario',
+    customIntakePrompt: '¿Prefiere solicitud manual o revisión de informe?',
+    fillIntakeBtn: 'Solicitar Informe de Vehículo',
     quickSampleVins: 'VINs de Prueba:',
 
     // Trust Benefits

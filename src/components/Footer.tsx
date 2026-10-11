@@ -3,13 +3,14 @@ import { Logo } from './Logo';
 import { WhatsAppButton } from './WhatsAppButton';
 
 interface FooterProps {
-  onOpenLegal: (tab: 'terms' | 'privacy' | 'refund' | 'compliance') => void;
+  onOpenLegal: (tab: 'terms' | 'privacy' | 'refund' | 'compliance' | 'data-sources' | 'licensing') => void;
   onOpenOrder: () => void;
   onOpenSample: () => void;
   onOpenTrack: () => void;
   onScrollTo: (sectionId: string) => void;
   onToggleAdmin: () => void;
   onRequestReport?: () => void;
+  onOpenPrintGuide?: () => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({
@@ -20,6 +21,7 @@ export const Footer: React.FC<FooterProps> = ({
   onScrollTo,
   onToggleAdmin,
   onRequestReport,
+  onOpenPrintGuide,
 }) => {
   return (
     <footer className="bg-[#0B132B] text-[#CBD5E1] text-xs border-t border-[rgba(148,163,184,0.20)]">
@@ -72,6 +74,15 @@ export const Footer: React.FC<FooterProps> = ({
               <li>
                 <button
                   type="button"
+                  onClick={() => onScrollTo('verified-reviews')}
+                  className="hover:text-white transition-colors cursor-pointer text-[#10B981]"
+                >
+                  Verified Reviews
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
                   onClick={() => onScrollTo('faq')}
                   className="hover:text-white transition-colors cursor-pointer"
                 >
@@ -117,6 +128,16 @@ export const Footer: React.FC<FooterProps> = ({
               <li>
                 <button
                   type="button"
+                  onClick={onOpenPrintGuide}
+                  className="hover:text-white transition-colors cursor-pointer text-[#10B981] flex items-center gap-1.5"
+                >
+                  <span>Print Report Guide</span>
+                  <span className="text-[10px] bg-emerald-950 border border-emerald-500/30 px-1.5 py-0.2 rounded font-mono">PDF</span>
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
                   onClick={() => onScrollTo('services')}
                   className="hover:text-white transition-colors cursor-pointer"
                 >
@@ -128,9 +149,9 @@ export const Footer: React.FC<FooterProps> = ({
                   <button
                     type="button"
                     onClick={onRequestReport}
-                    className="text-amber-400 hover:text-amber-300 font-semibold transition-colors cursor-pointer"
+                    className="text-[#10B981] hover:text-emerald-300 font-semibold transition-colors cursor-pointer"
                   >
-                    Request Vehicle Report (Intake Form)
+                    Request Vehicle Report
                   </button>
                 </li>
               )}
@@ -194,6 +215,24 @@ export const Footer: React.FC<FooterProps> = ({
                   className="hover:text-white transition-colors cursor-pointer"
                 >
                   Disclaimer
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => onOpenLegal('data-sources')}
+                  className="hover:text-white transition-colors cursor-pointer"
+                >
+                  Data Source Disclaimers
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => onOpenLegal('licensing')}
+                  className="hover:text-white transition-colors cursor-pointer"
+                >
+                  Business Licensing
                 </button>
               </li>
             </ul>

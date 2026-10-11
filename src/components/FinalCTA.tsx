@@ -61,7 +61,8 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({
               onClick={onRequestReport}
               className="px-6 sm:px-8 py-3.5 rounded-[8px] text-sm font-semibold bg-[#059669]/20 hover:bg-[#059669]/30 text-[#10B981] border border-[#059669]/40 transition-colors flex items-center gap-2 cursor-pointer leading-[1.43]"
             >
-              <span>Request Vehicle Report Form</span>
+              <ShieldCheck className="w-4 h-4 text-[#10B981]" />
+              <span>Request Vehicle Report</span>
             </button>
           )}
         </div>

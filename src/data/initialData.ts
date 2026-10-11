@@ -422,6 +422,10 @@ export const FAQS = [
   {
     q: 'What is your refund/cancellation policy?',
     a: 'If records cannot be obtained for your submitted VIN, or if we fail to fulfill your report within the stated timeframe, you are entitled to a full refund to your original payment method. You can request cancellation through support before report compilation starts.'
+  },
+  {
+    q: 'How do I print or export my vehicle report as a PDF?',
+    a: 'You can easily save or print any AutoAudit report as a high-resolution PDF using your browser’s native "Print to PDF" feature: 1) Open your report or click "Print / Save PDF" (or press Ctrl + P on Windows / Cmd + P on Mac). 2) In the print destination dropdown, select "Save as PDF" (or "Microsoft Print to PDF"). 3) Under "More settings", ensure "Background graphics" is checked so all colored badges, inspection seals, and charts are rendered crisply. 4) Set margins to "Default" or "Minimum", then click "Save". On mobile (iOS Safari / Android Chrome), tap the Share icon or browser menu (⋮), choose "Print", pinch-to-zoom the preview or tap "Save as PDF", and save directly to your Files or Drive.'
   }
 ];
 

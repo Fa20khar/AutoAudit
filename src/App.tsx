@@ -9,14 +9,18 @@ import { ServicePlan, Order, Coupon, EmailNotification } from './types';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { TrustStrip } from './components/TrustStrip';
+import { InteractiveInspectionSection } from './components/InteractiveInspectionSection';
 import { ServicesSection } from './components/ServicesSection';
 import { HowItWorks } from './components/HowItWorks';
 import { SampleReportSection } from './components/SampleReportSection';
 import { TrustBenefitsSection } from './components/TrustBenefitsSection';
 import { TestimonialsSection } from './components/TestimonialsSection';
+import { VerifiedReviewsCarousel } from './components/VerifiedReviewsCarousel';
 import { FAQSection } from './components/FAQSection';
 import { FinalCTA } from './components/FinalCTA';
 import { Footer } from './components/Footer';
+import { VehicleReportForm } from './components/VehicleReportForm';
+import { SocialProofTicker } from './components/SocialProofTicker';
 import { SampleReportModal } from './components/SampleReportModal';
 import { OrderModal } from './components/OrderModal';
 import { MyOrdersModal } from './components/MyOrdersModal';
@@ -24,6 +28,7 @@ import { LegalModal } from './components/LegalModal';
 import { AdminPanel } from './components/AdminPanel';
 import { ReportDownloadModal } from './components/ReportDownloadModal';
 import { CustomerIntakeModal } from './components/CustomerIntakeModal';
+import { PrintGuideModal } from './components/PrintGuideModal';
 import { WhatsAppWidget } from './components/WhatsAppWidget';
 import { ToastProvider } from './context/ToastContext';
 import { LanguageProvider } from './context/LanguageContext';
@@ -61,8 +66,70 @@ function AppContent() {
     return saved ? JSON.parse(saved) : INITIAL_EMAILS;
   });
 
-  // UI Navigation & View state
-  const [isAdminView, setIsAdminView] = useState<boolean>(false);
+  // UI Navigation & View state (supports direct URL routing: /, /request-report, /admin)
+  type AppView = 'home' | 'request-report' | 'admin';
+
+  const parsePathToView = (): AppView => {
+    if (typeof window === 'undefined') return 'home';
+    const path = window.location.pathname.toLowerCase();
+    const hash = window.location.hash.toLowerCase();
+    if (
+      path === '/request-report' ||
+      path === '/request-vehicle-report' ||
+      path.startsWith('/request-report') ||
+      hash === '#/request-report' ||
+      hash === '#request-report'
+    ) {
+      return 'request-report';
+    }
+    if (path === '/admin' || hash === '#/admin' || hash === '#admin') {
+      return 'admin';
+    }
+    return 'home';
+  };
+
+  const [currentView, setCurrentView] = useState<AppView>(parsePathToView);
+
+  // Sync route state on browser Back / Forward buttons and URL hash changes
+  useEffect(() => {
+    const handleLocationChange = () => {
+      setCurrentView(parsePathToView());
+    };
+    window.addEventListener('popstate', handleLocationChange);
+    window.addEventListener('hashchange', handleLocationChange);
+    return () => {
+      window.removeEventListener('popstate', handleLocationChange);
+      window.removeEventListener('hashchange', handleLocationChange);
+    };
+  }, []);
+
+  const navigateTo = (view: AppView, path?: string) => {
+    setCurrentView(view);
+    const targetPath =
+      path || (view === 'request-report' ? '/request-report' : view === 'admin' ? '/admin' : '/');
+    if (typeof window !== 'undefined' && window.location.pathname !== targetPath) {
+      window.history.pushState(null, '', targetPath);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleOpenRequestReport = () => {
+    navigateTo('request-report', '/request-report');
+  };
+
+  const handleBackToHome = () => {
+    navigateTo('home', '/');
+  };
+
+  const handleToggleAdmin = () => {
+    if (currentView === 'admin') {
+      navigateTo('home', '/');
+    } else {
+      navigateTo('admin', '/admin');
+    }
+  };
+
+  const isAdminView = currentView === 'admin';
 
   // Modals state
   const [isOrderModalOpen, setIsOrderModalOpen] = useState<boolean>(false);
@@ -75,9 +142,10 @@ function AppContent() {
 
   const [isSampleModalOpen, setIsSampleModalOpen] = useState<boolean>(false);
   const [isTrackModalOpen, setIsTrackModalOpen] = useState<boolean>(false);
+  const [isPrintGuideOpen, setIsPrintGuideOpen] = useState<boolean>(false);
   const [legalModalState, setLegalModalState] = useState<{
     isOpen: boolean;
-    tab: 'terms' | 'privacy' | 'refund' | 'compliance';
+    tab: 'terms' | 'privacy' | 'refund' | 'compliance' | 'data-sources' | 'licensing';
   }>({
     isOpen: false,
     tab: 'terms',
@@ -234,8 +302,8 @@ function AppContent() {
   };
 
   const handleScrollTo = (id: string) => {
-    if (isAdminView) {
-      setIsAdminView(false);
+    if (currentView !== 'home') {
+      navigateTo('home', '/');
       setTimeout(() => {
         const el = document.getElementById(id);
         if (el) el.scrollIntoView({ behavior: 'smooth' });
@@ -251,8 +319,8 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-[#07111F] text-[#CBD5E1] flex flex-col font-sans selection:bg-[#2563EB] selection:text-white">
       
-      {/* If in Admin Portal Mode */}
-      {isAdminView ? (
+      {/* 1. Admin Portal View */}
+      {currentView === 'admin' ? (
         <AdminPanel
           orders={orders}
           services={services}
@@ -263,35 +331,80 @@ function AppContent() {
           onUpdateServices={setServices}
           onUpdateCoupons={setCoupons}
           onSendEmail={handleSendEmail}
-          onCloseAdmin={() => setIsAdminView(false)}
+          onCloseAdmin={handleBackToHome}
           onViewSampleReport={() => setIsSampleModalOpen(true)}
           onDownloadReport={handleDownloadReport}
         />
-      ) : (
-        /* Public Customer Experience */
+      ) : currentView === 'request-report' ? (
+        /* 2. Dedicated AutoAudit Branded Report-Request Page (/request-report) with Google Forms */
         <>
           <Navbar
-            onOpenOrder={handleOpenOrder}
+            onOpenOrder={handleOpenRequestReport}
             onOpenSample={() => setIsSampleModalOpen(true)}
             onOpenTrack={() => setIsTrackModalOpen(true)}
             onOpenFaq={() => handleScrollTo('faq')}
             onScrollTo={handleScrollTo}
-            isAdminView={isAdminView}
-            onToggleAdminView={() => setIsAdminView(!isAdminView)}
+            isAdminView={false}
+            onToggleAdminView={handleToggleAdmin}
             newOrdersCount={newOrdersCount}
-            onRequestReport={() => setIsIntakeModalOpen(true)}
+            onRequestReport={handleOpenRequestReport}
           />
 
           <main className="flex-1">
+            <VehicleReportForm
+              onBackToHome={handleBackToHome}
+              onOpenSample={() => setIsSampleModalOpen(true)}
+              onOpenPricing={() => {
+                handleBackToHome();
+                setTimeout(() => handleScrollTo('services'), 100);
+              }}
+            />
+          </main>
+
+          <Footer
+            onOpenLegal={(tab) => setLegalModalState({ isOpen: true, tab })}
+            onOpenOrder={handleOpenRequestReport}
+            onOpenSample={() => setIsSampleModalOpen(true)}
+            onOpenTrack={() => setIsTrackModalOpen(true)}
+            onScrollTo={handleScrollTo}
+            onToggleAdmin={() => navigateTo('admin', '/admin')}
+            onRequestReport={handleOpenRequestReport}
+          />
+        </>
+      ) : (
+        /* 3. Main Homepage Experience (/) */
+        <>
+          <Navbar
+            onOpenOrder={handleOpenRequestReport}
+            onOpenSample={() => setIsSampleModalOpen(true)}
+            onOpenTrack={() => setIsTrackModalOpen(true)}
+            onOpenFaq={() => handleScrollTo('faq')}
+            onScrollTo={handleScrollTo}
+            isAdminView={false}
+            onToggleAdminView={handleToggleAdmin}
+            newOrdersCount={newOrdersCount}
+            onRequestReport={handleOpenRequestReport}
+          />
+
+          <main className="flex-1">
+            {/* Real-time Customer Activity Social Proof Ticker */}
+            <SocialProofTicker compact={true} />
+
             {/* Section 6, 7, 8: Hero Section with Search Panel & Floating Report Preview */}
             <Hero
               onStartOrderWithVin={handleStartOrderWithVin}
               onOpenSample={() => setIsSampleModalOpen(true)}
-              onRequestReport={() => setIsIntakeModalOpen(true)}
+              onRequestReport={handleOpenRequestReport}
             />
 
             {/* Section 9: Trust Strip */}
             <TrustStrip />
+
+            {/* Interactive Customer Inspection View */}
+            <InteractiveInspectionSection
+              onStartOrderWithVin={handleStartOrderWithVin}
+              onOpenSample={() => setIsSampleModalOpen(true)}
+            />
 
             {/* Section 10: Pricing Section */}
             <ServicesSection
@@ -300,7 +413,7 @@ function AppContent() {
             />
 
             {/* Section 19: How It Works */}
-            <HowItWorks onStartOrder={() => handleOpenOrder()} />
+            <HowItWorks onStartOrder={() => handleOpenRequestReport()} />
 
             {/* Section 18: Sample Report Section */}
             <SampleReportSection
@@ -313,25 +426,33 @@ function AppContent() {
             {/* Section 21: Testimonials */}
             <TestimonialsSection />
 
+            {/* Verified Customer Reviews Carousel Section with Real-Time 'Recently Ordered' Activity Badges */}
+            <VerifiedReviewsCarousel
+              orders={orders}
+              onStartOrderWithVin={handleStartOrderWithVin}
+              onOpenSample={() => setIsSampleModalOpen(true)}
+            />
+
             {/* Section 22: FAQ */}
             <FAQSection />
 
             {/* Section 23: Final CTA */}
             <FinalCTA
-              onStartOrder={() => handleOpenOrder()}
+              onStartOrder={handleOpenRequestReport}
               onOpenSample={() => setIsSampleModalOpen(true)}
-              onRequestReport={() => setIsIntakeModalOpen(true)}
+              onRequestReport={handleOpenRequestReport}
             />
           </main>
 
           <Footer
             onOpenLegal={(tab) => setLegalModalState({ isOpen: true, tab })}
-            onOpenOrder={() => handleOpenOrder()}
+            onOpenOrder={handleOpenRequestReport}
             onOpenSample={() => setIsSampleModalOpen(true)}
             onOpenTrack={() => setIsTrackModalOpen(true)}
             onScrollTo={handleScrollTo}
-            onToggleAdmin={() => setIsAdminView(true)}
-            onRequestReport={() => setIsIntakeModalOpen(true)}
+            onToggleAdmin={() => navigateTo('admin', '/admin')}
+            onRequestReport={handleOpenRequestReport}
+            onOpenPrintGuide={() => setIsPrintGuideOpen(true)}
           />
         </>
       )}
@@ -359,6 +480,12 @@ function AppContent() {
           setIsSampleModalOpen(false);
           handleOpenOrder('comprehensive-vin');
         }}
+      />
+
+      <PrintGuideModal
+        isOpen={isPrintGuideOpen}
+        onClose={() => setIsPrintGuideOpen(false)}
+        onOpenSample={() => setIsSampleModalOpen(true)}
       />
 
       <MyOrdersModal

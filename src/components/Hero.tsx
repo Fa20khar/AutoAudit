@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Search, ShieldCheck, CheckCircle2, ArrowRight, Car, Lock, FileCheck, Check, FileText } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, ShieldCheck, CheckCircle2, ArrowRight, Car, Lock, FileCheck, Check, FileText, Loader2, AlertCircle } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from '../context/LanguageContext';
 import { WhatsAppButton } from './WhatsAppButton';
+import { validateVinChecksum } from '../utils/vinValidator';
 
 interface HeroProps {
   onStartOrderWithVin: (vin: string, isVin: boolean) => void;
@@ -20,41 +21,92 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
   const [inputType, setInputType] = useState<'vin' | 'plate'>('vin');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isShaking, setIsShaking] = useState(false);
+  const [isInputShaking, setIsInputShaking] = useState(false);
+  const [validationState, setValidationState] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
+  const [validationFeedback, setValidationFeedback] = useState<string | null>(null);
+  const [heroInspectAngle, setHeroInspectAngle] = useState<'paint' | 'profile' | 'engine' | 'headlight'>('paint');
 
-  // Video playback & accessibility states
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
-  const [videoError, setVideoError] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  // Check for prefers-reduced-motion
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.matchMedia) {
-      const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-      setPrefersReducedMotion(mediaQuery.matches);
-      const listener = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
-      if (mediaQuery.addEventListener) {
-        mediaQuery.addEventListener('change', listener);
-        return () => mediaQuery.removeEventListener('change', listener);
-      }
+  // Immediate debounced visual validation effect for VIN input
+  React.useEffect(() => {
+    if (inputType !== 'vin') {
+      setValidationState('idle');
+      setValidationFeedback(null);
+      return;
     }
-  }, []);
 
-  // Ensure autoplay runs reliably without throwing unhandled exceptions
-  useEffect(() => {
-    if (videoRef.current && !prefersReducedMotion && !videoError) {
-      const playPromise = videoRef.current.play();
-      if (playPromise !== undefined) {
-        playPromise.catch((err) => {
-          // Silent fallback if browser restricts media autoplay
-          console.warn('Hero video autoplay restricted or deferred:', err);
-        });
-      }
+    const clean = vinInput.trim().toUpperCase();
+    if (!clean) {
+      setValidationState('idle');
+      setValidationFeedback(null);
+      return;
     }
-  }, [prefersReducedMotion, videoError]);
+
+    // If characters I, O, or Q are detected or invalid characters present
+    if (/[IOQ]/i.test(clean)) {
+      setValidationState('invalid');
+      setValidationFeedback('Letters I, O, and Q are prohibited in standard VINs.');
+      setIsInputShaking(true);
+      const timer = setTimeout(() => setIsInputShaking(false), 500);
+      return () => clearTimeout(timer);
+    }
+
+    if (/[^A-HJ-NPR-Z0-9]/i.test(clean)) {
+      setValidationState('invalid');
+      setValidationFeedback('Alphanumeric characters only.');
+      setIsInputShaking(true);
+      const timer = setTimeout(() => setIsInputShaking(false), 500);
+      return () => clearTimeout(timer);
+    }
+
+    // Partial length (less than 17): show progress, clear validated state
+    if (clean.length < 17) {
+      setValidationState('idle');
+      setValidationFeedback(`${clean.length}/17 digits entered`);
+      return;
+    }
+
+    // When full 17 characters are entered: show 'Validating...' spinner followed by checksum pass/fail
+    if (clean.length === 17) {
+      setValidationState('validating');
+      setValidationFeedback('Validating VIN checksum...');
+
+      const validationTimer = setTimeout(() => {
+        const result = validateVinChecksum(clean);
+        if (result.isValidChecksum || (result.isFormatValid && !result.expectedCheckDigit)) {
+          // Checksum passed or format verified
+          setValidationState('valid');
+          setValidationFeedback('Valid VIN verified');
+          setErrorMessage(null);
+        } else if (result.isFormatValid && result.actualCheckDigit !== result.expectedCheckDigit) {
+          // Checksum mismatch
+          setValidationState('invalid');
+          setValidationFeedback(`Checksum mismatch: expected check digit '${result.expectedCheckDigit}' at position 9`);
+          setIsInputShaking(true);
+          setTimeout(() => setIsInputShaking(false), 500);
+        } else {
+          setValidationState('invalid');
+          setValidationFeedback('Invalid VIN structure');
+          setIsInputShaking(true);
+          setTimeout(() => setIsInputShaking(false), 500);
+        }
+      }, 420); // Smooth authentic validation response window
+
+      return () => clearTimeout(validationTimer);
+    }
+
+    if (clean.length > 17) {
+      setValidationState('invalid');
+      setValidationFeedback('VIN cannot exceed 17 characters.');
+      setIsInputShaking(true);
+      const timer = setTimeout(() => setIsInputShaking(false), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [vinInput, inputType]);
 
   const triggerShake = (message: string) => {
     setErrorMessage(message);
     setIsShaking(true);
+    setIsInputShaking(true);
     showToast({
       type: 'warning',
       title: 'Invalid Vehicle Identifier',
@@ -63,6 +115,7 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
     });
     setTimeout(() => {
       setIsShaking(false);
+      setIsInputShaking(false);
     }, 500);
   };
 
@@ -117,40 +170,23 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
   return (
     <section id="hero" className="relative pt-12 pb-20 overflow-hidden bg-[#07111F] text-white">
       {/* 
-        Background Video & Multi-layer Navy/Emerald Vignette Overlay 
-        - Full-width, muted, looping automotive video asset
-        - Graceful fallback to hero poster if video fails or reduced-motion is requested
-        - Dark navy gradient overlay (#07111F) keeps all text WCAG AA compliant
+        Clean Premium SaaS Ambient Background (No background video)
+        - Rich dark navy (#07111F to #0B132B)
+        - Subtle emerald radial glow at top-center
+        - High-contrast, lightning-fast rendering without motion distraction
       */}
       <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0" aria-hidden="true">
-        {!prefersReducedMotion && !videoError ? (
-          <video
-            ref={videoRef}
-            autoPlay
-            muted
-            loop
-            playsInline
-            poster="/videos/hero-poster.jpg"
-            onError={() => setVideoError(true)}
-            className="w-full h-full object-cover object-center scale-[1.01]"
-          >
-            <source src="/videos/hero-background.webm" type="video/webm" />
-            <source src="/videos/hero-background.mp4" type="video/mp4" />
-          </video>
-        ) : (
-          <img
-            src="/videos/hero-poster.jpg"
-            alt=""
-            className="w-full h-full object-cover object-center"
-          />
-        )}
+        {/* Deep navy background gradient */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#07111F] via-[#0B132B] to-[#07111F]" />
 
-        {/* Navy Gradient Overlay for high text contrast (#07111F base) */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#07111F]/92 via-[#07111F]/82 to-[#07111F]" />
+        {/* Emerald ambient glow */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_75%_50%_at_50%_0%,rgba(16,185,129,0.12),transparent_70%)]" />
 
-        {/* Ambient Emerald Accent & Horizontal Edge Vignette */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,rgba(16,185,129,0.14),transparent_70%)]" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#07111F]/90 via-transparent to-[#07111F]/80" />
+        {/* Subtle geometric grid / mesh lines */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.03)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
+
+        {/* Edge gradient fade */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#07111F]" />
       </div>
 
       {/* Hero Content Layer */}
@@ -196,6 +232,17 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
                 <FileCheck className="w-4 h-4 text-[#10B981]" />
                 <span>{t('viewSampleBtn')}</span>
               </button>
+
+              {onRequestReport && (
+                <button
+                  type="button"
+                  onClick={onRequestReport}
+                  className="px-5 py-3 rounded-[8px] text-sm font-semibold bg-[#059669]/20 hover:bg-[#059669]/30 text-[#10B981] border border-[#059669]/40 transition-colors flex items-center gap-2 cursor-pointer leading-[1.43]"
+                >
+                  <ShieldCheck className="w-4 h-4 text-[#10B981]" />
+                  <span>Request Vehicle Report</span>
+                </button>
+              )}
 
               <WhatsAppButton
                 variant="secondary"
@@ -249,8 +296,46 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
                     onChange={(e) => handleInputChange(e.target.value)}
                     placeholder={inputType === 'vin' ? t('vinPlaceholder') : t('platePlaceholder')}
                     maxLength={inputType === 'vin' ? 17 : 20}
-                    className="w-full pl-9 sm:pl-10 pr-26 sm:pr-30 py-2.5 sm:py-3 bg-[#0B132B] border border-[rgba(148,163,184,0.20)] rounded-[8px] text-white placeholder-slate-400 font-mono text-xs sm:text-sm tracking-wider uppercase focus:outline-none focus:border-[#10B981] transition-colors"
+                    className={`w-full pl-9 sm:pl-10 ${
+                      inputType === 'vin' && validationState !== 'idle'
+                        ? 'pr-44 sm:pr-48'
+                        : 'pr-26 sm:pr-30'
+                    } py-2.5 sm:py-3 bg-[#0B132B] border rounded-[8px] text-white placeholder-slate-400 font-mono text-xs sm:text-sm tracking-wider uppercase focus:outline-none transition-all ${
+                      isInputShaking ? 'animate-gentle-shake border-rose-500 ring-1 ring-rose-500/50' : ''
+                    } ${
+                      inputType === 'vin' && validationState === 'valid'
+                        ? 'border-emerald-500 ring-1 ring-emerald-500/30'
+                        : inputType === 'vin' && validationState === 'invalid'
+                        ? 'border-rose-500/80 ring-1 ring-rose-500/20'
+                        : inputType === 'vin' && validationState === 'validating'
+                        ? 'border-blue-500/80 ring-1 ring-blue-500/30'
+                        : 'border-[rgba(148,163,184,0.20)] focus:border-[#10B981]'
+                    }`}
                   />
+
+                  {/* Immediate Visual Validation Status Indicator (Validating Spinner / Checkmark / Alert) */}
+                  {inputType === 'vin' && validationState !== 'idle' && (
+                    <div className="absolute inset-y-0 right-28 sm:right-32 flex items-center pr-1.5 pointer-events-none transition-all">
+                      {validationState === 'validating' && (
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-400 text-[10px] font-medium tracking-normal animate-pulse">
+                          <Loader2 className="w-3 h-3 animate-spin text-blue-400 shrink-0" />
+                          <span className="hidden xs:inline">Validating...</span>
+                        </div>
+                      )}
+                      {validationState === 'valid' && (
+                        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 text-[10px] font-semibold tracking-normal shadow-xs">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 report-checkmark-pop" />
+                          <span className="hidden xs:inline">Passed</span>
+                        </div>
+                      )}
+                      {validationState === 'invalid' && (
+                        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-rose-500/15 border border-rose-500/40 text-rose-400 text-[10px] font-medium tracking-normal">
+                          <AlertCircle className="w-3 h-3 text-rose-400 shrink-0" />
+                          <span className="hidden xs:inline">Invalid</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="absolute inset-y-1 sm:inset-y-1.5 right-1 sm:right-1.5">
                     <button
@@ -263,9 +348,36 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
                   </div>
                 </div>
 
-                {errorMessage && (
-                  <p className="text-[11px] sm:text-xs text-rose-400 font-medium">
-                    {errorMessage}
+                {/* Immediate Real-time Validation Feedback Message */}
+                {inputType === 'vin' && validationFeedback && (
+                  <div
+                    className={`flex items-center gap-1.5 text-[11px] sm:text-xs font-medium transition-colors ${
+                      validationState === 'valid'
+                        ? 'text-emerald-400'
+                        : validationState === 'validating'
+                        ? 'text-blue-400'
+                        : validationState === 'invalid'
+                        ? 'text-rose-400'
+                        : 'text-slate-400'
+                    }`}
+                  >
+                    {validationState === 'valid' ? (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    ) : validationState === 'validating' ? (
+                      <Loader2 className="w-3.5 h-3.5 text-blue-400 animate-spin shrink-0" />
+                    ) : validationState === 'invalid' ? (
+                      <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                    ) : (
+                      <Car className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    )}
+                    <span>{validationFeedback}</span>
+                  </div>
+                )}
+
+                {errorMessage && (!validationFeedback || validationState !== 'invalid') && (
+                  <p className="text-[11px] sm:text-xs text-rose-400 font-medium flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                    <span>{errorMessage}</span>
                   </p>
                 )}
 
@@ -354,37 +466,100 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
                 </p>
               </div>
 
-              {/* Generic Premium Car Silhouette */}
-              <div className="relative h-28 bg-[#0B132B] rounded-[8px] border border-[rgba(148,163,184,0.20)] flex items-center justify-center overflow-hidden">
-                <svg
-                  viewBox="0 0 200 70"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-44 h-auto opacity-75 drop-shadow-sm"
-                >
-                  {/* Roofline and body contours of premium modern sports sedan */}
-                  <path
-                    d="M20 50 C30 48, 45 46, 60 38 C75 30, 95 24, 125 24 C145 24, 160 32, 175 42 C185 48, 192 50, 195 52 L190 56 C170 56, 160 56, 150 56 C145 52, 140 50, 130 50 C120 50, 115 52, 110 56 L85 56 C80 52, 75 50, 65 50 C55 50, 50 52, 45 56 L15 56 Z"
-                    fill="#1E293B"
-                    stroke="#475569"
-                    strokeWidth="1.5"
+              {/* Interactive Customer Vehicle Inspection View */}
+              <div className="relative rounded-[10px] overflow-hidden border border-[rgba(148,163,184,0.25)] bg-[#0B132B] shadow-inner group">
+                <div className="relative aspect-[16/9] w-full overflow-hidden">
+                  <img
+                    src={
+                      heroInspectAngle === 'paint'
+                        ? '/images/inspection/paint-inspection.jpg'
+                        : heroInspectAngle === 'profile'
+                        ? '/images/inspection/luxury-bentley.jpg'
+                        : heroInspectAngle === 'engine'
+                        ? '/images/inspection/engine-inspection.jpg'
+                        : '/images/inspection/headlight-inspection.jpg'
+                    }
+                    alt="AutoAudit Vehicle Inspection Telemetry"
+                    className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
                   />
-                  {/* Windshield & Windows */}
-                  <path
-                    d="M68 37 C80 31, 95 27, 122 27 C138 27, 150 33, 160 41 L120 41 C95 41, 80 41, 68 37 Z"
-                    fill="#0F172A"
-                  />
-                  {/* Wheels */}
-                  <circle cx="65" cy="54" r="10" fill="#0B132B" stroke="#64748B" strokeWidth="2" />
-                  <circle cx="65" cy="54" r="4" fill="#10B981" />
-                  <circle cx="130" cy="54" r="10" fill="#0B132B" stroke="#64748B" strokeWidth="2" />
-                  <circle cx="130" cy="54" r="4" fill="#10B981" />
-                  {/* Headlight glow */}
-                  <polygon points="188,48 196,51 190,53" fill="#10B981" opacity="0.9" />
-                </svg>
-                <span className="absolute bottom-2 right-3 text-[10px] text-slate-500 font-mono">
-                  DEMO RECORD
-                </span>
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#07111F]/90 via-transparent to-[#07111F]/30 pointer-events-none" />
+
+                  {/* Pulsing Interactive Hotspot Indicator */}
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+                    <span className="relative flex h-8 w-8 items-center justify-center">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#10B981] opacity-75" />
+                      <span className="relative inline-flex rounded-full h-4 w-4 bg-[#10B981] border-2 border-white shadow-lg" />
+                    </span>
+                  </div>
+
+                  {/* Top Badge: View Angle Tag */}
+                  <div className="absolute top-2 left-2 flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 rounded-[4px] text-[10px] font-bold uppercase tracking-wider bg-[#07111F]/80 text-[#10B981] border border-[#10B981]/30 backdrop-blur-md">
+                      {heroInspectAngle === 'paint' ? 'Paint Surface Audit' : heroInspectAngle === 'profile' ? 'Executive Profile' : heroInspectAngle === 'engine' ? 'Engine Bay Check' : 'Optical Headlight'}
+                    </span>
+                  </div>
+
+                  {/* Live Inspection Hotspot Label */}
+                  <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[11px] text-white">
+                    <span className="bg-[#07111F]/80 px-2 py-0.5 rounded backdrop-blur-md text-[10px] font-mono border border-[rgba(148,163,184,0.20)]">
+                      {heroInspectAngle === 'paint' ? 'Micro-Depth: 118μm' : heroInspectAngle === 'profile' ? 'Clean Title Verified' : heroInspectAngle === 'engine' ? 'Numbers-Matching OEM' : 'OEM Date Verified'}
+                    </span>
+                    <a
+                      href="#interactive-view"
+                      className="text-[10px] text-[#10B981] hover:underline font-semibold flex items-center gap-0.5"
+                    >
+                      <span>Explore 360° View →</span>
+                    </a>
+                  </div>
+                </div>
+
+                {/* Interactive Angle Switcher Tabs */}
+                <div className="grid grid-cols-4 gap-1 p-1 bg-[#07111F]/90 border-t border-[rgba(148,163,184,0.20)] text-[10px]">
+                  <button
+                    type="button"
+                    onClick={() => setHeroInspectAngle('paint')}
+                    className={`py-1 px-1.5 rounded-[6px] font-semibold text-center transition-colors cursor-pointer truncate ${
+                      heroInspectAngle === 'paint'
+                        ? 'bg-[#10B981] text-white shadow-xs'
+                        : 'text-[#CBD5E1] hover:text-white hover:bg-[#0F1B2D]'
+                    }`}
+                  >
+                    Paint
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHeroInspectAngle('profile')}
+                    className={`py-1 px-1.5 rounded-[6px] font-semibold text-center transition-colors cursor-pointer truncate ${
+                      heroInspectAngle === 'profile'
+                        ? 'bg-[#10B981] text-white shadow-xs'
+                        : 'text-[#CBD5E1] hover:text-white hover:bg-[#0F1B2D]'
+                    }`}
+                  >
+                    Profile
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHeroInspectAngle('engine')}
+                    className={`py-1 px-1.5 rounded-[6px] font-semibold text-center transition-colors cursor-pointer truncate ${
+                      heroInspectAngle === 'engine'
+                        ? 'bg-[#10B981] text-white shadow-xs'
+                        : 'text-[#CBD5E1] hover:text-white hover:bg-[#0F1B2D]'
+                    }`}
+                  >
+                    Engine
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHeroInspectAngle('headlight')}
+                    className={`py-1 px-1.5 rounded-[6px] font-semibold text-center transition-colors cursor-pointer truncate ${
+                      heroInspectAngle === 'headlight'
+                        ? 'bg-[#10B981] text-white shadow-xs'
+                        : 'text-[#CBD5E1] hover:text-white hover:bg-[#0F1B2D]'
+                    }`}
+                  >
+                    Optics
+                  </button>
+                </div>
               </div>
 
               {/* 4 Metric Cards with Green Check Indicators */}

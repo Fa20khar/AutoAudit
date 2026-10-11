@@ -195,8 +195,34 @@
   }
 }
 
+@keyframes gentle-shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  16% {
+    transform: translateX(-5px);
+  }
+  33% {
+    transform: translateX(5px);
+  }
+  50% {
+    transform: translateX(-4px);
+  }
+  66% {
+    transform: translateX(4px);
+  }
+  83% {
+    transform: translateX(-2px);
+  }
+}
+
 .animate-subtle-shake {
   animation: subtle-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+.animate-shake,
+.animate-gentle-shake {
+  animation: gentle-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 }
 
 /* Watermark: Strictly hidden on screen */
@@ -578,5 +604,34 @@
   background: linear-gradient(90deg, rgba(255, 255, 255, 0.03) 25%, rgba(255, 255, 255, 0.12) 50%, rgba(255, 255, 255, 0.03) 75%);
   background-size: 200% 100%;
   animation: reportScanSweep 1.6s infinite ease-in-out;
+}
+
+/* Mobile Slide-Out Drawer Animations */
+@keyframes drawerSlideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes drawerFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-drawer-slide-in {
+  animation: drawerSlideInRight 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform;
+}
+
+.animate-drawer-fade-in {
+  animation: drawerFadeIn 0.24s ease-out forwards;
+  will-change: opacity;
 }
 

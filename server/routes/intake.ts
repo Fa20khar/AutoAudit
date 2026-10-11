@@ -145,6 +145,8 @@ intakeRouter.post('/', async (req: Request, res: Response) => {
     additionalNotes: sanitizeText(body.additionalNotes || body.additionalInformation),
     documentFileName: body.documentFileName ? sanitizeText(body.documentFileName) : undefined,
     documentFileSize: body.documentFileSize ? sanitizeText(body.documentFileSize) : undefined,
+    vehiclePhotos: Array.isArray(body.vehiclePhotos) ? body.vehiclePhotos : undefined,
+    vehiclePhotoCount: Array.isArray(body.vehiclePhotos) ? body.vehiclePhotos.length : (body.vehiclePhotoCount || 0),
     accuracyConfirmed,
     dataUsageConsent,
     termsAgreed,

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Menu, X, ArrowRight, QrCode, Globe } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Menu, X, ArrowRight, QrCode, Globe, FileCheck, Shield, ChevronRight } from 'lucide-react';
 import { Logo } from './Logo';
 import { WhatsAppIcon } from './WhatsAppWidget';
 import { useTranslation } from '../context/LanguageContext';
@@ -29,6 +29,29 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { language, setLanguage, t } = useTranslation();
+
+  // Lock background body scrolling when mobile drawer is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
+
+  // Close drawer on Escape key press
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && mobileMenuOpen) {
+        setMobileMenuOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [mobileMenuOpen]);
 
   const handleNavClick = (sectionId: string) => {
     onScrollTo(sectionId);
@@ -107,6 +130,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             {t('navSampleReport')}
           </button>
           <button
+            onClick={() => handleNavClick('interactive-view')}
+            className="hover:text-white transition-colors cursor-pointer text-[#10B981] font-semibold"
+          >
+            Inspection View
+          </button>
+          <button
             onClick={() => handleNavClick('faq')}
             className="hover:text-white transition-colors cursor-pointer"
           >
@@ -178,6 +207,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </button>
 
+          {/* Direct Link to Google Form: Request Vehicle Report */}
+          {onRequestReport && (
+            <button
+              onClick={onRequestReport}
+              className="hidden md:inline-flex items-center gap-1.5 px-3 py-2 rounded-[8px] text-xs font-bold text-[#10B981] hover:text-emerald-300 bg-[#059669]/15 hover:bg-[#059669]/25 border border-[#059669]/35 transition-colors cursor-pointer"
+              title="Request Vehicle Report (Google Forms)"
+            >
+              <FileCheck className="w-3.5 h-3.5 text-[#10B981]" />
+              <span>Request Report</span>
+            </button>
+          )}
+
           {/* Primary CTA: Get Report (Distinct #2563EB blue CTA button) */}
           <button
             onClick={() => onOpenOrder()}
@@ -189,122 +230,203 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Mobile Hamburger Button */}
           <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            onClick={() => setMobileMenuOpen(true)}
             className="lg:hidden p-2 rounded-[8px] text-[#CBD5E1] hover:text-white hover:bg-[#0F1B2D] transition-colors cursor-pointer"
-            aria-label="Toggle Navigation Menu"
+            aria-label="Open Navigation Menu"
+            aria-expanded={mobileMenuOpen}
           >
-            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            <Menu className="w-6 h-6" />
           </button>
         </div>
 
       </div>
 
-      {/* Mobile Drawer Menu */}
+      {/* Mobile Slide-Out Drawer & Backdrop Overlay */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-[#07111F] border-b border-[rgba(148,163,184,0.20)] px-4 pt-3 pb-6 space-y-3 animate-fade-in text-sm">
-          {/* Mobile Language Switcher */}
-          <div className="flex items-center justify-between p-3 rounded-xl bg-[#0F1B2D] border border-[rgba(148,163,184,0.20)]">
-            <div className="flex items-center gap-2 text-xs font-semibold text-[#CBD5E1]">
-              <Globe className="w-4 h-4 text-blue-400" />
-              <span>{t('languageLabel')}:</span>
-            </div>
-            <div className="flex items-center gap-1 bg-[#0B132B] p-0.5 rounded-lg text-xs font-bold border border-[rgba(148,163,184,0.20)]">
-              <button
-                type="button"
-                onClick={() => setLanguage('en')}
-                className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
-                  language === 'en' ? 'bg-[#2563EB] text-white shadow-xs' : 'text-[#CBD5E1] hover:text-white'
-                }`}
-              >
-                English
-              </button>
-              <button
-                type="button"
-                onClick={() => setLanguage('es')}
-                className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
-                  language === 'es' ? 'bg-[#2563EB] text-white shadow-xs' : 'text-[#CBD5E1] hover:text-white'
-                }`}
-              >
-                Español
-              </button>
-            </div>
-          </div>
+        <div className="fixed inset-0 z-50 lg:hidden flex justify-end" role="dialog" aria-modal="true" aria-label="Mobile Navigation Menu">
+          {/* Semi-transparent Backdrop Overlay */}
+          <div
+            className="fixed inset-0 bg-[#07111F]/80 backdrop-blur-sm animate-drawer-fade-in"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
 
-          <nav className="flex flex-col space-y-2 text-[#CBD5E1] font-medium">
-            <button
-              onClick={() => handleNavClick('hero')}
-              className="text-left px-3 py-2 rounded-[8px] hover:bg-[#0F1B2D] hover:text-white transition-colors"
-            >
-              {t('navHome')}
-            </button>
-            <button
-              onClick={() => handleNavClick('services')}
-              className="text-left px-3 py-2 rounded-[8px] hover:bg-[#0F1B2D] hover:text-white transition-colors"
-            >
-              {t('navVehicleReports')}
-            </button>
-            <button
-              onClick={() => handleNavClick('how-it-works')}
-              className="text-left px-3 py-2 rounded-[8px] hover:bg-[#0F1B2D] hover:text-white transition-colors"
-            >
-              {t('navHowItWorks')}
-            </button>
-            <button
-              onClick={() => {
-                onOpenSample();
-                setMobileMenuOpen(false);
-              }}
-              className="text-left px-3 py-2 rounded-[8px] hover:bg-[#0F1B2D] hover:text-white transition-colors"
-            >
-              {t('navSampleReport')}
-            </button>
-            <button
-              onClick={() => handleNavClick('faq')}
-              className="text-left px-3 py-2 rounded-[8px] hover:bg-[#0F1B2D] hover:text-white transition-colors"
-            >
-              {t('navFaq')}
-            </button>
-            {onRequestReport && (
+          {/* Slide-out Drawer Panel */}
+          <aside className="relative w-full max-w-sm sm:max-w-md bg-[#0B132B] border-l border-[rgba(148,163,184,0.20)] text-white h-full flex flex-col shadow-2xl z-10 animate-drawer-slide-in">
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[rgba(148,163,184,0.15)] bg-[#07111F]">
+              <div className="flex items-center gap-2.5">
+                <Shield className="w-5 h-5 text-[#10B981]" />
+                <span className="font-bold text-sm tracking-wide text-white uppercase font-mono">AutoAudit Menu</span>
+              </div>
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-[#0F1B2D] transition-colors cursor-pointer"
+                aria-label="Close Navigation Menu"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Language Switcher Bar inside Drawer */}
+            <div className="p-4 border-b border-[rgba(148,163,184,0.15)] bg-[#0F1B2D]/60 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-semibold text-[#CBD5E1]">
+                <Globe className="w-4 h-4 text-blue-400 shrink-0" />
+                <span>{t('languageLabel')}:</span>
+              </div>
+              <div className="flex items-center gap-1 bg-[#07111F] p-1 rounded-lg text-xs font-bold border border-[rgba(148,163,184,0.20)]">
+                <button
+                  type="button"
+                  onClick={() => setLanguage('en')}
+                  className={`px-3 py-1 rounded-md transition-colors cursor-pointer ${
+                    language === 'en' ? 'bg-[#2563EB] text-white shadow-xs' : 'text-[#CBD5E1] hover:text-white'
+                  }`}
+                >
+                  English
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLanguage('es')}
+                  className={`px-3 py-1 rounded-md transition-colors cursor-pointer ${
+                    language === 'es' ? 'bg-[#2563EB] text-white shadow-xs' : 'text-[#CBD5E1] hover:text-white'
+                  }`}
+                >
+                  Español
+                </button>
+              </div>
+            </div>
+
+            {/* Scrollable Navigation Items */}
+            <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-1 text-sm font-medium">
+              <button
+                onClick={() => handleNavClick('hero')}
+                className="w-full flex items-center justify-between text-left px-3.5 py-2.5 rounded-lg text-[#CBD5E1] hover:text-white hover:bg-[#0F1B2D] transition-colors cursor-pointer"
+              >
+                <span>{t('navHome')}</span>
+                <ChevronRight className="w-4 h-4 text-slate-500" />
+              </button>
+
+              <button
+                onClick={() => handleNavClick('services')}
+                className="w-full flex items-center justify-between text-left px-3.5 py-2.5 rounded-lg text-[#CBD5E1] hover:text-white hover:bg-[#0F1B2D] transition-colors cursor-pointer"
+              >
+                <span>{t('navVehicleReports')}</span>
+                <ChevronRight className="w-4 h-4 text-slate-500" />
+              </button>
+
+              <button
+                onClick={() => handleNavClick('services')}
+                className="w-full flex items-center justify-between text-left px-3.5 py-2.5 rounded-lg text-[#CBD5E1] hover:text-white hover:bg-[#0F1B2D] transition-colors cursor-pointer"
+              >
+                <span>{t('navPricing')}</span>
+                <ChevronRight className="w-4 h-4 text-slate-500" />
+              </button>
+
+              <button
+                onClick={() => handleNavClick('how-it-works')}
+                className="w-full flex items-center justify-between text-left px-3.5 py-2.5 rounded-lg text-[#CBD5E1] hover:text-white hover:bg-[#0F1B2D] transition-colors cursor-pointer"
+              >
+                <span>{t('navHowItWorks')}</span>
+                <ChevronRight className="w-4 h-4 text-slate-500" />
+              </button>
+
               <button
                 onClick={() => {
-                  onRequestReport();
+                  onOpenSample();
                   setMobileMenuOpen(false);
                 }}
-                className="text-left px-3 py-2 rounded-[8px] bg-[#059669]/15 text-[#10B981] border border-[#059669]/30 font-semibold"
+                className="w-full flex items-center justify-between text-left px-3.5 py-2.5 rounded-lg text-[#CBD5E1] hover:text-white hover:bg-[#0F1B2D] transition-colors cursor-pointer"
               >
-                {t('navRequestReport')}
+                <span>{t('navSampleReport')}</span>
+                <ChevronRight className="w-4 h-4 text-slate-500" />
               </button>
-            )}
-            <button
-              onClick={() => {
-                onOpenTrack();
-                setMobileMenuOpen(false);
-              }}
-              className="text-left px-3 py-2 rounded-[8px] hover:bg-[#0F1B2D] hover:text-white transition-colors"
-            >
-              {t('navCustomerPortal')}
-            </button>
-            <button
-              onClick={() => {
-                onToggleAdminView();
-                setMobileMenuOpen(false);
-              }}
-              className="text-left px-3 py-2 rounded-[8px] bg-[#0F1B2D] text-[#CBD5E1] border border-[rgba(148,163,184,0.20)] font-semibold"
-            >
-              {t('navAdminPortal')}
-            </button>
 
-            {/* Mobile WhatsApp Quick Support */}
-            <div className="pt-2 border-t border-[rgba(148,163,184,0.15)] mt-2">
+              <button
+                onClick={() => handleNavClick('interactive-view')}
+                className="w-full flex items-center justify-between text-left px-3.5 py-2.5 rounded-lg text-[#10B981] hover:text-emerald-300 hover:bg-[#0F1B2D] font-semibold transition-colors cursor-pointer"
+              >
+                <span>Interactive Inspection View</span>
+                <ChevronRight className="w-4 h-4 text-emerald-500/70" />
+              </button>
+
+              <button
+                onClick={() => handleNavClick('faq')}
+                className="w-full flex items-center justify-between text-left px-3.5 py-2.5 rounded-lg text-[#CBD5E1] hover:text-white hover:bg-[#0F1B2D] transition-colors cursor-pointer"
+              >
+                <span>{t('navFaq')}</span>
+                <ChevronRight className="w-4 h-4 text-slate-500" />
+              </button>
+
+              {onRequestReport && (
+                <button
+                  onClick={() => {
+                    onRequestReport();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full flex items-center justify-between text-left px-3.5 py-2.5 rounded-lg bg-[#059669]/15 text-[#10B981] hover:text-emerald-300 border border-[#059669]/30 font-semibold transition-colors cursor-pointer my-1"
+                >
+                  <div className="flex items-center gap-2">
+                    <FileCheck className="w-4 h-4 text-[#10B981]" />
+                    <span>{t('navRequestReport')}</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-emerald-400" />
+                </button>
+              )}
+
+              <div className="pt-2 border-t border-[rgba(148,163,184,0.15)] my-2 space-y-1">
+                <button
+                  onClick={() => {
+                    onOpenTrack();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full flex items-center justify-between text-left px-3.5 py-2 rounded-lg text-xs font-semibold text-[#CBD5E1] hover:text-white hover:bg-[#0F1B2D] transition-colors cursor-pointer"
+                >
+                  <span>{t('navCustomerPortal')}</span>
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
+                </button>
+
+                <button
+                  onClick={() => {
+                    onToggleAdminView();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full flex items-center justify-between text-left px-3.5 py-2 rounded-lg text-xs font-semibold text-[#CBD5E1] hover:text-white bg-[#0F1B2D]/80 border border-[rgba(148,163,184,0.20)] transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <span>{t('navAdminPortal')}</span>
+                    {newOrdersCount > 0 && (
+                      <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" />
+                    )}
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
+                </button>
+              </div>
+            </nav>
+
+            {/* Drawer Bottom Actions: Primary CTA and WhatsApp Support */}
+            <div className="p-4 border-t border-[rgba(148,163,184,0.15)] bg-[#07111F] space-y-3">
+              {/* Primary Action Button */}
+              <button
+                onClick={() => {
+                  onOpenOrder();
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full py-3 px-4 rounded-xl text-sm font-semibold bg-[#2563EB] hover:bg-[#1D4ED8] text-white shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98"
+              >
+                <span>{t('navGetReport')}</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+
+              {/* Mobile WhatsApp Quick Support Card */}
               <a
                 href="https://wa.me/923420617217?text=Hello%20AutoAudit%20Support%2C%20I%20would%20like%20assistance%20with%20a%20vehicle%20history%20report."
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center justify-between p-3 rounded-xl bg-emerald-950/40 border border-emerald-900/60 text-emerald-300 hover:text-emerald-200 transition-colors"
+                className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-900/60 text-emerald-300 hover:text-emerald-200 transition-colors"
               >
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-[#25D366] text-white flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 rounded-lg bg-[#25D366] text-white flex items-center justify-center shrink-0 shadow-sm">
                     <WhatsAppIcon className="w-4 h-4" />
                   </div>
                   <div>
@@ -315,7 +437,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="text-[11px] bg-emerald-800/60 px-2 py-1 rounded text-white font-medium">Scan / Chat</span>
               </a>
             </div>
-          </nav>
+          </aside>
         </div>
       )}
     </header>

@@ -6,7 +6,8 @@ import {
   AlertTriangle, RefreshCw, X, ShieldAlert, Check, Plus, Edit2, Trash2,
   Users, FileCheck, CreditCard, ChevronRight, LogOut, ArrowLeft, ShieldCheck, Lock,
   Database, Copy, ExternalLink, CheckCheck, Ban, CheckSquare, Square, XCircle,
-  Loader2, Sparkles, QrCode, Download, Phone, MessageCircle, Filter, SlidersHorizontal
+  Loader2, Sparkles, QrCode, Download, Phone, MessageCircle, Filter, SlidersHorizontal,
+  FileSpreadsheet, Camera, Image as ImageIcon
 } from 'lucide-react';
 import { EmailPreviewModal } from './EmailPreviewModal';
 import { useToast } from '../context/ToastContext';
@@ -17,6 +18,11 @@ import { ContactAnalyticsTab } from './ContactAnalyticsTab';
 import { WhatsAppIcon } from './WhatsAppWidget';
 import { AdminOrderAnalyticsDashboard } from './AdminOrderAnalyticsDashboard';
 import { downloadReportPdfBlob, viewReportPdfBlob } from '../utils/pdfGenerator';
+import { 
+  GOOGLE_FORMS_CONFIG, 
+  GOOGLE_FORMS_EDITOR_URL, 
+  GOOGLE_FORMS_RESPONSES_URL 
+} from '../config/googleFormsConfig';
 
 interface AdminPanelProps {
   orders: Order[];
@@ -2511,11 +2517,45 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2 self-start">
+                  <div className="flex flex-wrap items-center gap-2 self-start">
+                    <a
+                      href={GOOGLE_FORMS_RESPONSES_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+                      title="Open linked Google Sheets responses"
+                    >
+                      <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                      <span>Open Google Sheet Responses</span>
+                      <ExternalLink className="w-3 h-3 text-emerald-500" />
+                    </a>
+
+                    <a
+                      href="/request-report"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
+                      title="View public Google Form page"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 text-blue-600" />
+                      <span>View Form on Website</span>
+                    </a>
+
+                    <a
+                      href={GOOGLE_FORMS_EDITOR_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
+                      title="Edit Google Form structure in Google Forms"
+                    >
+                      <Settings className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Form Editor</span>
+                    </a>
+
                     <button
                       type="button"
                       onClick={fetchIntakeSubmissions}
-                      className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
+                      className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
                     >
                       <RefreshCw className="w-3.5 h-3.5" />
                       <span>Refresh</span>
@@ -3128,6 +3168,40 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <span className="text-slate-500">Attached File:</span>
                     <span className="font-bold text-blue-700">{selectedIntakeForView.documentFileName}</span>
                     <span>({selectedIntakeForView.documentFileSize || 'Verified'})</span>
+                  </div>
+                )}
+
+                {/* Customer Vehicle Photographs (Google Forms Question Specification) */}
+                {selectedIntakeForView.vehiclePhotos && selectedIntakeForView.vehiclePhotos.length > 0 && (
+                  <div className="pt-2 border-t border-slate-200 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-800 flex items-center gap-1.5">
+                        <Camera className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Submitted Vehicle Photographs ({selectedIntakeForView.vehiclePhotos.length}):</span>
+                      </span>
+                      <span className="text-[10px] text-slate-500">Stored via Google Drive / Forms sync</span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {selectedIntakeForView.vehiclePhotos.map((photo, pIdx) => (
+                        <div key={pIdx} className="bg-white p-2 rounded-lg border border-slate-200 space-y-1">
+                          {photo.previewUrl ? (
+                            <img
+                              src={photo.previewUrl}
+                              alt={`Vehicle Photo ${pIdx + 1}`}
+                              className="w-full h-20 object-cover rounded"
+                            />
+                          ) : (
+                            <div className="w-full h-16 bg-slate-100 rounded flex items-center justify-center text-slate-400">
+                              <ImageIcon className="w-6 h-6" />
+                            </div>
+                          )}
+                          <div className="text-[10px] truncate text-slate-700 font-medium" title={photo.name}>
+                            {photo.name}
+                          </div>
+                          <div className="text-[9px] text-slate-400">{photo.size}</div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

@@ -194,10 +194,12 @@ export interface CustomerIntakeSubmission {
   reasonForRequest: string;
   purchaseStatus?: string;
   
-  // Section 4: Additional Information
+  // Section 4: Additional Information & Vehicle Photos
   additionalNotes?: string;
   documentFileName?: string;
   documentFileSize?: string;
+  vehiclePhotos?: Array<{ name: string; size: string; previewUrl?: string }>;
+  vehiclePhotoCount?: number;
   
   // Section 5: Customer Consent
   accuracyConfirmed: boolean;

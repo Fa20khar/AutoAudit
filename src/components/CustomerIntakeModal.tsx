@@ -17,13 +17,26 @@ import {
   Clock,
   Send,
   HelpCircle,
-  Check
+  Check,
+  Table,
+  FileSpreadsheet,
+  Camera,
+  Image as ImageIcon,
+  Trash2,
+  Info
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import confetti from 'canvas-confetti';
 import { CustomerIntakeSubmission } from '../types';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { IntakeProgressBar, IntakeProgressStats } from './IntakeProgressBar';
+import { 
+  GOOGLE_FORMS_CONFIG, 
+  GOOGLE_FORMS_EMBED_URL, 
+  GOOGLE_FORMS_RESPONSES_URL,
+  GOOGLE_FORMS_EDITOR_URL 
+} from '../config/googleFormsConfig';
 
 interface CustomerIntakeModalProps {
   isOpen: boolean;
@@ -125,6 +138,7 @@ export const CustomerIntakeModal: React.FC<CustomerIntakeModalProps> = ({
 
   const [additionalNotes, setAdditionalNotes] = useState('');
   const [uploadedFile, setUploadedFile] = useState<{ name: string; size: string } | null>(null);
+  const [vehiclePhotos, setVehiclePhotos] = useState<Array<{ name: string; size: string; previewUrl?: string }>>([]);
 
   const [accuracyConfirmed, setAccuracyConfirmed] = useState(false);
   const [dataUsageConsent, setDataUsageConsent] = useState(false);
@@ -141,12 +155,64 @@ export const CustomerIntakeModal: React.FC<CustomerIntakeModalProps> = ({
     orderNumber?: string;
   } | null>(null);
 
+  // Form mode: Direct AutoAudit Intake or Embedded Google Form
+  const [formMode, setFormMode] = useState<'direct' | 'google'>('direct');
+
   // Sync initial VIN when modal opens
   React.useEffect(() => {
     if (initialVin) {
       setVinOrChassis(initialVin.toUpperCase());
     }
   }, [initialVin]);
+
+  // Dynamic Progress Bar statistics based on filled fields
+  const contactFilled = Boolean(fullName.trim() && email.trim() && phone.trim());
+  const vehicleFilled = Boolean(vinOrChassis.trim() && make.trim() && model.trim());
+  const scopeFilled = Boolean(reportType && reasonForRequest);
+  const consentFilled = Boolean(accuracyConfirmed && dataUsageConsent && termsAgreed);
+
+  let calculatedPercentage = 0;
+  if (fullName.trim()) calculatedPercentage += 10;
+  if (email.trim()) calculatedPercentage += 10;
+  if (phone.trim()) calculatedPercentage += 10;
+  if (vinOrChassis.trim()) calculatedPercentage += 15;
+  if (make.trim()) calculatedPercentage += 10;
+  if (model.trim()) calculatedPercentage += 10;
+  if (registrationPlate.trim() || modelYear) calculatedPercentage += 5;
+  if (reportType && reasonForRequest) calculatedPercentage += 10;
+  if (uploadedFile || additionalNotes.trim()) calculatedPercentage += 10;
+  if (accuracyConfirmed && dataUsageConsent && termsAgreed) calculatedPercentage += 10;
+  if (calculatedPercentage > 100) calculatedPercentage = 100;
+
+  let currentStepMessage = 'Enter customer contact information to get started';
+  if (activeTab === 1) {
+    currentStepMessage = contactFilled
+      ? 'Contact details complete! Click Step 2 for vehicle details.'
+      : 'Please provide full name, email, and phone number.';
+  } else if (activeTab === 2) {
+    currentStepMessage = vehicleFilled
+      ? 'Vehicle details verified! Continue to Step 3 for report scope.'
+      : 'Provide VIN / Chassis, make, and model to look up history.';
+  } else if (activeTab === 3) {
+    currentStepMessage = scopeFilled
+      ? 'Report scope specified! Click Step 4 or 5 to finalize.'
+      : 'Select report type and your primary purpose.';
+  } else if (activeTab === 4) {
+    currentStepMessage = 'Attach any registration papers or notes (optional).';
+  } else if (activeTab === 5) {
+    currentStepMessage = consentFilled
+      ? 'Ready to submit! Click Submit Request below.'
+      : 'Please review and accept terms & accuracy confirmations.';
+  }
+
+  const progressStats: IntakeProgressStats = {
+    percentage: calculatedPercentage,
+    contactFilled,
+    vehicleFilled,
+    scopeFilled,
+    consentFilled,
+    currentStepMessage
+  };
 
   if (!isOpen) return null;
 
@@ -184,6 +250,65 @@ export const CustomerIntakeModal: React.FC<CustomerIntakeModalProps> = ({
       title: 'Document Attached',
       message: `${file.name} (${sizeFormatted}) ready for submission.`,
       duration: 3500
+    });
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const remainingSlots = 5 - vehiclePhotos.length;
+    if (remainingSlots <= 0) {
+      showToast({
+        type: 'warning',
+        title: 'Photo Limit Reached',
+        message: 'Maximum 5 vehicle photos allowed per intake request.',
+        duration: 4000
+      });
+      return;
+    }
+
+    const filesToProcess = Array.from(files).slice(0, remainingSlots);
+    const newPhotos: Array<{ name: string; size: string; previewUrl?: string }> = [];
+
+    for (const file of filesToProcess) {
+      if (file.size > 10 * 1024 * 1024) {
+        showToast({
+          type: 'warning',
+          title: 'Photo Too Large',
+          message: `${file.name} exceeds the 10 MB limit.`,
+          duration: 3500
+        });
+        continue;
+      }
+
+      const sizeFormatted = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
+      const previewUrl = URL.createObjectURL(file);
+      newPhotos.push({
+        name: file.name,
+        size: sizeFormatted,
+        previewUrl
+      });
+    }
+
+    if (newPhotos.length > 0) {
+      setVehiclePhotos(prev => [...prev, ...newPhotos]);
+      showToast({
+        type: 'success',
+        title: 'Vehicle Photos Added',
+        message: `Added ${newPhotos.length} photo(s) for vehicle review.`,
+        duration: 3500
+      });
+    }
+  };
+
+  const handleRemovePhoto = (index: number) => {
+    setVehiclePhotos(prev => {
+      const removed = prev[index];
+      if (removed?.previewUrl) {
+        URL.revokeObjectURL(removed.previewUrl);
+      }
+      return prev.filter((_, i) => i !== index);
     });
   };
 
@@ -247,6 +372,8 @@ export const CustomerIntakeModal: React.FC<CustomerIntakeModalProps> = ({
         additionalNotes: additionalNotes.trim(),
         documentFileName: uploadedFile?.name,
         documentFileSize: uploadedFile?.size,
+        vehiclePhotos: vehiclePhotos.length > 0 ? vehiclePhotos : undefined,
+        vehiclePhotoCount: vehiclePhotos.length,
         accuracyConfirmed,
         dataUsageConsent,
         termsAgreed,
@@ -333,6 +460,36 @@ export const CustomerIntakeModal: React.FC<CustomerIntakeModalProps> = ({
           >
             <X className="w-5 h-5" />
           </button>
+        </div>
+
+        {/* Quick Link to Official Google Form Page & Toggle */}
+        <div className="bg-[#0F1B2D] border-b border-slate-800 px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-300">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" />
+            <span className="font-medium text-slate-200">Google Form & Google Sheet Integration Active</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setFormMode(formMode === 'google' ? 'direct' : 'google')}
+              className="text-[#10B981] hover:text-emerald-300 font-bold hover:underline cursor-pointer flex items-center gap-1"
+            >
+              <span>{formMode === 'google' ? 'Switch to Multi-Step Form' : 'Switch to Google Form View'}</span>
+            </button>
+            <span className="text-slate-600 hidden sm:inline">•</span>
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                window.history.pushState(null, '', '/request-report');
+                window.dispatchEvent(new PopStateEvent('popstate'));
+              }}
+              className="text-slate-400 hover:text-white hover:underline cursor-pointer hidden sm:flex items-center gap-1"
+            >
+              <span>Full Page Form</span>
+              <span>→</span>
+            </button>
+          </div>
         </div>
 
         {/* Modal Body */}
@@ -476,9 +633,74 @@ export const CustomerIntakeModal: React.FC<CustomerIntakeModalProps> = ({
                   </p>
                 </div>
               </div>
+          ) : formMode === 'google' ? (
+            /* GOOGLE FORMS VIEW INSIDE MODAL */
+            <div className="space-y-4 animate-in fade-in duration-150">
+              {/* Google Form Location & Google Sheets Responses Banner */}
+              <div className="bg-emerald-950/40 border border-emerald-900/60 rounded-xl p-4 text-xs text-emerald-200 space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 font-bold text-white">
+                    <CheckCircle2 className="w-4 h-4 text-[#10B981]" />
+                    <span>Official Google Form Embedded</span>
+                  </div>
+                  <a
+                    href={GOOGLE_FORMS_RESPONSES_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-emerald-400 hover:text-emerald-300 font-semibold underline text-[11px] flex items-center gap-1.5"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-[#10B981]" />
+                    <span>View Connected Google Sheet Responses</span>
+                  </a>
+                </div>
+                <p className="text-slate-300 text-[11px] leading-relaxed">
+                  <strong>Where is Google Form & Google Sheet?</strong> This Google Form collects your request directly below, and responses automatically sync into the private Google Sheet response spreadsheet for administrative verification.
+                </p>
+              </div>
+
+              {/* Responsive Google Form Container */}
+              <div className="w-full bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden relative min-h-[560px]">
+                <iframe
+                  src={GOOGLE_FORMS_EMBED_URL}
+                  width="100%"
+                  height="600"
+                  title="AutoAudit Google Form Vehicle Report Request"
+                  className="w-full h-[600px] border-0 bg-white"
+                >
+                  Loading Google Form...
+                </iframe>
+              </div>
+
+              <div className="flex items-center justify-between gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setFormMode('direct')}
+                  className="text-xs text-blue-600 hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                >
+                  <span>← Return to Step-by-Step AutoAudit Form</span>
+                </button>
+                <a
+                  href={GOOGLE_FORMS_EDITOR_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-slate-500 hover:text-slate-700 underline"
+                >
+                  Edit Form in Google Forms
+                </a>
+              </div>
+            </div>
           ) : (
             /* ACTIVE FORM STATE */
             <form onSubmit={handleSubmit} className="space-y-6">
+
+              {/* Dynamic Intake Progress Bar with Real-Time Feedback */}
+              <IntakeProgressBar
+                stats={progressStats}
+                currentStep={activeTab}
+                onSelectStep={(step) => setActiveTab(step)}
+                isGoogleFormMode={false}
+                onToggleFormMode={(mode) => setFormMode(mode)}
+              />
 
               {/* Form Overview Banner */}
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-xs text-blue-900 leading-relaxed">
@@ -924,34 +1146,135 @@ export const CustomerIntakeModal: React.FC<CustomerIntakeModalProps> = ({
                     <span className="text-[10px] text-slate-400">e.g. Any known prior accidents, suspected odometer rollbacks, or auction slips.</span>
                   </div>
 
-                  {/* 18. File Upload */}
-                  <div className="space-y-1 pt-2">
+                  {/* 18. Customer Vehicle Photo Uploads (Matching Google Forms Question Specification) */}
+                  <div className="space-y-3 pt-3 border-t border-slate-200">
+                    <div>
+                      <div className="flex items-center justify-between gap-2">
+                        <label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                          <Camera className="w-4 h-4 text-emerald-600" />
+                          <span>Upload Vehicle Photos</span>
+                          <span className="text-slate-400 font-normal text-[11px]">(Optional • Up to 5 photos)</span>
+                        </label>
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200">
+                          {vehiclePhotos.length} / 5 photos added
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                        Upload clear photographs of your vehicle to help our team review your request and improve the vehicle report. Please upload only photographs you are authorized to share.
+                      </p>
+                    </div>
+
+                    {/* Recommended Photo Angle Guide */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs space-y-2">
+                      <div className="flex items-center gap-1.5 text-slate-800 font-semibold text-[11px]">
+                        <Info className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Recommended angles for highest report accuracy:</span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[10px] text-slate-600">
+                        <span className="bg-white px-2 py-1 rounded border border-slate-200">1. Front view</span>
+                        <span className="bg-white px-2 py-1 rounded border border-slate-200">2. Rear view</span>
+                        <span className="bg-white px-2 py-1 rounded border border-slate-200">3. Left & Right sides</span>
+                        <span className="bg-white px-2 py-1 rounded border border-slate-200">4. Dash & Odometer</span>
+                        <span className="bg-white px-2 py-1 rounded border border-slate-200">5. VIN plate / label</span>
+                        <span className="bg-white px-2 py-1 rounded border border-slate-200">6. Known visible damage</span>
+                        <span className="bg-white px-2 py-1 rounded border border-slate-200 col-span-2 text-slate-500 italic">
+                          JPG, PNG, WebP up to 10 MB
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Upload Dropzone */}
+                    {vehiclePhotos.length < 5 && (
+                      <div className="border-2 border-dashed border-emerald-300 hover:border-emerald-500 rounded-xl p-4 text-center transition-colors bg-emerald-50/20">
+                        <input
+                          type="file"
+                          id="intake-vehicle-photos"
+                          className="hidden"
+                          accept="image/jpeg,image/png,image/webp"
+                          multiple
+                          onChange={handlePhotoUpload}
+                        />
+                        <label htmlFor="intake-vehicle-photos" className="cursor-pointer block space-y-2">
+                          <Camera className="w-7 h-7 text-emerald-600 mx-auto" />
+                          <div className="text-xs text-slate-800 font-semibold">
+                            Click to select vehicle photos or drag & drop here
+                          </div>
+                          <p className="text-[10px] text-slate-400">
+                            JPEG, PNG or WebP • Max 10 MB per photo • Stored safely with Google Forms/Sheets integration
+                          </p>
+                        </label>
+                      </div>
+                    )}
+
+                    {/* Photo Previews Grid */}
+                    {vehiclePhotos.length > 0 && (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
+                        {vehiclePhotos.map((photo, idx) => (
+                          <div
+                            key={idx}
+                            className="relative group rounded-lg overflow-hidden border border-slate-200 bg-white p-1.5 shadow-xs flex flex-col justify-between"
+                          >
+                            <div className="w-full h-20 bg-slate-100 rounded overflow-hidden flex items-center justify-center">
+                              {photo.previewUrl ? (
+                                <img
+                                  src={photo.previewUrl}
+                                  alt={`Vehicle preview ${idx + 1}`}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <ImageIcon className="w-6 h-6 text-slate-400" />
+                              )}
+                            </div>
+                            <div className="pt-1.5 flex items-center justify-between text-[10px]">
+                              <span className="truncate max-w-[90px] text-slate-700 font-medium" title={photo.name}>
+                                {photo.name}
+                              </span>
+                              <span className="text-slate-400">{photo.size}</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemovePhoto(idx)}
+                              className="absolute top-2 right-2 bg-rose-600 hover:bg-rose-700 text-white p-1 rounded-full shadow-md transition-colors cursor-pointer opacity-90 hover:opacity-100"
+                              title="Remove photo"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Disclaimer */}
+                    <p className="text-[10px] text-slate-400 leading-relaxed italic">
+                      Note: Photographs support our team's manual review process but do not independently verify a vehicle's official title branding or complete historical records.
+                    </p>
+                  </div>
+
+                  {/* 19. Additional Document Upload */}
+                  <div className="space-y-1 pt-3 border-t border-slate-200">
                     <label className="text-xs font-semibold text-slate-700">
-                      18. Upload Vehicle Document or Supporting Image <span className="text-slate-400 font-normal">(Optional)</span>
+                      19. Upload Registration Papers or Additional PDF <span className="text-slate-400 font-normal">(Optional)</span>
                     </label>
-                    <div className="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center hover:border-blue-500 transition-colors bg-white">
+                    <div className="border border-slate-200 rounded-xl p-3 text-center hover:border-slate-300 transition-colors bg-white">
                       <input
                         type="file"
                         id="intake-doc-upload"
                         className="hidden"
-                        accept=".pdf,.jpg,.jpeg,.png"
+                        accept=".pdf,.doc,.docx"
                         onChange={handleFileUpload}
                       />
-                      <label htmlFor="intake-doc-upload" className="cursor-pointer block space-y-2">
-                        <Upload className="w-6 h-6 text-slate-400 mx-auto" />
-                        <div className="text-xs text-slate-700 font-semibold">
+                      <label htmlFor="intake-doc-upload" className="cursor-pointer block space-y-1">
+                        <Upload className="w-5 h-5 text-slate-400 mx-auto" />
+                        <div className="text-xs text-slate-700 font-medium">
                           {uploadedFile ? (
-                            <span className="text-emerald-700 flex items-center justify-center gap-1">
-                              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                            <span className="text-emerald-700 flex items-center justify-center gap-1 font-semibold">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                               {uploadedFile.name} ({uploadedFile.size})
                             </span>
                           ) : (
-                            <span>Click to upload or drag & drop</span>
+                            <span>Click to attach PDF or registration document (up to 10 MB)</span>
                           )}
                         </div>
-                        <p className="text-[10px] text-slate-400">
-                          Recommended: PDF, JPG, JPEG, PNG • Maximum 10 MB per file
-                        </p>
                       </label>
                     </div>
                   </div>
