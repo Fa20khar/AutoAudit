@@ -30,6 +30,7 @@ import { ReportDownloadModal } from './components/ReportDownloadModal';
 import { CustomerIntakeModal } from './components/CustomerIntakeModal';
 import { PrintGuideModal } from './components/PrintGuideModal';
 import { GeminiChatbot } from './components/GeminiChatbot';
+import { VeoVideoModal } from './components/VeoVideoModal';
 import { WhatsAppWidget } from './components/WhatsAppWidget';
 import { ToastProvider } from './context/ToastContext';
 import { LanguageProvider } from './context/LanguageContext';
@@ -145,6 +146,7 @@ function AppContent() {
   const [isTrackModalOpen, setIsTrackModalOpen] = useState<boolean>(false);
   const [isPrintGuideOpen, setIsPrintGuideOpen] = useState<boolean>(false);
   const [isGeminiChatOpen, setIsGeminiChatOpen] = useState<boolean>(false);
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState<boolean>(false);
   const [legalModalState, setLegalModalState] = useState<{
     isOpen: boolean;
     tab: 'terms' | 'privacy' | 'refund' | 'compliance' | 'data-sources' | 'licensing';
@@ -351,6 +353,7 @@ function AppContent() {
             newOrdersCount={newOrdersCount}
             onRequestReport={handleOpenRequestReport}
             onOpenChat={() => setIsGeminiChatOpen(true)}
+            onOpenVideoStudio={() => setIsVideoModalOpen(true)}
           />
 
           <main className="flex-1">
@@ -374,6 +377,7 @@ function AppContent() {
             onRequestReport={handleOpenRequestReport}
             onOpenPrintGuide={() => setIsPrintGuideOpen(true)}
             onOpenChat={() => setIsGeminiChatOpen(true)}
+            onOpenVideoStudio={() => setIsVideoModalOpen(true)}
           />
         </>
       ) : (
@@ -390,6 +394,7 @@ function AppContent() {
             newOrdersCount={newOrdersCount}
             onRequestReport={handleOpenRequestReport}
             onOpenChat={() => setIsGeminiChatOpen(true)}
+            onOpenVideoStudio={() => setIsVideoModalOpen(true)}
           />
 
           <main className="flex-1">
@@ -401,6 +406,7 @@ function AppContent() {
               onStartOrderWithVin={handleStartOrderWithVin}
               onOpenSample={() => setIsSampleModalOpen(true)}
               onRequestReport={handleOpenRequestReport}
+              onOpenVideoStudio={() => setIsVideoModalOpen(true)}
             />
 
             {/* Section 9: Trust Strip */}
@@ -440,7 +446,7 @@ function AppContent() {
             />
 
             {/* Section 22: FAQ */}
-            <FAQSection />
+            <FAQSection onOpenChat={() => setIsGeminiChatOpen(true)} />
 
             {/* Section 23: Final CTA */}
             <FinalCTA
@@ -460,6 +466,7 @@ function AppContent() {
             onRequestReport={handleOpenRequestReport}
             onOpenPrintGuide={() => setIsPrintGuideOpen(true)}
             onOpenChat={() => setIsGeminiChatOpen(true)}
+            onOpenVideoStudio={() => setIsVideoModalOpen(true)}
           />
         </>
       )}
@@ -538,6 +545,12 @@ function AppContent() {
         onToggle={() => setIsGeminiChatOpen((prev) => !prev)}
         onClose={() => setIsGeminiChatOpen(false)}
         onOpenOrder={(planId) => handleOpenOrder(planId || 'comprehensive-vin')}
+      />
+
+      {/* AutoAudit Veo 3 Video Studio (veo-3.1-fast-generate-preview) */}
+      <VeoVideoModal
+        isOpen={isVideoModalOpen}
+        onClose={() => setIsVideoModalOpen(false)}
       />
 
     </div>

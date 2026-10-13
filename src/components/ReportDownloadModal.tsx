@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GearboxLoader } from './GearLoader';
+import { VehiclePlaceholderDisplay } from './VehiclePlaceholderDisplay';
 import { X, CheckCircle2, Download, FileText, ArrowRight, Printer, RefreshCw, ShieldCheck, MessageCircle, Lock } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { downloadReportPdfBlob } from '../utils/pdfGenerator';
@@ -254,15 +255,26 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
           </div>
 
           {/* Vehicle summary banner */}
-          <div className={`bg-slate-800/80 border border-slate-700/80 rounded-xl p-3.5 text-xs text-left space-y-1.5 shadow-inner transition-all duration-300 ${isDone ? 'border-emerald-500/30 bg-slate-800/95 report-ready-transition' : ''}`}>
+          <div className={`bg-slate-800/80 border border-slate-700/80 rounded-xl p-3.5 text-xs text-left space-y-2 shadow-inner transition-all duration-300 ${isDone ? 'border-emerald-500/30 bg-slate-800/95 report-ready-transition' : ''}`}>
             <div className="flex justify-between items-center text-slate-400 text-[11px]">
               <span className="font-mono">Order: {orderNumber}</span>
               <span className={`font-mono px-2 py-0.5 rounded text-[10px] font-bold transition-all duration-300 ${isDone ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'}`}>
                 {isDone ? 'RECORDS READY' : 'NMVTIS VERIFIED'}
               </span>
             </div>
-            <p className="font-bold text-white text-sm truncate">{vehicleTitle}</p>
-            <p className="font-mono text-[11px] text-slate-300">VIN: {vin}</p>
+            <div className="flex items-center gap-3">
+              <div className="w-24 shrink-0">
+                <VehiclePlaceholderDisplay
+                  vehicleTitle={vehicleTitle}
+                  compact={true}
+                  allowStyleSwitch={false}
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-bold text-white text-sm truncate">{vehicleTitle}</p>
+                <p className="font-mono text-[11px] text-slate-300 mt-0.5">VIN: {vin}</p>
+              </div>
+            </div>
           </div>
 
           {/* Status Text & Step Details */}

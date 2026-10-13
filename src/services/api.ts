@@ -621,5 +621,59 @@ export const api = {
       timeoutMs
     );
     return res.data;
+  },
+
+  /**
+   * Veo 3 Video Generation API (veo-3.1-fast-generate-preview)
+   * Supports 16:9 (Landscape) and 9:16 (Portrait)
+   */
+  async generateVideo(
+    prompt: string,
+    aspectRatio: '16:9' | '9:16' = '16:9',
+    resolution: '720p' | '1080p' = '720p'
+  ): Promise<{
+    success: boolean;
+    operationName?: string;
+    prompt: string;
+    aspectRatio: '16:9' | '9:16';
+    model: string;
+    isQuotaError?: boolean;
+    error?: string;
+    fallbackSamples?: any[];
+  }> {
+    const res = await fetch('/api/generate-video', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, aspectRatio, resolution }),
+    });
+    const data = await res.json();
+    if (!res.ok && !data.fallbackSamples) {
+      throw new ApiError(data.error || 'Failed to start video generation', res.status);
+    }
+    return data;
+  },
+
+  async pollVideoStatus(operationName: string): Promise<{
+    success: boolean;
+    done: boolean;
+    downloadUrl?: string | null;
+    aspectRatio?: '16:9' | '9:16';
+    prompt?: string;
+    error?: string;
+  }> {
+    const res = await fetch('/api/video-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ operationName }),
+    });
+    return res.json();
+  },
+
+  async getVideoSamples(): Promise<{
+    success: boolean;
+    samples: Record<'16:9' | '9:16', Array<{ id: string; title: string; prompt: string; url: string; duration: string }>>;
+  }> {
+    const res = await fetch('/api/video/samples');
+    return res.json();
   }
 };

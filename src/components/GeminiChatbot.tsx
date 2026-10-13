@@ -148,15 +148,12 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
   const handleClose = () => {
     if (controlledOnClose) {
       controlledOnClose();
-    } else {
-      setInternalIsOpen(false);
     }
+    setInternalIsOpen(false);
   };
 
   const handleToggle = () => {
-    if (controlledOnToggle) {
-      controlledOnToggle();
-    } else if (isOpen) {
+    if (isOpen) {
       handleClose();
     } else {
       handleOpen();
@@ -221,6 +218,17 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
         textareaRef.current?.focus();
       }, 150);
     }
+  }, [isOpen]);
+
+  // Close on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        handleClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
   const handleRoleChange = (newRole: RoleId) => {

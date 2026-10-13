@@ -12,6 +12,7 @@ import { analyticsRouter } from './server/routes/analytics';
 import { reportsRouter } from './server/routes/reports';
 import { intakeRouter } from './server/routes/intake';
 import { geminiRouter } from './server/routes/gemini';
+import { videoRouter, handleGenerateVideo, handleVideoStatus, handleVideoDownload } from './server/routes/video';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -61,6 +62,13 @@ async function startServer() {
   app.use('/api/reports', reportsRouter);
   app.use('/api/intake', intakeRouter);
   app.use('/api/gemini', geminiRouter);
+  app.use('/api/video', videoRouter);
+
+  // Standard Veo 3 Video Generation Endpoints (SKILL.md pattern)
+  app.post('/api/generate-video', handleGenerateVideo);
+  app.post('/api/video-status', handleVideoStatus);
+  app.get('/api/video-download', handleVideoDownload);
+  app.post('/api/video-download', handleVideoDownload);
 
   // Catch-all 404 handler for undefined /api routes
   // Express 5 / path-to-regexp v8 compliance: uses literal prefix mount '/api' without '*' wildcards

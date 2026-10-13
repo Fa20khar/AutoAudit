@@ -12,6 +12,7 @@ interface FooterProps {
   onRequestReport?: () => void;
   onOpenPrintGuide?: () => void;
   onOpenChat?: () => void;
+  onOpenVideoStudio?: () => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({
@@ -24,6 +25,7 @@ export const Footer: React.FC<FooterProps> = ({
   onRequestReport,
   onOpenPrintGuide,
   onOpenChat,
+  onOpenVideoStudio,
 }) => {
   return (
     <footer className="bg-[#0B132B] text-[#CBD5E1] text-xs border-t border-[rgba(148,163,184,0.20)]">
@@ -166,6 +168,18 @@ export const Footer: React.FC<FooterProps> = ({
                   >
                     <span>AutoAudit Gemini AI</span>
                     <span className="text-[10px] bg-emerald-950 border border-emerald-500/30 px-1.5 py-0.2 rounded font-mono">Chat</span>
+                  </button>
+                </li>
+              )}
+              {onOpenVideoStudio && (
+                <li>
+                  <button
+                    type="button"
+                    onClick={onOpenVideoStudio}
+                    className="hover:text-purple-300 transition-colors cursor-pointer text-purple-400 flex items-center gap-1.5"
+                  >
+                    <span>Veo 3 Video Studio</span>
+                    <span className="text-[10px] bg-purple-950 border border-purple-500/30 px-1.5 py-0.2 rounded font-mono">16:9 & 9:16</span>
                   </button>
                 </li>
               )}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, ArrowRight, QrCode, Globe, FileCheck, Shield, ChevronRight, Sparkles } from 'lucide-react';
+import { Menu, X, ArrowRight, QrCode, Globe, FileCheck, Shield, ChevronRight } from 'lucide-react';
 import { Logo } from './Logo';
 import { WhatsAppIcon } from './WhatsAppWidget';
 import { useTranslation } from '../context/LanguageContext';
@@ -15,6 +15,7 @@ interface NavbarProps {
   newOrdersCount: number;
   onRequestReport?: () => void;
   onOpenChat?: () => void;
+  onOpenVideoStudio?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -28,6 +29,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   newOrdersCount,
   onRequestReport,
   onOpenChat,
+  onOpenVideoStudio,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { language, setLanguage, t } = useTranslation();
@@ -149,16 +151,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="text-[#10B981] hover:text-emerald-300 font-semibold transition-colors cursor-pointer flex items-center gap-1 text-xs px-2.5 py-1 rounded bg-[#059669]/15 border border-[#059669]/30"
             >
               <span>{t('navRequestReport')}</span>
-            </button>
-          )}
-          {onOpenChat && (
-            <button
-              onClick={onOpenChat}
-              className="text-white hover:text-emerald-300 font-semibold transition-all cursor-pointer flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-blue-900/40 via-indigo-900/40 to-emerald-900/40 border border-emerald-500/30 hover:border-emerald-400/50 shadow-xs active:scale-95"
-              title="AutoAudit Gemini AI Assistant (VIN Decoder & Vehicle Advisor)"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              <span>AI Assistant</span>
             </button>
           )}
         </nav>
@@ -382,24 +374,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <span>{t('navRequestReport')}</span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-emerald-400" />
-                </button>
-              )}
-
-              {onOpenChat && (
-                <button
-                  onClick={() => {
-                    onOpenChat();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full flex items-center justify-between text-left px-3.5 py-2.5 rounded-lg bg-emerald-950/40 text-emerald-300 hover:text-emerald-200 border border-emerald-800/50 font-semibold transition-colors cursor-pointer my-1"
-                >
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-amber-300" />
-                    <span>AutoAudit Gemini AI</span>
-                  </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono">
-                    Ask AI
-                  </span>
                 </button>
               )}
 

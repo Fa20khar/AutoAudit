@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { SAMPLE_REPORT_DATA } from '../data/initialData';
+import { VehiclePlaceholderDisplay } from './VehiclePlaceholderDisplay';
 import { X, ShieldCheck, AlertTriangle, CheckCircle2, FileText, Printer, ArrowRight, Car, History, Wrench, ShieldAlert, Loader2, Sparkles, Check } from 'lucide-react';
 
 interface SampleReportModalProps {
@@ -113,31 +114,42 @@ export const SampleReportModal: React.FC<SampleReportModalProps> = ({
               </div>
 
               {/* Vehicle Profile Card */}
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 report-stagger-1">
-                <div className="space-y-1">
-                  <span className="text-xs font-semibold text-blue-700 uppercase tracking-wider">
-                    Audited Vehicle Profile
-                  </span>
-                  <h3 className="text-xl font-extrabold text-slate-900">{data.vehicle}</h3>
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
-                    <span>{data.engine}</span>
-                    <span aria-hidden="true">·</span>
-                    <span>{data.transmission}</span>
-                    <span aria-hidden="true">·</span>
-                    <span>{data.drivetrain}</span>
-                    <span aria-hidden="true">·</span>
-                    <span>Assembly: {data.assembly}</span>
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-4 report-stagger-1">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <span className="text-xs font-semibold text-blue-700 uppercase tracking-wider">
+                      Audited Vehicle Profile
+                    </span>
+                    <h3 className="text-xl font-extrabold text-slate-900">{data.vehicle}</h3>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
+                      <span>{data.engine}</span>
+                      <span aria-hidden="true">·</span>
+                      <span>{data.transmission}</span>
+                      <span aria-hidden="true">·</span>
+                      <span>{data.drivetrain}</span>
+                      <span aria-hidden="true">·</span>
+                      <span>Assembly: {data.assembly}</span>
+                    </div>
+                  </div>
+
+                  <div className="text-right sm:border-l sm:border-slate-200 sm:pl-6 shrink-0">
+                    <span className="text-xs text-slate-500 block">Verified Odometer</span>
+                    <span className="text-lg font-bold text-slate-900 font-mono tabular-nums">
+                      {data.estimatedMileage}
+                    </span>
+                    <span className="text-[11px] text-emerald-700 font-semibold block">
+                      Consistent Trend
+                    </span>
                   </div>
                 </div>
 
-                <div className="text-right sm:border-l sm:border-slate-200 sm:pl-6 shrink-0">
-                  <span className="text-xs text-slate-500 block">Verified Odometer</span>
-                  <span className="text-lg font-bold text-slate-900 font-mono tabular-nums">
-                    {data.estimatedMileage}
-                  </span>
-                  <span className="text-[11px] text-emerald-700 font-semibold block">
-                    Consistent Trend
-                  </span>
+                {/* Generic Vehicle Silhouette Placeholder for when photos are unavailable */}
+                <div className="pt-1">
+                  <VehiclePlaceholderDisplay
+                    vehicleTitle={data.vehicle}
+                    initialBodyStyle="sedan"
+                    allowStyleSwitch={true}
+                  />
                 </div>
               </div>
 

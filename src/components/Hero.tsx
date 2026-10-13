@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, ShieldCheck, CheckCircle2, ArrowRight, Car, Lock, FileCheck, Check, FileText, Loader2, AlertCircle } from 'lucide-react';
+import { Search, ShieldCheck, CheckCircle2, ArrowRight, Car, Lock, FileCheck, Check, FileText, Loader2, AlertCircle, Video } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from '../context/LanguageContext';
 import { WhatsAppButton } from './WhatsAppButton';
@@ -9,12 +9,13 @@ interface HeroProps {
   onStartOrderWithVin: (vin: string, isVin: boolean) => void;
   onOpenSample: () => void;
   onRequestReport?: () => void;
+  onOpenVideoStudio?: () => void;
 }
 
 // Standard ISO 3779 VIN: 17 alphanumeric characters, excluding I, O, Q
 const VIN_REGEX = /^[A-HJ-NPR-Z0-9]{17}$/i;
 
-export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, onRequestReport }) => {
+export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, onRequestReport, onOpenVideoStudio }) => {
   const { showToast } = useToast();
   const { t } = useTranslation();
   const [vinInput, setVinInput] = useState('');
@@ -252,6 +253,18 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
                 openQrModal={true}
                 className="px-4 py-3 rounded-[8px] bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-700/60 font-medium text-sm leading-[1.43]"
               />
+
+              {onOpenVideoStudio && (
+                <button
+                  type="button"
+                  onClick={onOpenVideoStudio}
+                  className="px-4 py-3 rounded-[8px] text-sm font-semibold bg-purple-950/60 hover:bg-purple-900/80 text-purple-200 border border-purple-700/60 transition-colors flex items-center gap-2 cursor-pointer leading-[1.43]"
+                  title="Generate 360° vehicle video with Veo 3 (16:9 & 9:16)"
+                >
+                  <Video className="w-4 h-4 text-purple-400" />
+                  <span>Veo 3 Video Studio</span>
+                </button>
+              )}
             </div>
 
             {/* Section 7: Vehicle Search / Order Component */}

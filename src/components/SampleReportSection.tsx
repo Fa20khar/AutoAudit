@@ -1,6 +1,7 @@
 import React from 'react';
 import { ShieldCheck, CheckCircle2, ArrowRight } from 'lucide-react';
 import { SAMPLE_REPORT_DATA } from '../data/initialData';
+import { VehiclePlaceholderDisplay } from './VehiclePlaceholderDisplay';
 
 interface SampleReportSectionProps {
   onOpenSampleModal: () => void;
@@ -80,8 +81,8 @@ export const SampleReportSection: React.FC<SampleReportSectionProps> = ({
                 </span>
               </div>
 
-              {/* Section 1: Vehicle Information */}
-              <div className="bg-[#0B132B] rounded-[8px] p-4 border border-[rgba(148,163,184,0.20)] space-y-2">
+              {/* Section 1: Vehicle Information & Silhouette Placeholder */}
+              <div className="bg-[#0B132B] rounded-[8px] p-4 border border-[rgba(148,163,184,0.20)] space-y-3">
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
                   1. Vehicle Information
                 </span>
@@ -102,6 +103,15 @@ export const SampleReportSection: React.FC<SampleReportSectionProps> = ({
                     <span className="text-slate-400 block">Body Class</span>
                     <span className="font-semibold text-slate-100">4-Door Sedan</span>
                   </div>
+                </div>
+
+                {/* Silhouette Placeholder */}
+                <div className="pt-1">
+                  <VehiclePlaceholderDisplay
+                    vehicleTitle="2020 Honda Accord Sedan"
+                    initialBodyStyle="sedan"
+                    allowStyleSwitch={true}
+                  />
                 </div>
               </div>
 

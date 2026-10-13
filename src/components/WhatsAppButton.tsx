@@ -16,6 +16,7 @@ interface WhatsAppButtonProps {
   label?: string;
   showNumber?: boolean;
   openQrModal?: boolean;
+  onOpenAiChat?: () => void;
   onClick?: (e: React.MouseEvent<HTMLElement>) => void;
 }
 
@@ -30,6 +31,7 @@ export const WhatsAppButton: React.FC<WhatsAppButtonProps> = ({
   label,
   showNumber = false,
   openQrModal = false,
+  onOpenAiChat,
   onClick,
 }) => {
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
@@ -140,6 +142,7 @@ export const WhatsAppButton: React.FC<WhatsAppButtonProps> = ({
           message={computedMessage}
           orderNumber={orderNumber}
           vin={vin}
+          onOpenAiChat={onOpenAiChat}
         />
       )}
     </>
