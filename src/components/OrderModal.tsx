@@ -15,6 +15,7 @@ import { useToast } from '../context/ToastContext';
 import { validateVinFormat, VinValidationResult } from '../utils/vinValidator';
 import { validateCouponRealTime, calculateDiscount } from '../utils/couponValidator';
 import { INITIAL_COUPONS } from '../data/initialData';
+import { RealtimePricePreview } from './RealtimePricePreview';
 
 interface OrderModalProps {
   isOpen: boolean;
@@ -608,6 +609,21 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               }
             }}
           />
+        )}
+
+        {/* Real-Time Price Preview Bar (Steps 1-4) - Updates instantly when toggling service packages or applying coupon codes */}
+        {!isSessionExpired && step <= 4 && (
+          <div className="px-3.5 sm:px-5 md:px-6 pt-3.5 pb-0 bg-white border-b border-slate-100">
+            <RealtimePricePreview
+              currentPlan={currentPlan}
+              subtotal={subtotal}
+              discountAmount={discountAmount}
+              total={total}
+              appliedCoupon={appliedCoupon}
+              step={step}
+              onApplyCouponChip={handleApplyCouponChip}
+            />
+          </div>
         )}
 
         {/* Step Content */}

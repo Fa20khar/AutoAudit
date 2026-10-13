@@ -11,6 +11,7 @@ interface FooterProps {
   onToggleAdmin: () => void;
   onRequestReport?: () => void;
   onOpenPrintGuide?: () => void;
+  onOpenChat?: () => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({
@@ -22,6 +23,7 @@ export const Footer: React.FC<FooterProps> = ({
   onToggleAdmin,
   onRequestReport,
   onOpenPrintGuide,
+  onOpenChat,
 }) => {
   return (
     <footer className="bg-[#0B132B] text-[#CBD5E1] text-xs border-t border-[rgba(148,163,184,0.20)]">
@@ -152,6 +154,18 @@ export const Footer: React.FC<FooterProps> = ({
                     className="text-[#10B981] hover:text-emerald-300 font-semibold transition-colors cursor-pointer"
                   >
                     Request Vehicle Report
+                  </button>
+                </li>
+              )}
+              {onOpenChat && (
+                <li>
+                  <button
+                    type="button"
+                    onClick={onOpenChat}
+                    className="hover:text-emerald-300 transition-colors cursor-pointer text-emerald-400 flex items-center gap-1.5"
+                  >
+                    <span>AutoAudit Gemini AI</span>
+                    <span className="text-[10px] bg-emerald-950 border border-emerald-500/30 px-1.5 py-0.2 rounded font-mono">Chat</span>
                   </button>
                 </li>
               )}

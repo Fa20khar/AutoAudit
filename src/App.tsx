@@ -29,6 +29,7 @@ import { AdminPanel } from './components/AdminPanel';
 import { ReportDownloadModal } from './components/ReportDownloadModal';
 import { CustomerIntakeModal } from './components/CustomerIntakeModal';
 import { PrintGuideModal } from './components/PrintGuideModal';
+import { GeminiChatbot } from './components/GeminiChatbot';
 import { WhatsAppWidget } from './components/WhatsAppWidget';
 import { ToastProvider } from './context/ToastContext';
 import { LanguageProvider } from './context/LanguageContext';
@@ -143,6 +144,7 @@ function AppContent() {
   const [isSampleModalOpen, setIsSampleModalOpen] = useState<boolean>(false);
   const [isTrackModalOpen, setIsTrackModalOpen] = useState<boolean>(false);
   const [isPrintGuideOpen, setIsPrintGuideOpen] = useState<boolean>(false);
+  const [isGeminiChatOpen, setIsGeminiChatOpen] = useState<boolean>(false);
   const [legalModalState, setLegalModalState] = useState<{
     isOpen: boolean;
     tab: 'terms' | 'privacy' | 'refund' | 'compliance' | 'data-sources' | 'licensing';
@@ -348,6 +350,7 @@ function AppContent() {
             onToggleAdminView={handleToggleAdmin}
             newOrdersCount={newOrdersCount}
             onRequestReport={handleOpenRequestReport}
+            onOpenChat={() => setIsGeminiChatOpen(true)}
           />
 
           <main className="flex-1">
@@ -369,6 +372,8 @@ function AppContent() {
             onScrollTo={handleScrollTo}
             onToggleAdmin={() => navigateTo('admin', '/admin')}
             onRequestReport={handleOpenRequestReport}
+            onOpenPrintGuide={() => setIsPrintGuideOpen(true)}
+            onOpenChat={() => setIsGeminiChatOpen(true)}
           />
         </>
       ) : (
@@ -384,6 +389,7 @@ function AppContent() {
             onToggleAdminView={handleToggleAdmin}
             newOrdersCount={newOrdersCount}
             onRequestReport={handleOpenRequestReport}
+            onOpenChat={() => setIsGeminiChatOpen(true)}
           />
 
           <main className="flex-1">
@@ -453,6 +459,7 @@ function AppContent() {
             onToggleAdmin={() => navigateTo('admin', '/admin')}
             onRequestReport={handleOpenRequestReport}
             onOpenPrintGuide={() => setIsPrintGuideOpen(true)}
+            onOpenChat={() => setIsGeminiChatOpen(true)}
           />
         </>
       )}
@@ -522,7 +529,16 @@ function AppContent() {
       />
 
       {/* Persistent Floating WhatsApp Support Widget */}
-      <WhatsAppWidget />
+      <WhatsAppWidget onOpenAiChat={() => setIsGeminiChatOpen(true)} />
+
+      {/* Multi-turn Gemini AI Chatbot */}
+      <GeminiChatbot
+        isOpen={isGeminiChatOpen}
+        onOpen={() => setIsGeminiChatOpen(true)}
+        onToggle={() => setIsGeminiChatOpen((prev) => !prev)}
+        onClose={() => setIsGeminiChatOpen(false)}
+        onOpenOrder={(planId) => handleOpenOrder(planId || 'comprehensive-vin')}
+      />
 
     </div>
   );

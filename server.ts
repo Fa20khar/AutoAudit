@@ -11,6 +11,7 @@ import { authRouter } from './server/routes/auth';
 import { analyticsRouter } from './server/routes/analytics';
 import { reportsRouter } from './server/routes/reports';
 import { intakeRouter } from './server/routes/intake';
+import { geminiRouter } from './server/routes/gemini';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -59,6 +60,7 @@ async function startServer() {
   app.use('/api/analytics', analyticsRouter);
   app.use('/api/reports', reportsRouter);
   app.use('/api/intake', intakeRouter);
+  app.use('/api/gemini', geminiRouter);
 
   // Catch-all 404 handler for undefined /api routes
   // Express 5 / path-to-regexp v8 compliance: uses literal prefix mount '/api' without '*' wildcards
