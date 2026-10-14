@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, ArrowRight, QrCode, Globe, FileCheck, Shield, ChevronRight } from 'lucide-react';
+import { Menu, X, ArrowRight, QrCode, Globe, FileCheck, Shield, ChevronRight, Gift } from 'lucide-react';
 import { Logo } from './Logo';
 import { WhatsAppIcon } from './WhatsAppWidget';
 import { useTranslation } from '../context/LanguageContext';
@@ -14,8 +14,8 @@ interface NavbarProps {
   onToggleAdminView: () => void;
   newOrdersCount: number;
   onRequestReport?: () => void;
-  onOpenChat?: () => void;
   onOpenVideoStudio?: () => void;
+  onOpenReferral?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -28,8 +28,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onToggleAdminView,
   newOrdersCount,
   onRequestReport,
-  onOpenChat,
   onOpenVideoStudio,
+  onOpenReferral,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { language, setLanguage, t } = useTranslation();
@@ -63,9 +63,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-[#07111F]/95 backdrop-blur-md text-white border-b border-[rgba(148,163,184,0.20)] shadow-md">
+    <header className="sticky top-0 z-40 w-full max-w-full bg-[#07111F]/95 backdrop-blur-md text-white border-b border-[rgba(148,163,184,0.20)] shadow-md">
       {/* Top Support Banner featuring WhatsApp QR Support (+92 342 0617217) */}
-      <div className="bg-[#061E14] text-slate-300 text-xs py-1.5 px-4 border-b border-emerald-900/60 hidden sm:block">
+      <div className="bg-[#061E14] text-slate-300 text-xs py-1.5 px-4 border-b border-emerald-900/60 hidden sm:block w-full overflow-hidden">
         <div className="max-w-7xl mx-auto flex items-center justify-between text-[11px] sm:text-xs">
           <div className="flex items-center gap-2">
             <QrCode className="w-3.5 h-3.5 text-[#10B981] shrink-0" />
@@ -88,9 +88,9 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
         
-        {/* Left: AutoAudit logo brand mark separated from Home text link */}
+        {/* Left: AutoAudit logo brand mark */}
         <div className="flex items-center gap-3 shrink-0">
           <button
             onClick={() => handleNavClick('hero')}
@@ -101,19 +101,13 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
         </div>
 
-        {/* Center: Navigation Links (Desktop) */}
-        <nav className="hidden lg:flex items-center gap-6 xl:gap-7 text-sm font-medium text-[#CBD5E1]">
+        {/* Center: Navigation Links (Desktop - xl and above to ensure clean fit) */}
+        <nav className="hidden xl:flex items-center gap-5 2xl:gap-6 text-xs xl:text-sm font-medium text-[#CBD5E1]">
           <button
             onClick={() => handleNavClick('hero')}
             className="hover:text-white transition-colors cursor-pointer"
           >
             {t('navHome')}
-          </button>
-          <button
-            onClick={() => handleNavClick('services')}
-            className="hover:text-white transition-colors cursor-pointer"
-          >
-            {t('navVehicleReports')}
           </button>
           <button
             onClick={() => handleNavClick('services')}
@@ -145,14 +139,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             {t('navFaq')}
           </button>
-          {onRequestReport && (
-            <button
-              onClick={onRequestReport}
-              className="text-[#10B981] hover:text-emerald-300 font-semibold transition-colors cursor-pointer flex items-center gap-1 text-xs px-2.5 py-1 rounded bg-[#059669]/15 border border-[#059669]/30"
-            >
-              <span>{t('navRequestReport')}</span>
-            </button>
-          )}
         </nav>
 
         {/* Right: Actions with distinct spacing and no overlapping */}
@@ -191,18 +177,31 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           </div>
 
-          {/* Customer Portal Quick Track */}
+          {/* Refer & Earn Button */}
+          {onOpenReferral && (
+            <button
+              onClick={onOpenReferral}
+              className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[8px] text-xs font-semibold text-emerald-300 hover:text-white bg-emerald-950/50 hover:bg-emerald-900/70 border border-emerald-500/30 transition-all cursor-pointer shadow-xs active:scale-95"
+              title="Refer a Friend & Earn 20% Discounts"
+            >
+              <Gift className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Refer & Earn</span>
+              <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded font-mono font-bold">20%</span>
+            </button>
+          )}
+
+          {/* Customer Portal Quick Track (Wide screens) */}
           <button
             onClick={onOpenTrack}
-            className="hidden sm:inline-flex text-xs text-[#CBD5E1] hover:text-white px-3 py-2 rounded-[8px] hover:bg-[#0F1B2D] transition-colors cursor-pointer"
+            className="hidden 2xl:inline-flex text-xs text-[#CBD5E1] hover:text-white px-3 py-2 rounded-[8px] hover:bg-[#0F1B2D] transition-colors cursor-pointer"
           >
             {t('navMyReports')}
           </button>
 
-          {/* Secondary: Admin Portal (Clearly separated from Get Report) */}
+          {/* Secondary: Admin Portal (Clearly separated) */}
           <button
             onClick={onToggleAdminView}
-            className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[8px] text-xs font-semibold text-[#CBD5E1] hover:text-white bg-[#0F1B2D] hover:bg-[#162740] border border-[rgba(148,163,184,0.20)] transition-colors cursor-pointer"
+            className="hidden xl:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-xs font-semibold text-[#CBD5E1] hover:text-white bg-[#0F1B2D] hover:bg-[#162740] border border-[rgba(148,163,184,0.20)] transition-colors cursor-pointer"
             title="Toggle Admin Fulfillment Console"
           >
             <span>{t('navAdminPortal')}</span>
@@ -211,31 +210,19 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </button>
 
-          {/* Direct Link to Google Form: Request Vehicle Report */}
-          {onRequestReport && (
-            <button
-              onClick={onRequestReport}
-              className="hidden md:inline-flex items-center gap-1.5 px-3 py-2 rounded-[8px] text-xs font-bold text-[#10B981] hover:text-emerald-300 bg-[#059669]/15 hover:bg-[#059669]/25 border border-[#059669]/35 transition-colors cursor-pointer"
-              title="Request Vehicle Report (Google Forms)"
-            >
-              <FileCheck className="w-3.5 h-3.5 text-[#10B981]" />
-              <span>Request Report</span>
-            </button>
-          )}
-
           {/* Primary CTA: Get Report (Distinct #2563EB blue CTA button) */}
           <button
             onClick={() => onOpenOrder()}
-            className="px-4 sm:px-5 py-2.5 rounded-[8px] text-xs sm:text-sm font-semibold bg-[#2563EB] hover:bg-[#1D4ED8] text-white shadow-[0_1px_2px_rgba(0,0,0,0.1)] transition-all duration-150 flex items-center gap-1.5 cursor-pointer active:scale-95 leading-[1.43]"
+            className="px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-[8px] text-xs sm:text-sm font-semibold bg-[#2563EB] hover:bg-[#1D4ED8] text-white shadow-[0_1px_2px_rgba(0,0,0,0.1)] transition-all duration-150 flex items-center gap-1.5 cursor-pointer active:scale-95 leading-[1.43]"
           >
             <span>{t('navGetReport')}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
 
-          {/* Mobile Hamburger Button */}
+          {/* Mobile Hamburger Button (triggers drawer on screens below xl) */}
           <button
             onClick={() => setMobileMenuOpen(true)}
-            className="lg:hidden p-2 rounded-[8px] text-[#CBD5E1] hover:text-white hover:bg-[#0F1B2D] transition-colors cursor-pointer"
+            className="xl:hidden p-2 rounded-[8px] text-[#CBD5E1] hover:text-white hover:bg-[#0F1B2D] transition-colors cursor-pointer"
             aria-label="Open Navigation Menu"
             aria-expanded={mobileMenuOpen}
           >
@@ -247,7 +234,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Mobile Slide-Out Drawer & Backdrop Overlay */}
       {mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden flex justify-end" role="dialog" aria-modal="true" aria-label="Mobile Navigation Menu">
+        <div className="fixed inset-0 z-50 xl:hidden flex justify-end" role="dialog" aria-modal="true" aria-label="Mobile Navigation Menu">
           {/* Semi-transparent Backdrop Overlay */}
           <div
             className="fixed inset-0 bg-[#07111F]/80 backdrop-blur-sm animate-drawer-fade-in"
@@ -378,6 +365,22 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
 
               <div className="pt-2 border-t border-[rgba(148,163,184,0.15)] my-2 space-y-1">
+                {onOpenReferral && (
+                  <button
+                    onClick={() => {
+                      onOpenReferral();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between text-left px-3.5 py-2.5 rounded-lg text-xs font-semibold text-emerald-300 hover:text-white bg-emerald-950/40 border border-emerald-500/30 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Gift className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Refer a Friend (Earn 20% Off)</span>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 text-emerald-400" />
+                  </button>
+                )}
+
                 <button
                   onClick={() => {
                     onOpenTrack();

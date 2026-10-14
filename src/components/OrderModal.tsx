@@ -5,7 +5,7 @@ import {
   X, Check, ArrowRight, ArrowLeft, ShieldCheck, Lock, CreditCard, 
   Sparkles, AlertCircle, FileCheck, CheckCircle2, Building, Wallet, CheckCircle,
   Clock, AlertTriangle, ShieldAlert, RotateCcw, MessageSquare, Loader2,
-  Mail, Eye, EyeOff, Send, ExternalLink, Tag, Percent
+  Mail, Eye, EyeOff, Send, ExternalLink, Tag, Percent, Gift, Copy
 } from 'lucide-react';
 import { OrderTrackingProgressBar } from './OrderTrackingProgressBar';
 import { WhatsAppButton } from './WhatsAppButton';
@@ -16,6 +16,12 @@ import { validateVinFormat, VinValidationResult } from '../utils/vinValidator';
 import { validateCouponRealTime, calculateDiscount } from '../utils/couponValidator';
 import { INITIAL_COUPONS } from '../data/initialData';
 import { RealtimePricePreview } from './RealtimePricePreview';
+import { 
+  getActiveIncomingReferralCode, 
+  recordReferralConversion, 
+  markRewardAsUsed, 
+  getReferralProfile 
+} from '../utils/referralStorage';
 
 interface OrderModalProps {
   isOpen: boolean;
@@ -28,6 +34,7 @@ interface OrderModalProps {
   onOrderCompleted: (order: Order) => void;
   onOpenTrack: () => void;
   onDownloadReport?: (vin: string, vehicleTitle: string, orderNumber: string) => void;
+  onOpenReferral?: () => void;
 }
 
 export const OrderModal: React.FC<OrderModalProps> = ({
@@ -40,6 +47,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   coupons,
   onOrderCompleted,
   onOpenTrack,
+  onOpenReferral,
 }) => {
   // 5 Step Flow: 1: Service -> 2: Vehicle -> 3: Customer -> 4: Payment -> 5: Confirmation
   const [step, setStep] = useState<number>(1);
@@ -152,6 +160,12 @@ export const OrderModal: React.FC<OrderModalProps> = ({
     if (isOpen) {
       setSecondsLeft(SESSION_DURATION);
       setIsSessionExpired(false);
+
+      // Auto-detect if customer arrived via referral link (?ref=CODE) and apply 20% discount
+      const incomingRef = getActiveIncomingReferralCode();
+      if (incomingRef && !couponCode) {
+        handleCouponInputChange(incomingRef);
+      }
     }
   }, [isOpen]);
 
@@ -422,6 +436,23 @@ export const OrderModal: React.FC<OrderModalProps> = ({
         duration: 5000
       });
 
+      // Process referral rewards if a referral code or reward coupon was used
+      if (appliedCoupon?.code) {
+        if (appliedCoupon.code.startsWith('REF-')) {
+          try {
+            recordReferralConversion(appliedCoupon.code, customerName, serverOrder.orderNumber, serverOrder.serviceName);
+          } catch (e) {
+            console.warn('Error recording referral conversion', e);
+          }
+        } else if (appliedCoupon.code.startsWith('REWARD-')) {
+          try {
+            markRewardAsUsed(appliedCoupon.code, serverOrder.orderNumber);
+          } catch (e) {
+            console.warn('Error marking reward coupon as used', e);
+          }
+        }
+      }
+
       onOrderCompleted(serverOrder);
       setStep(5); // Advance to Step 5: Confirmation screen
     } catch (err: any) {
@@ -498,11 +529,22 @@ export const OrderModal: React.FC<OrderModalProps> = ({
         read: false
       });
 
-      showToast({
-        title: 'Order Confirmed',
-        message: `Order confirmation recorded for ${fallbackOrder.customer.email}.`,
-        type: 'success'
-      });
+      // Process referral rewards if a referral code or reward coupon was used
+      if (appliedCoupon?.code) {
+        if (appliedCoupon.code.startsWith('REF-')) {
+          try {
+            recordReferralConversion(appliedCoupon.code, fallbackOrder.customer.fullName, fallbackOrder.orderNumber, fallbackOrder.serviceName);
+          } catch (e) {
+            console.warn('Error recording referral conversion', e);
+          }
+        } else if (appliedCoupon.code.startsWith('REWARD-')) {
+          try {
+            markRewardAsUsed(appliedCoupon.code, fallbackOrder.orderNumber);
+          } catch (e) {
+            console.warn('Error marking reward coupon as used', e);
+          }
+        }
+      }
 
       onOrderCompleted(fallbackOrder);
       setStep(5);
@@ -1512,6 +1554,55 @@ We will notify you the moment your report advances to processing.`}
                       </div>
                     </div>
                   )}
+                </div>
+              </div>
+
+              {/* Refer-a-Friend Post-Order Reward Callout */}
+              <div className="w-full max-w-lg mx-auto p-4 bg-gradient-to-r from-emerald-950/20 via-slate-50 to-teal-950/20 border-2 border-emerald-500/40 rounded-xl text-left space-y-2.5 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Gift className="w-4 h-4 text-emerald-600" />
+                    <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                      Refer a Friend & Earn $5 On Next Report
+                    </span>
+                  </div>
+                  <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded border border-emerald-300">
+                    Give 20% OFF
+                  </span>
+                </div>
+                <p className="text-[11.5px] text-slate-600 leading-relaxed">
+                  Know someone buying or selling a car? Share your personal referral code. They receive 20% OFF their vehicle report, and you earn $5.00 discount credits on future reports!
+                </p>
+                <div className="flex items-center justify-between gap-2 p-2 bg-white rounded-lg border border-slate-200">
+                  <span className="font-mono text-xs font-bold text-emerald-700 px-2 truncate">
+                    {getReferralProfile().referralCode}
+                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(getReferralProfile().referralLink);
+                        showToast({
+                          title: 'Referral Link Copied',
+                          message: 'Share this link to earn $5 discount on your next report!',
+                          type: 'success',
+                        });
+                      }}
+                      className="px-2.5 py-1.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px] flex items-center gap-1 cursor-pointer transition-colors"
+                    >
+                      <Copy className="w-3 h-3 text-emerald-600" />
+                      <span>Copy Link</span>
+                    </button>
+                    {onOpenReferral && (
+                      <button
+                        type="button"
+                        onClick={onOpenReferral}
+                        className="px-2.5 py-1.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] cursor-pointer transition-colors"
+                      >
+                        Referral Hub
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 

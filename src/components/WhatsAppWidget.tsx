@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { X, Send, Clock, ShieldCheck, QrCode, Smartphone, Copy, Check, ExternalLink, MessageSquare, Sparkles } from 'lucide-react';
+import { X, Send, Clock, ShieldCheck, QrCode, Smartphone, Copy, Check, ExternalLink, MessageSquare } from 'lucide-react';
 import { api } from '../services/api';
 import { ContactIntent, WhatsAppConfig } from '../types';
 import { INITIAL_WHATSAPP_CONFIG } from '../data/initialData';
@@ -33,14 +33,12 @@ interface WhatsAppWidgetProps {
   initialMessage?: string;
   orderNumber?: string;
   vin?: string;
-  onOpenAiChat?: () => void;
 }
 
 export const WhatsAppWidget: React.FC<WhatsAppWidgetProps> = ({
   initialMessage,
   orderNumber,
   vin,
-  onOpenAiChat,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'qr' | 'message'>('qr');
@@ -197,26 +195,6 @@ export const WhatsAppWidget: React.FC<WhatsAppWidgetProps> = ({
             </button>
           </div>
 
-          {/* Optional Direct AI Assistant Link */}
-          {onOpenAiChat && (
-            <div className="bg-gradient-to-r from-blue-900/60 via-indigo-900/60 to-emerald-900/60 px-3.5 py-2 border-b border-slate-700/60 flex items-center justify-between text-xs">
-              <div className="flex items-center gap-1.5 text-slate-200">
-                <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-                <span className="font-semibold text-white text-[11px]">Looking for AI Help Support?</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsOpen(false);
-                  onOpenAiChat();
-                }}
-                className="text-[11px] font-bold text-emerald-300 hover:text-emerald-200 underline cursor-pointer"
-              >
-                Launch AI Chat &rarr;
-              </button>
-            </div>
-          )}
-
           {/* Tab Selector */}
           <div className="flex items-center border-b border-slate-200 bg-slate-50 text-xs font-semibold">
             <button
@@ -324,19 +302,6 @@ export const WhatsAppWidget: React.FC<WhatsAppWidgetProps> = ({
                   Choose a topic:
                 </span>
                 <div className="flex flex-wrap gap-1.5">
-                  {onOpenAiChat && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsOpen(false);
-                        onOpenAiChat();
-                      }}
-                      className="text-left text-xs bg-gradient-to-r from-blue-50 to-emerald-50 hover:from-blue-100 hover:to-emerald-100 text-emerald-900 font-semibold px-2.5 py-1.5 rounded-lg border border-emerald-300 transition-colors cursor-pointer flex items-center gap-1 shadow-xs"
-                    >
-                      <Sparkles className="w-3 h-3 text-amber-500" />
-                      <span>Ask AI Assistant (Instant)</span>
-                    </button>
-                  )}
                   {quickPrompts.map((prompt, idx) => (
                     <button
                       key={idx}
@@ -393,19 +358,6 @@ export const WhatsAppWidget: React.FC<WhatsAppWidgetProps> = ({
             <span className="text-[10px] text-slate-400">
               {config.supportAvailability || 'AutoAudit Help Desk · 24/7 Coverage'}
             </span>
-            {onOpenAiChat && (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsOpen(false);
-                  onOpenAiChat();
-                }}
-                className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 cursor-pointer transition-colors"
-              >
-                <Sparkles className="w-3 h-3 text-amber-500" />
-                <span>AI Support</span>
-              </button>
-            )}
           </div>
         </div>
       )}

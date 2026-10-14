@@ -61,9 +61,52 @@ export function validateCouponRealTime(
     }
   });
 
-  const matchingCoupon = uniqueCouponsMap.get(cleanCode);
+  let matchingCoupon = uniqueCouponsMap.get(cleanCode);
 
+  // If not found in standard coupons, check if it is a Referral Code or Referral Reward Voucher
   if (!matchingCoupon) {
+    if (cleanCode.startsWith('REF-') && cleanCode.length >= 6) {
+      const discountPercent = 20;
+      const discountAmount = Number(((subtotal * discountPercent) / 100).toFixed(2));
+      const newTotal = Math.max(0, Number((subtotal - discountAmount).toFixed(2)));
+      return {
+        isValid: true,
+        status: 'valid',
+        coupon: {
+          code: cleanCode,
+          discountPercent,
+          usageCount: 0,
+          expiryDate: '2028-12-31',
+          active: true,
+        },
+        discountAmount,
+        newTotal,
+        message: `Referral code '${cleanCode}' applied: 20% OFF (-$${discountAmount.toFixed(2)})!`,
+        savingsText: `Saved $${discountAmount.toFixed(2)} with Referral Discount`
+      };
+    }
+
+    if (cleanCode.startsWith('REWARD-') && cleanCode.length >= 8) {
+      const discountFixed = 5.0;
+      const discountAmount = Math.min(subtotal, discountFixed);
+      const newTotal = Math.max(0, Number((subtotal - discountAmount).toFixed(2)));
+      return {
+        isValid: true,
+        status: 'valid',
+        coupon: {
+          code: cleanCode,
+          discountFixed,
+          usageCount: 0,
+          expiryDate: '2028-12-31',
+          active: true,
+        },
+        discountAmount,
+        newTotal,
+        message: `Referral Reward Voucher '${cleanCode}' applied: $${discountFixed.toFixed(2)} OFF (-$${discountAmount.toFixed(2)})!`,
+        savingsText: `Saved $${discountAmount.toFixed(2)} with Referral Reward Voucher`
+      };
+    }
+
     // If fewer than 3 characters, user is still typing
     if (cleanCode.length < 3) {
       return {

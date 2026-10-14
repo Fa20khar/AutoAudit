@@ -3,7 +3,7 @@ import { Order } from '../types';
 import { 
   X, LayoutDashboard, FileText, ShoppingBag, User, HelpCircle, 
   LogOut, CheckCircle2, Clock, Search, AlertCircle, 
-  FileCheck, Mail, ShieldCheck, ArrowRight, Loader2
+  FileCheck, Mail, ShieldCheck, ArrowRight, Loader2, Gift
 } from 'lucide-react';
 import { OrderTrackingProgressBar } from './OrderTrackingProgressBar';
 import { WhatsAppButton } from './WhatsAppButton';
@@ -16,6 +16,7 @@ interface MyOrdersModalProps {
   orders: Order[];
   onOpenSampleReport: () => void;
   onDownloadReport?: (vin: string, title: string, orderNumber: string) => void;
+  onOpenReferral?: () => void;
 }
 
 export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
@@ -23,6 +24,7 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
   onClose,
   orders,
   onOpenSampleReport,
+  onOpenReferral,
 }) => {
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'my-reports' | 'orders' | 'account' | 'support'>('dashboard');
@@ -248,6 +250,25 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
                 <HelpCircle className="w-4 h-4" />
                 <span>Support</span>
               </button>
+
+              {onOpenReferral && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenReferral();
+                  }}
+                  className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-[8px] transition-colors cursor-pointer leading-[1.43] text-emerald-300 hover:bg-emerald-950/40 hover:text-emerald-200 border border-emerald-500/20"
+                >
+                  <div className="flex items-center gap-3">
+                    <Gift className="w-4 h-4 text-emerald-400" />
+                    <span>Refer & Earn</span>
+                  </div>
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded font-mono font-bold">
+                    20%
+                  </span>
+                </button>
+              )}
             </nav>
           </div>
 

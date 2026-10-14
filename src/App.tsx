@@ -29,10 +29,12 @@ import { AdminPanel } from './components/AdminPanel';
 import { ReportDownloadModal } from './components/ReportDownloadModal';
 import { CustomerIntakeModal } from './components/CustomerIntakeModal';
 import { PrintGuideModal } from './components/PrintGuideModal';
-import { GeminiChatbot } from './components/GeminiChatbot';
 import { VeoVideoModal } from './components/VeoVideoModal';
 import { WhatsAppWidget } from './components/WhatsAppWidget';
-import { ToastProvider } from './context/ToastContext';
+import { ReferralModal } from './components/ReferralModal';
+import { ReferralBannerSection } from './components/ReferralBannerSection';
+import { captureIncomingReferralCode } from './utils/referralStorage';
+import { ToastProvider, useToast } from './context/ToastContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { api } from './services/api';
 
@@ -145,8 +147,24 @@ function AppContent() {
   const [isSampleModalOpen, setIsSampleModalOpen] = useState<boolean>(false);
   const [isTrackModalOpen, setIsTrackModalOpen] = useState<boolean>(false);
   const [isPrintGuideOpen, setIsPrintGuideOpen] = useState<boolean>(false);
-  const [isGeminiChatOpen, setIsGeminiChatOpen] = useState<boolean>(false);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState<boolean>(false);
+  const [isReferralModalOpen, setIsReferralModalOpen] = useState<boolean>(false);
+
+  const { showToast } = useToast();
+
+  // Detect and welcome visitors arriving from a referral link (?ref=CODE)
+  useEffect(() => {
+    const incomingRef = captureIncomingReferralCode();
+    if (incomingRef) {
+      showToast({
+        title: 'Referral Discount Active!',
+        message: `Referral code ${incomingRef} will apply 20% OFF to your vehicle report at checkout.`,
+        type: 'success',
+        duration: 6000,
+      });
+    }
+  }, []);
+
   const [legalModalState, setLegalModalState] = useState<{
     isOpen: boolean;
     tab: 'terms' | 'privacy' | 'refund' | 'compliance' | 'data-sources' | 'licensing';
@@ -321,7 +339,7 @@ function AppContent() {
   const newOrdersCount = orders.filter((o) => o.status === 'Paid / New').length;
 
   return (
-    <div className="min-h-screen bg-[#07111F] text-[#CBD5E1] flex flex-col font-sans selection:bg-[#2563EB] selection:text-white">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-[#07111F] text-[#CBD5E1] flex flex-col font-sans selection:bg-[#2563EB] selection:text-white">
       
       {/* 1. Admin Portal View */}
       {currentView === 'admin' ? (
@@ -352,8 +370,8 @@ function AppContent() {
             onToggleAdminView={handleToggleAdmin}
             newOrdersCount={newOrdersCount}
             onRequestReport={handleOpenRequestReport}
-            onOpenChat={() => setIsGeminiChatOpen(true)}
             onOpenVideoStudio={() => setIsVideoModalOpen(true)}
+            onOpenReferral={() => setIsReferralModalOpen(true)}
           />
 
           <main className="flex-1">
@@ -376,8 +394,8 @@ function AppContent() {
             onToggleAdmin={() => navigateTo('admin', '/admin')}
             onRequestReport={handleOpenRequestReport}
             onOpenPrintGuide={() => setIsPrintGuideOpen(true)}
-            onOpenChat={() => setIsGeminiChatOpen(true)}
             onOpenVideoStudio={() => setIsVideoModalOpen(true)}
+            onOpenReferral={() => setIsReferralModalOpen(true)}
           />
         </>
       ) : (
@@ -393,8 +411,8 @@ function AppContent() {
             onToggleAdminView={handleToggleAdmin}
             newOrdersCount={newOrdersCount}
             onRequestReport={handleOpenRequestReport}
-            onOpenChat={() => setIsGeminiChatOpen(true)}
             onOpenVideoStudio={() => setIsVideoModalOpen(true)}
+            onOpenReferral={() => setIsReferralModalOpen(true)}
           />
 
           <main className="flex-1">
@@ -445,8 +463,14 @@ function AppContent() {
               onOpenSample={() => setIsSampleModalOpen(true)}
             />
 
+            {/* Refer-a-Friend Rewards Module: Generate unique referral codes, share link, earn discounts */}
+            <ReferralBannerSection
+              onOpenReferralModal={() => setIsReferralModalOpen(true)}
+              onOpenOrder={handleOpenRequestReport}
+            />
+
             {/* Section 22: FAQ */}
-            <FAQSection onOpenChat={() => setIsGeminiChatOpen(true)} />
+            <FAQSection />
 
             {/* Section 23: Final CTA */}
             <FinalCTA
@@ -465,8 +489,8 @@ function AppContent() {
             onToggleAdmin={() => navigateTo('admin', '/admin')}
             onRequestReport={handleOpenRequestReport}
             onOpenPrintGuide={() => setIsPrintGuideOpen(true)}
-            onOpenChat={() => setIsGeminiChatOpen(true)}
             onOpenVideoStudio={() => setIsVideoModalOpen(true)}
+            onOpenReferral={() => setIsReferralModalOpen(true)}
           />
         </>
       )}
@@ -485,6 +509,17 @@ function AppContent() {
         coupons={coupons}
         onOrderCompleted={handleOrderCompleted}
         onOpenTrack={() => setIsTrackModalOpen(true)}
+        onOpenReferral={() => setIsReferralModalOpen(true)}
+      />
+
+      {/* Refer-a-Friend Rewards Modal: Code generation, links, QR code, vouchers */}
+      <ReferralModal
+        isOpen={isReferralModalOpen}
+        onClose={() => setIsReferralModalOpen(false)}
+        onApplyRewardToCheckout={(rewardCode) => {
+          setIsReferralModalOpen(false);
+          handleOpenOrder('comprehensive-vin');
+        }}
       />
 
       <SampleReportModal
@@ -507,6 +542,7 @@ function AppContent() {
         onClose={() => setIsTrackModalOpen(false)}
         orders={orders}
         onOpenSampleReport={() => setIsSampleModalOpen(true)}
+        onOpenReferral={() => setIsReferralModalOpen(true)}
       />
 
       <LegalModal
@@ -536,16 +572,7 @@ function AppContent() {
       />
 
       {/* Persistent Floating WhatsApp Support Widget */}
-      <WhatsAppWidget onOpenAiChat={() => setIsGeminiChatOpen(true)} />
-
-      {/* Multi-turn Gemini AI Chatbot */}
-      <GeminiChatbot
-        isOpen={isGeminiChatOpen}
-        onOpen={() => setIsGeminiChatOpen(true)}
-        onToggle={() => setIsGeminiChatOpen((prev) => !prev)}
-        onClose={() => setIsGeminiChatOpen(false)}
-        onOpenOrder={(planId) => handleOpenOrder(planId || 'comprehensive-vin')}
-      />
+      <WhatsAppWidget />
 
       {/* AutoAudit Veo 3 Video Studio (veo-3.1-fast-generate-preview) */}
       <VeoVideoModal

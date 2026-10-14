@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { X, QrCode, ExternalLink, Copy, Check, Smartphone, ShieldCheck, Clock, Sparkles } from 'lucide-react';
+import { X, QrCode, ExternalLink, Copy, Check, Smartphone, ShieldCheck, Clock } from 'lucide-react';
 import { getWhatsAppUrl, AUTUAUDIT_WHATSAPP_NUMBER, AUTUAUDIT_WHATSAPP_DISPLAY, AUTUAUDIT_WHATSAPP_LOCAL } from './WhatsAppWidget';
 
 interface WhatsAppQRCodeModalProps {
@@ -9,7 +9,6 @@ interface WhatsAppQRCodeModalProps {
   message?: string;
   orderNumber?: string;
   vin?: string;
-  onOpenAiChat?: () => void;
 }
 
 export const WhatsAppQRCodeModal: React.FC<WhatsAppQRCodeModalProps> = ({
@@ -18,7 +17,6 @@ export const WhatsAppQRCodeModal: React.FC<WhatsAppQRCodeModalProps> = ({
   message,
   orderNumber,
   vin,
-  onOpenAiChat,
 }) => {
   const [copied, setCopied] = useState(false);
 
@@ -115,26 +113,6 @@ export const WhatsAppQRCodeModal: React.FC<WhatsAppQRCodeModalProps> = ({
             <Clock className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
             <span>24/7 Coverage · Average response under 5 minutes</span>
           </div>
-
-          {/* Direct AI Assistant Option */}
-          {onOpenAiChat && (
-            <div className="p-2.5 rounded-xl bg-gradient-to-r from-blue-50 to-emerald-50 border border-emerald-200/80 flex items-center justify-between text-xs">
-              <div className="flex items-center gap-1.5 text-slate-700">
-                <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0 animate-pulse" />
-                <span className="text-[11px] font-medium text-slate-700">Need instant vehicle advice?</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onOpenAiChat();
-                }}
-                className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 underline cursor-pointer"
-              >
-                Ask AutoAudit AI &rarr;
-              </button>
-            </div>
-          )}
 
           {/* Actions */}
           <div className="grid grid-cols-2 gap-3 pt-1">

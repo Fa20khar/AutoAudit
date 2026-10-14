@@ -93,7 +93,7 @@ export const SocialProofTicker: React.FC<SocialProofTickerProps> = ({
   if (compact) {
     return (
       <div 
-        className={`bg-[#0A1628] border-y border-[rgba(148,163,184,0.15)] py-2 px-4 overflow-hidden text-xs ${className}`}
+        className={`w-full max-w-full bg-[#0A1628] border-y border-[rgba(148,163,184,0.15)] py-2 px-4 overflow-hidden text-xs ${className}`}
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
       >

@@ -11,8 +11,8 @@ interface FooterProps {
   onToggleAdmin: () => void;
   onRequestReport?: () => void;
   onOpenPrintGuide?: () => void;
-  onOpenChat?: () => void;
   onOpenVideoStudio?: () => void;
+  onOpenReferral?: () => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({
@@ -24,8 +24,8 @@ export const Footer: React.FC<FooterProps> = ({
   onToggleAdmin,
   onRequestReport,
   onOpenPrintGuide,
-  onOpenChat,
   onOpenVideoStudio,
+  onOpenReferral,
 }) => {
   return (
     <footer className="bg-[#0B132B] text-[#CBD5E1] text-xs border-t border-[rgba(148,163,184,0.20)]">
@@ -159,15 +159,15 @@ export const Footer: React.FC<FooterProps> = ({
                   </button>
                 </li>
               )}
-              {onOpenChat && (
+              {onOpenReferral && (
                 <li>
                   <button
                     type="button"
-                    onClick={onOpenChat}
+                    onClick={onOpenReferral}
                     className="hover:text-emerald-300 transition-colors cursor-pointer text-emerald-400 flex items-center gap-1.5"
                   >
-                    <span>AutoAudit Gemini AI</span>
-                    <span className="text-[10px] bg-emerald-950 border border-emerald-500/30 px-1.5 py-0.2 rounded font-mono">Chat</span>
+                    <span>Refer a Friend</span>
+                    <span className="text-[10px] bg-emerald-950 border border-emerald-500/30 px-1.5 py-0.2 rounded font-mono">20% Off</span>
                   </button>
                 </li>
               )}

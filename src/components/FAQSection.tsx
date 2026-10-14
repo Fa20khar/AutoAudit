@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
-import { ChevronDown, QrCode, Sparkles } from 'lucide-react';
+import { ChevronDown, QrCode } from 'lucide-react';
 import { FAQS } from '../data/initialData';
 import { WhatsAppButton } from './WhatsAppButton';
 
-interface FAQSectionProps {
-  onOpenChat?: () => void;
-}
+interface FAQSectionProps {}
 
-export const FAQSection: React.FC<FAQSectionProps> = ({ onOpenChat }) => {
+export const FAQSection: React.FC<FAQSectionProps> = () => {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   const toggleAccordion = (index: number) => {
@@ -85,21 +83,9 @@ export const FAQSection: React.FC<FAQSectionProps> = ({ onOpenChat }) => {
             </div>
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-2.5 shrink-0">
-            {onOpenChat && (
-              <button
-                type="button"
-                onClick={onOpenChat}
-                className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-900/60 via-indigo-900/60 to-emerald-900/60 hover:from-blue-800/80 hover:to-emerald-800/80 border border-emerald-500/30 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
-                title="Ask AutoAudit Gemini AI Assistant"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-                <span>Ask AI Assistant</span>
-              </button>
-            )}
             <WhatsAppButton
               variant="primary"
               openQrModal={true}
-              onOpenAiChat={onOpenChat}
               label="Scan WhatsApp QR: 03420617217"
               className="w-full sm:w-auto shrink-0 px-4 py-2.5 text-xs font-bold shadow-md hover:shadow-lg"
             />

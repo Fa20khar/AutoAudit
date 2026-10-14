@@ -169,7 +169,7 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
   };
 
   return (
-    <section id="hero" className="relative pt-12 pb-20 overflow-hidden bg-[#07111F] text-white">
+    <section id="hero" className="relative w-full max-w-full pt-12 pb-20 overflow-hidden bg-[#07111F] text-white">
       {/* 
         Clean Premium SaaS Ambient Background (No background video)
         - Rich dark navy (#07111F to #0B132B)
