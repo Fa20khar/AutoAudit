@@ -2,9 +2,8 @@ import { Router, Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
 import { db } from '../db';
-import { supabaseDb } from '../supabase';
 import { requireAdminAuth } from '../middleware/auth';
-import { Order, AuditLog, EmailNotification } from '../../src/types';
+import { Order, AuditLog } from '../../src/types';
 import { triggerAutomatedEmailSequence, sendMockEmail } from '../services/smtp';
 import { handleNewOrderCreation, processOrderReport } from '../services/mockReportGenerator';
 
@@ -24,62 +23,37 @@ const VIN_REGEX = /^[A-HJ-NPR-Z0-9]{17}$/;
 
 // GET /api/orders/db-status (check database health and active engine)
 ordersRouter.get('/db-status', async (_req: Request, res: Response) => {
-  await supabaseDb.checkTablesHealth();
-  const status = db.getDatabaseStatus();
+  const status = await db.getDatabaseStatus();
   res.json({
     success: true,
     database: status,
     instructions: {
-      supabaseConfigured: status.isSupabaseConnected,
-      tablesReady: status.tablesReady,
-      help: status.isSupabaseConnected && !status.tablesReady
-        ? "Your Supabase project is connected, but the PostgreSQL tables ('orders', etc.) are not created yet in the database. Run the script in /supabase/schema.sql in your Supabase SQL Editor."
-        : "PostgreSQL tables are verified and operational."
+      primary: 'MongoDB Atlas',
+      isMongoConfigured: status.isMongoConfigured,
+      isMongoConnected: status.isMongoConnected,
+      mongoHelp: !status.isMongoConfigured
+        ? 'Configure MONGODB_URI=mongodb+srv://<user>:<password>@<host>/autoaudit_db in your environment variables to enable MongoDB Atlas persistence.'
+        : !status.isMongoConnected
+        ? 'MongoDB Atlas is configured but connection is not ready. Verify network access allows IP 0.0.0.0/0 in MongoDB Atlas.'
+        : 'MongoDB Atlas is actively connected and serving requests.',
+      fallbackDatabase: status.fallbackDatabase
     }
   });
-});
-
-// GET /api/orders/schema-sql (returns the raw SQL schema for one-click setup)
-ordersRouter.get('/schema-sql', (_req: Request, res: Response) => {
-  try {
-    const schemaPath = path.resolve(process.cwd(), 'supabase', 'schema.sql');
-    if (fs.existsSync(schemaPath)) {
-      const sql = fs.readFileSync(schemaPath, 'utf8');
-      res.type('text/plain').send(sql);
-    } else {
-      res.status(404).send('-- schema.sql not found');
-    }
-  } catch (err: any) {
-    res.status(500).send(`-- Error: ${err.message}`);
-  }
 });
 
 // GET /api/orders (admin & customer lookup)
 // If email query is provided: customer self-service lookup for their own orders
 // If no email query: require staff authorization
-ordersRouter.get('/', (req: Request, res: Response) => {
+ordersRouter.get('/', async (req: Request, res: Response) => {
   const { email, status, search } = req.query;
 
   // Protect all-order retrieval with admin authentication
   if (!email) {
-    return requireAdminAuth(req, res, () => {
-      let orders = db.getOrders();
-
-      if (status && typeof status === 'string' && status !== 'all') {
-        orders = orders.filter(o => o.status.toLowerCase() === status.toLowerCase());
-      }
-
-      if (search && typeof search === 'string') {
-        const term = search.trim().toLowerCase();
-        orders = orders.filter(o => 
-          o.orderNumber.toLowerCase().includes(term) ||
-          o.customer.fullName.toLowerCase().includes(term) ||
-          o.customer.email.toLowerCase().includes(term) ||
-          o.vehicle.vinOrReg.toLowerCase().includes(term) ||
-          o.vehicle.make.toLowerCase().includes(term) ||
-          o.vehicle.model.toLowerCase().includes(term)
-        );
-      }
+    return requireAdminAuth(req, res, async () => {
+      const orders = await db.getOrdersAsync({
+        status: typeof status === 'string' ? status : undefined,
+        search: typeof search === 'string' ? search : undefined
+      });
 
       res.json({
         success: true,
@@ -91,17 +65,10 @@ ordersRouter.get('/', (req: Request, res: Response) => {
 
   // Customer self-service: strictly scoped to matching email
   const cleanEmail = String(email).trim().toLowerCase();
-  let customerOrders = db.getOrders().filter(o => o.customer.email.toLowerCase() === cleanEmail);
-
-  if (search && typeof search === 'string') {
-    const term = search.trim().toLowerCase();
-    customerOrders = customerOrders.filter(o =>
-      o.orderNumber.toLowerCase().includes(term) ||
-      o.vehicle.vinOrReg.toLowerCase().includes(term) ||
-      o.vehicle.make.toLowerCase().includes(term) ||
-      o.vehicle.model.toLowerCase().includes(term)
-    );
-  }
+  const customerOrders = await db.getOrdersAsync({
+    email: cleanEmail,
+    search: typeof search === 'string' ? search : undefined
+  });
 
   res.json({
     success: true,
@@ -111,9 +78,9 @@ ordersRouter.get('/', (req: Request, res: Response) => {
 });
 
 // GET /api/orders/:id
-ordersRouter.get('/:id', (req: Request, res: Response) => {
+ordersRouter.get('/:id', async (req: Request, res: Response) => {
   const { id } = req.params;
-  const order = db.getOrderById(id);
+  const order = await db.getOrderByIdAsync(id);
 
   if (!order) {
     res.status(404).json({ success: false, error: `Order with identifier "${id}" not found.` });
@@ -127,7 +94,7 @@ ordersRouter.get('/:id', (req: Request, res: Response) => {
 });
 
 // POST /api/orders
-ordersRouter.post('/', (req: Request, res: Response) => {
+ordersRouter.post('/', async (req: Request, res: Response) => {
   const body = req.body;
 
   // Validation
@@ -148,43 +115,44 @@ ordersRouter.post('/', (req: Request, res: Response) => {
 
   const cleanName = sanitizeText(body.customer.fullName);
   if (cleanName.length < 2) {
-    res.status(422).json({ success: false, error: 'Customer full name must be at least 2 characters.' });
+    res.status(422).json({ success: false, error: 'Customer name must be at least 2 characters.' });
     return;
   }
 
   if (!body.vehicle?.vinOrReg) {
-    res.status(400).json({ success: false, error: 'Vehicle VIN or Registration is required.' });
+    res.status(400).json({ success: false, error: 'Vehicle VIN or Registration Plate is required.' });
     return;
   }
 
-  const rawVin = sanitizeText(body.vehicle.vinOrReg).toUpperCase();
-  const isVin = body.vehicle.isVin !== false;
-
-  if (isVin && !VIN_REGEX.test(rawVin)) {
-    res.status(422).json({
-      success: false,
-      error: 'Invalid 17-digit VIN. VIN must be exactly 17 alphanumeric characters (excluding letters I, O, and Q).'
-    });
-    return;
+  const cleanVin = sanitizeText(body.vehicle.vinOrReg).toUpperCase();
+  if (body.vehicle.isVin !== false && cleanVin.length === 17) {
+    if (!VIN_REGEX.test(cleanVin)) {
+      res.status(422).json({
+        success: false,
+        error: 'Invalid VIN: Characters I, O, and Q are disallowed by international standards.'
+      });
+      return;
+    }
   }
 
-  const service = db.getServiceById(body.serviceId);
-  const subtotal = service ? service.price : (body.subtotal || 28.99);
+  // Calculate Subtotal & Verify Promo Code
+  const service = await db.getServiceByIdAsync(body.serviceId);
+  const subtotal = service ? service.price : (Number(body.subtotal) || 28.99);
 
   let discountAmount = 0;
-  let couponCode = body.couponCode?.trim().toUpperCase();
+  let couponCode = body.couponCode ? sanitizeText(body.couponCode).toUpperCase() : null;
 
   if (couponCode) {
-    const validation = db.validateCoupon(couponCode);
-    if (validation.valid && validation.coupon) {
-      if (validation.coupon.discountPercent) {
-        discountAmount = parseFloat(((subtotal * validation.coupon.discountPercent) / 100).toFixed(2));
-      } else if (validation.coupon.discountFixed) {
-        discountAmount = Math.min(validation.coupon.discountFixed, subtotal);
+    const couponValidation = db.validateCoupon(couponCode);
+    if (couponValidation.valid && couponValidation.coupon) {
+      if (couponValidation.coupon.discountPercent) {
+        discountAmount = parseFloat(((subtotal * couponValidation.coupon.discountPercent) / 100).toFixed(2));
+      } else if (couponValidation.coupon.discountFixed) {
+        discountAmount = Math.min(couponValidation.coupon.discountFixed, subtotal);
       }
       db.incrementCouponUsage(couponCode);
     } else {
-      couponCode = undefined;
+      couponCode = null;
     }
   }
 
@@ -220,21 +188,21 @@ ordersRouter.post('/', (req: Request, res: Response) => {
     total,
     couponCode: couponCode || undefined,
     customer: {
-      fullName: body.customer.fullName,
-      email: body.customer.email,
-      phone: body.customer.phone || '',
+      fullName: cleanName,
+      email: cleanEmail,
+      phone: body.customer.phone ? sanitizeText(body.customer.phone) : '',
       smsNotifications: body.customer.smsNotifications ?? body.smsNotifications ?? true
     },
     smsNotifications: body.customer.smsNotifications ?? body.smsNotifications ?? true,
     vehicle: {
-      vinOrReg: body.vehicle.vinOrReg.toUpperCase(),
+      vinOrReg: cleanVin,
       isVin: body.vehicle.isVin !== false,
-      make: body.vehicle.make || 'Verified',
-      model: body.vehicle.model || 'Series',
-      year: body.vehicle.year || new Date().getFullYear(),
-      mileage: body.vehicle.mileage || 'Pending audit',
-      countryOrState: body.vehicle.countryOrState || 'US',
-      customerNotes: body.vehicle.customerNotes || ''
+      make: body.vehicle.make ? sanitizeText(body.vehicle.make) : 'Verified',
+      model: body.vehicle.model ? sanitizeText(body.vehicle.model) : 'Series',
+      year: Number(body.vehicle.year) || new Date().getFullYear(),
+      mileage: body.vehicle.mileage ? sanitizeText(body.vehicle.mileage) : 'Pending audit',
+      countryOrState: body.vehicle.countryOrState ? sanitizeText(body.vehicle.countryOrState) : 'US',
+      customerNotes: body.vehicle.customerNotes ? sanitizeText(body.vehicle.customerNotes) : ''
     },
     payment: {
       status: 'Paid',
@@ -248,7 +216,8 @@ ordersRouter.post('/', (req: Request, res: Response) => {
     auditLogs
   };
 
-  db.createOrder(newOrder);
+  // Explicit write completion guarantee before returning HTTP 201 response
+  await db.createOrderAsync(newOrder);
 
   // Trigger Mock Report Generator Service (triggers when order is Paid)
   handleNewOrderCreation(newOrder);
@@ -258,18 +227,18 @@ ordersRouter.post('/', (req: Request, res: Response) => {
     stageDelaySeconds: { stage2: 4, stage3: 8 },
     autoAdvanceOrderStatus: true
   }).catch(err => {
-    console.error('[SMTP] Automated email sequence error:', err);
+    console.error('[SMTP] Error starting automated email sequence:', err);
   });
 
   res.status(201).json({
     success: true,
-    message: 'Order created successfully and automated lifecycle email sequence initiated.',
+    message: 'Order created successfully. Processing has begun.',
     data: newOrder
   });
 });
 
 // PATCH /api/orders/:id/status (requires staff authorization)
-ordersRouter.patch('/:id/status', requireAdminAuth, (req: Request, res: Response) => {
+ordersRouter.patch('/:id/status', requireAdminAuth, async (req: Request, res: Response) => {
   const { id } = req.params;
   const { status, note } = req.body;
 
@@ -278,7 +247,7 @@ ordersRouter.patch('/:id/status', requireAdminAuth, (req: Request, res: Response
     return;
   }
 
-  const updated = db.updateOrderStatus(id, status, note ? sanitizeText(note) : undefined);
+  const updated = await db.updateOrderStatusAsync(id, status, note ? sanitizeText(note) : undefined);
 
   if (!updated) {
     res.status(404).json({ success: false, error: `Order with identifier "${id}" not found.` });

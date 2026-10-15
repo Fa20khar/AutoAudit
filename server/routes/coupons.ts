@@ -4,10 +4,11 @@ import { db } from '../db';
 export const couponsRouter = Router();
 
 // GET /api/coupons
-couponsRouter.get('/', (_req: Request, res: Response) => {
+couponsRouter.get('/', async (_req: Request, res: Response) => {
+  const coupons = await db.getCouponsAsync();
   res.json({
     success: true,
-    data: db.getCoupons()
+    data: coupons
   });
 });
 

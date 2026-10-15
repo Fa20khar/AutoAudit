@@ -1,6 +1,27 @@
-import { ServicePlan, Order, Coupon, EmailNotification, ContactEvent, WhatsAppConfig, ContactAnalyticsSummary, CustomerIntakeSubmission } from '../src/types';
+import {
+  ServicePlan,
+  Order,
+  Coupon,
+  EmailNotification,
+  ContactEvent,
+  WhatsAppConfig,
+  ContactAnalyticsSummary,
+  CustomerIntakeSubmission
+} from '../src/types';
 import { INITIAL_WHATSAPP_CONFIG, INITIAL_CONTACT_EVENTS } from '../src/data/initialData';
-import { isSupabaseConfigured, supabaseDb, supabaseTableStatus } from './supabase';
+import {
+  isMongoConnected,
+  isMongoConfigured,
+  getMongoStatus,
+  OrderModel,
+  ServiceModel,
+  CouponModel,
+  EmailModel,
+  CustomerIntakeModel,
+  ContactEventModel,
+  WhatsAppConfigModel,
+  ReferralModel
+} from './mongodb';
 
 // Pre-seeded Initial Data
 export const INITIAL_SERVICES: ServicePlan[] = [
@@ -293,7 +314,7 @@ export const INITIAL_INTAKE_SUBMISSIONS: CustomerIntakeSubmission[] = [
   }
 ];
 
-// Backend Database Store with Supabase PostgreSQL Integration
+// Backend Database Access Layer with MongoDB Atlas primary support
 class Database {
   private services: ServicePlan[] = [...INITIAL_SERVICES];
   private orders: Order[] = [...INITIAL_ORDERS];
@@ -302,42 +323,88 @@ class Database {
   private contactEvents: ContactEvent[] = [...INITIAL_CONTACT_EVENTS];
   private whatsAppConfig: WhatsAppConfig = { ...INITIAL_WHATSAPP_CONFIG };
   private intakeSubmissions: CustomerIntakeSubmission[] = [...INITIAL_INTAKE_SUBMISSIONS];
+  private isHydratedFromMongo = false;
 
-  constructor() {
-    this.hydrateFromSupabase();
-  }
+  constructor() {}
 
-  // Hydrate in-memory cache from Supabase Postgres if keys are set
-  async hydrateFromSupabase(): Promise<void> {
-    if (!isSupabaseConfigured()) return;
+  /**
+   * Synchronizes and seeds initial collections in MongoDB Atlas if they are currently empty
+   */
+  async hydrateFromMongoDB(): Promise<void> {
+    if (!isMongoConnected()) return;
     try {
-      const orders = await supabaseDb.getOrders();
-      if (orders && orders.length > 0) {
-        this.orders = orders;
-        console.log(`[Database] Hydrated ${orders.length} orders from Supabase PostgreSQL.`);
+      // 1. Services
+      const dbServices = await ServiceModel.find().lean();
+      if (dbServices.length > 0) {
+        this.services = dbServices as any;
+      } else {
+        await ServiceModel.insertMany(INITIAL_SERVICES);
+        console.log(`[MongoDB Atlas] Initialized ${INITIAL_SERVICES.length} service plans.`);
       }
-      const coupons = await supabaseDb.getCoupons();
-      if (coupons && coupons.length > 0) {
-        this.coupons = coupons;
+
+      // 2. Coupons
+      const dbCoupons = await CouponModel.find().lean();
+      if (dbCoupons.length > 0) {
+        this.coupons = dbCoupons as any;
+      } else {
+        await CouponModel.insertMany(INITIAL_COUPONS);
+        console.log(`[MongoDB Atlas] Initialized ${INITIAL_COUPONS.length} promotional coupons.`);
       }
-      const emails = await supabaseDb.getEmails();
-      if (emails && emails.length > 0) {
-        this.emails = emails;
+
+      // 3. Orders
+      const dbOrders = await OrderModel.find().sort({ createdAt: -1 }).lean();
+      if (dbOrders.length > 0) {
+        this.orders = dbOrders as any;
+        console.log(`[MongoDB Atlas] Hydrated ${dbOrders.length} orders from Atlas collection.`);
+      } else {
+        await OrderModel.insertMany(INITIAL_ORDERS);
+        console.log(`[MongoDB Atlas] Seeded ${INITIAL_ORDERS.length} sample orders.`);
       }
-    } catch (e: any) {
-      console.warn('[Database] Failed to hydrate from Supabase:', e?.message);
+
+      // 4. Emails
+      const dbEmails = await EmailModel.find().sort({ sentAt: -1 }).lean();
+      if (dbEmails.length > 0) {
+        this.emails = dbEmails as any;
+      } else {
+        await EmailModel.insertMany(INITIAL_EMAILS);
+      }
+
+      // 5. Intake submissions
+      const dbIntake = await CustomerIntakeModel.find().sort({ timestamp: -1 }).lean();
+      if (dbIntake.length > 0) {
+        this.intakeSubmissions = dbIntake as any;
+      } else {
+        await CustomerIntakeModel.insertMany(INITIAL_INTAKE_SUBMISSIONS);
+      }
+
+      // 6. WhatsApp configuration
+      const dbConfig = await WhatsAppConfigModel.findOne({ key: 'global' }).lean();
+      if (dbConfig) {
+        this.whatsAppConfig = dbConfig as any;
+      } else {
+        await WhatsAppConfigModel.create({ key: 'global', ...INITIAL_WHATSAPP_CONFIG });
+      }
+
+      this.isHydratedFromMongo = true;
+      console.log('[MongoDB Atlas] Application state synchronized with Atlas database.');
+    } catch (err: any) {
+      console.warn('[MongoDB Atlas] Hydration notice:', err?.message);
     }
   }
 
-  getDatabaseStatus() {
+  async getDatabaseStatus() {
+    const mongoStatus = await getMongoStatus();
     return {
-      type: isSupabaseConfigured() ? 'Supabase PostgreSQL' : 'In-Memory DB (Local Fallback)',
-      isSupabaseConnected: isSupabaseConfigured(),
-      tablesReady: supabaseTableStatus.ordersReady && supabaseTableStatus.servicesReady,
-      tableStatus: supabaseTableStatus,
-      orderCount: this.orders.length,
-      couponCount: this.coupons.length,
-      emailCount: this.emails.length
+      primaryDatabase: 'MongoDB Atlas',
+      isMongoConfigured: mongoStatus.isConfigured,
+      isMongoConnected: mongoStatus.isConnected,
+      mongoStatus,
+      fallbackDatabase: 'AutoAudit High-Speed Local Repository (Zero Cloud Dependency)',
+      orderCount: isMongoConnected() ? await OrderModel.countDocuments() : this.orders.length,
+      couponCount: isMongoConnected() ? await CouponModel.countDocuments() : this.coupons.length,
+      emailCount: isMongoConnected() ? await EmailModel.countDocuments() : this.emails.length,
+      serviceCount: isMongoConnected() ? await ServiceModel.countDocuments() : this.services.length,
+      intakeCount: isMongoConnected() ? await CustomerIntakeModel.countDocuments() : this.intakeSubmissions.length
     };
   }
 
@@ -346,8 +413,35 @@ class Database {
     return this.services;
   }
 
+  async getServicesAsync(): Promise<ServicePlan[]> {
+    if (isMongoConnected()) {
+      try {
+        const list = await ServiceModel.find({ active: true }).lean();
+        if (list.length > 0) {
+          this.services = list as any;
+          return this.services;
+        }
+      } catch (e: any) {
+        console.warn('[Database] MongoDB getServices error, using cache:', e.message);
+      }
+    }
+    return this.services;
+  }
+
   getServiceById(id: string): ServicePlan | undefined {
     return this.services.find(s => s.id === id);
+  }
+
+  async getServiceByIdAsync(id: string): Promise<ServicePlan | undefined> {
+    if (isMongoConnected()) {
+      try {
+        const item = await ServiceModel.findOne({ id }).lean();
+        if (item) return item as any;
+      } catch {
+        // fallback
+      }
+    }
+    return this.getServiceById(id);
   }
 
   // Orders
@@ -355,16 +449,92 @@ class Database {
     return this.orders;
   }
 
+  async getOrdersAsync(filter?: { email?: string; status?: string; search?: string }): Promise<Order[]> {
+    if (isMongoConnected()) {
+      try {
+        const query: any = {};
+        if (filter?.email) {
+          query['customer.email'] = filter.email.trim().toLowerCase();
+        }
+        if (filter?.status && filter.status !== 'all') {
+          query.status = filter.status;
+        }
+        if (filter?.search) {
+          const term = filter.search.trim();
+          query.$or = [
+            { orderNumber: new RegExp(term, 'i') },
+            { 'customer.fullName': new RegExp(term, 'i') },
+            { 'customer.email': new RegExp(term, 'i') },
+            { 'vehicle.vinOrReg': new RegExp(term, 'i') },
+            { 'vehicle.make': new RegExp(term, 'i') },
+            { 'vehicle.model': new RegExp(term, 'i') }
+          ];
+        }
+        const dbOrders = await OrderModel.find(query).sort({ createdAt: -1 }).lean();
+        return dbOrders as any;
+      } catch (err: any) {
+        console.warn('[Database] MongoDB getOrders error, falling back to cache:', err.message);
+      }
+    }
+
+    let orders = this.orders;
+    if (filter?.email) {
+      const cleanEmail = filter.email.trim().toLowerCase();
+      orders = orders.filter(o => o.customer.email.toLowerCase() === cleanEmail);
+    }
+    if (filter?.status && filter.status !== 'all') {
+      orders = orders.filter(o => o.status.toLowerCase() === filter.status!.toLowerCase());
+    }
+    if (filter?.search) {
+      const term = filter.search.trim().toLowerCase();
+      orders = orders.filter(o =>
+        o.orderNumber.toLowerCase().includes(term) ||
+        o.customer.fullName.toLowerCase().includes(term) ||
+        o.customer.email.toLowerCase().includes(term) ||
+        o.vehicle.vinOrReg.toLowerCase().includes(term) ||
+        o.vehicle.make.toLowerCase().includes(term) ||
+        o.vehicle.model.toLowerCase().includes(term)
+      );
+    }
+    return orders;
+  }
+
   getOrderById(idOrNumber: string): Order | undefined {
     return this.orders.find(o => o.id === idOrNumber || o.orderNumber.toLowerCase() === idOrNumber.toLowerCase());
   }
 
+  async getOrderByIdAsync(idOrNumber: string): Promise<Order | undefined> {
+    if (isMongoConnected()) {
+      try {
+        const order = await OrderModel.findOne({
+          $or: [{ id: idOrNumber }, { orderNumber: idOrNumber.toUpperCase() }]
+        }).lean();
+        if (order) return order as any;
+      } catch (err: any) {
+        console.warn('[Database] MongoDB getOrderById error, using cache:', err.message);
+      }
+    }
+    return this.getOrderById(idOrNumber);
+  }
+
   createOrder(order: Order): Order {
     this.orders.unshift(order);
-    if (isSupabaseConfigured()) {
-      supabaseDb.createOrder(order).catch(err => {
-        console.error('[Database] Failed to sync order to Supabase:', err);
+    if (isMongoConnected()) {
+      OrderModel.create(order).catch(err => {
+        console.error('[Database] Failed to save order to MongoDB Atlas:', err.message);
       });
+    }
+    return order;
+  }
+
+  async createOrderAsync(order: Order): Promise<Order> {
+    this.orders.unshift(order);
+    if (isMongoConnected()) {
+      try {
+        await OrderModel.create(order);
+      } catch (err: any) {
+        console.error('[Database] Error persisting order to MongoDB Atlas:', err.message);
+      }
     }
     return order;
   }
@@ -375,18 +545,19 @@ class Database {
 
     order.status = status;
     order.updatedAt = new Date().toISOString();
-    
+
     if (note) {
       order.internalNotes = order.internalNotes ? `${order.internalNotes}\n${note}` : note;
     }
 
-    order.auditLogs.unshift({
+    const logEntry = {
       id: `log-${Date.now()}`,
       timestamp: new Date().toISOString(),
       actor: 'Admin Staff',
       action: `Status updated to ${status}`,
       details: note || undefined
-    });
+    };
+    order.auditLogs.unshift(logEntry);
 
     if (status === 'Delivered' && !order.resultFile) {
       order.resultFile = {
@@ -397,12 +568,43 @@ class Database {
       };
     }
 
-    if (isSupabaseConfigured()) {
-      supabaseDb.updateOrderStatus(orderId, status, note).catch(err => {
-        console.error('[Database] Failed to sync status to Supabase:', err);
-      });
+    if (isMongoConnected()) {
+      OrderModel.updateOne(
+        { $or: [{ id: orderId }, { orderNumber: orderId }] },
+        {
+          $set: {
+            status,
+            updatedAt: order.updatedAt,
+            internalNotes: order.internalNotes,
+            resultFile: order.resultFile
+          },
+          $push: { auditLogs: { $each: [logEntry], $position: 0 } }
+        }
+      ).catch(err => console.error('[Database] MongoDB status sync error:', err.message));
     }
 
+    return order;
+  }
+
+  async updateOrderStatusAsync(orderId: string, status: Order['status'], note?: string): Promise<Order | null> {
+    const order = this.updateOrderStatus(orderId, status, note);
+    if (order && isMongoConnected()) {
+      try {
+        await OrderModel.updateOne(
+          { $or: [{ id: orderId }, { orderNumber: orderId }] },
+          {
+            $set: {
+              status,
+              updatedAt: order.updatedAt,
+              internalNotes: order.internalNotes,
+              resultFile: order.resultFile
+            }
+          }
+        );
+      } catch (err: any) {
+        console.error('[Database] MongoDB async status sync error:', err.message);
+      }
+    }
     return order;
   }
 
@@ -412,16 +614,23 @@ class Database {
 
     order.internalNotes = notes;
     order.updatedAt = new Date().toISOString();
-    order.auditLogs.unshift({
+    const logEntry = {
       id: `log-${Date.now()}`,
       timestamp: new Date().toISOString(),
       actor: 'Admin Specialist',
       action: 'Updated Internal Notes',
       details: 'Internal fulfillment comments updated'
-    });
+    };
+    order.auditLogs.unshift(logEntry);
 
-    if (isSupabaseConfigured()) {
-      supabaseDb.updateOrderStatus(orderId, order.status, 'Internal notes updated').catch(() => {});
+    if (isMongoConnected()) {
+      OrderModel.updateOne(
+        { $or: [{ id: orderId }, { orderNumber: orderId }] },
+        {
+          $set: { internalNotes: notes, updatedAt: order.updatedAt },
+          $push: { auditLogs: { $each: [logEntry], $position: 0 } }
+        }
+      ).catch(() => {});
     }
 
     return order;
@@ -440,19 +649,45 @@ class Database {
       uploadedAt: new Date().toISOString()
     };
     order.updatedAt = new Date().toISOString();
-    order.auditLogs.unshift({
+    const logEntry = {
       id: `log-${Date.now()}`,
       timestamp: new Date().toISOString(),
       actor,
       action: 'Report Attached',
       details: `File attached: ${file.fileName}`
-    });
+    };
+    order.auditLogs.unshift(logEntry);
+
+    if (isMongoConnected()) {
+      OrderModel.updateOne(
+        { $or: [{ id: orderId }, { orderNumber: orderId }] },
+        {
+          $set: { resultFile: order.resultFile, updatedAt: order.updatedAt },
+          $push: { auditLogs: { $each: [logEntry], $position: 0 } }
+        }
+      ).catch(() => {});
+    }
 
     return order;
   }
 
   // Coupons
   getCoupons(): Coupon[] {
+    return this.coupons;
+  }
+
+  async getCouponsAsync(): Promise<Coupon[]> {
+    if (isMongoConnected()) {
+      try {
+        const list = await CouponModel.find().lean();
+        if (list.length > 0) {
+          this.coupons = list as any;
+          return this.coupons;
+        }
+      } catch (err: any) {
+        console.warn('[Database] MongoDB getCoupons error:', err.message);
+      }
+    }
     return this.coupons;
   }
 
@@ -477,9 +712,13 @@ class Database {
   }
 
   incrementCouponUsage(code: string): void {
-    const coupon = this.coupons.find(c => c.code.toUpperCase() === code.trim().toUpperCase());
+    const cleanCode = code.trim().toUpperCase();
+    const coupon = this.coupons.find(c => c.code.toUpperCase() === cleanCode);
     if (coupon) {
       coupon.usageCount += 1;
+    }
+    if (isMongoConnected()) {
+      CouponModel.updateOne({ code: cleanCode }, { $inc: { usageCount: 1 } }).catch(() => {});
     }
   }
 
@@ -488,11 +727,37 @@ class Database {
     return this.emails;
   }
 
+  async getEmailsAsync(query?: { email?: string; orderNumber?: string }): Promise<EmailNotification[]> {
+    if (isMongoConnected()) {
+      try {
+        const filter: any = {};
+        if (query?.email) filter.recipientEmail = query.email.trim().toLowerCase();
+        if (query?.orderNumber) filter.orderNumber = query.orderNumber.trim().toUpperCase();
+
+        const list = await EmailModel.find(filter).sort({ sentAt: -1 }).lean();
+        return list as any;
+      } catch (err: any) {
+        console.warn('[Database] MongoDB getEmails error:', err.message);
+      }
+    }
+
+    let emails = this.emails;
+    if (query?.email) {
+      const cleanEmail = query.email.trim().toLowerCase();
+      emails = emails.filter(e => e.recipientEmail.toLowerCase() === cleanEmail);
+    }
+    if (query?.orderNumber) {
+      const cleanNum = query.orderNumber.trim().toUpperCase();
+      emails = emails.filter(e => e.orderNumber.toUpperCase() === cleanNum);
+    }
+    return emails;
+  }
+
   addEmail(email: EmailNotification): void {
     this.emails.unshift(email);
-    if (isSupabaseConfigured()) {
-      supabaseDb.addEmail(email).catch(err => {
-        console.error('[Database] Failed to sync email to Supabase:', err);
+    if (isMongoConnected()) {
+      EmailModel.create(email).catch(err => {
+        console.error('[Database] Failed to save email to MongoDB Atlas:', err.message);
       });
     }
   }
@@ -502,7 +767,21 @@ class Database {
     return this.contactEvents;
   }
 
-  logContactEvent(eventData: Omit<ContactEvent, 'id' | 'timestamp'> & { id?: string; timestamp?: string }): ContactEvent {
+  async getContactEventsAsync(): Promise<ContactEvent[]> {
+    if (isMongoConnected()) {
+      try {
+        const list = await ContactEventModel.find().sort({ timestamp: -1 }).limit(100).lean();
+        return list as any;
+      } catch (err: any) {
+        console.warn('[Database] MongoDB getContactEvents error:', err.message);
+      }
+    }
+    return this.contactEvents;
+  }
+
+  logContactEvent(
+    eventData: Omit<ContactEvent, 'id' | 'timestamp'> & { id?: string; timestamp?: string }
+  ): ContactEvent {
     const event: ContactEvent = {
       id: eventData.id || `evt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       timestamp: eventData.timestamp || new Date().toISOString(),
@@ -513,12 +792,19 @@ class Database {
       orderNumber: eventData.orderNumber,
       messagePreview: eventData.messagePreview,
       pageUrl: eventData.pageUrl,
-      deviceType: eventData.deviceType,
+      deviceType: eventData.deviceType
     };
     this.contactEvents.unshift(event);
     if (this.contactEvents.length > 500) {
       this.contactEvents = this.contactEvents.slice(0, 500);
     }
+
+    if (isMongoConnected()) {
+      ContactEventModel.create(event).catch(err => {
+        console.warn('[Database] Failed to log contact event to MongoDB Atlas:', err.message);
+      });
+    }
+
     return event;
   }
 
@@ -545,9 +831,10 @@ class Database {
     const topIntent = Object.entries(byIntent).sort((a, b) => b[1] - a[1])[0]?.[0] || 'vin_check';
 
     const totalOrders = this.orders.length;
-    const conversionRateEstimate = events.length > 0
-      ? Math.min(100, Math.round((totalOrders / Math.max(events.length, 1)) * 38))
-      : 32;
+    const conversionRateEstimate =
+      events.length > 0
+        ? Math.min(100, Math.round((totalOrders / Math.max(events.length, 1)) * 38))
+        : 32;
 
     return {
       totalClicks: events.length,
@@ -559,7 +846,7 @@ class Database {
       bySource,
       byIntent,
       byChannel,
-      recentEvents: events.slice(0, 50),
+      recentEvents: events.slice(0, 50)
     };
   }
 
@@ -570,13 +857,47 @@ class Database {
   updateWhatsAppConfig(updates: Partial<WhatsAppConfig>): WhatsAppConfig {
     this.whatsAppConfig = {
       ...this.whatsAppConfig,
-      ...updates,
+      ...updates
     };
+
+    if (isMongoConnected()) {
+      WhatsAppConfigModel.updateOne(
+        { key: 'global' },
+        { $set: updates },
+        { upsert: true }
+      ).catch(() => {});
+    }
+
     return this.whatsAppConfig;
   }
 
+  // Customer Intake Form Submissions
   getIntakeSubmissions(): CustomerIntakeSubmission[] {
     return this.intakeSubmissions;
+  }
+
+  async getIntakeSubmissionsAsync(filters?: { email?: string; status?: string }): Promise<CustomerIntakeSubmission[]> {
+    if (isMongoConnected()) {
+      try {
+        const query: any = {};
+        if (filters?.email) query.email = filters.email.trim().toLowerCase();
+        if (filters?.status && filters.status !== 'All') query.status = filters.status;
+        const list = await CustomerIntakeModel.find(query).sort({ timestamp: -1 }).lean();
+        return list as any;
+      } catch (err: any) {
+        console.warn('[Database] MongoDB getIntakeSubmissions error:', err.message);
+      }
+    }
+
+    let list = this.intakeSubmissions;
+    if (filters?.email) {
+      const cleanEmail = filters.email.trim().toLowerCase();
+      list = list.filter(item => item.email.toLowerCase() === cleanEmail);
+    }
+    if (filters?.status && filters.status !== 'All') {
+      list = list.filter(item => item.status.toLowerCase() === filters.status!.toLowerCase());
+    }
+    return list;
   }
 
   getIntakeSubmissionById(id: string): CustomerIntakeSubmission | undefined {
@@ -588,6 +909,25 @@ class Database {
     if (this.intakeSubmissions.length > 500) {
       this.intakeSubmissions = this.intakeSubmissions.slice(0, 500);
     }
+
+    if (isMongoConnected()) {
+      CustomerIntakeModel.create(submission).catch(err => {
+        console.error('[Database] Failed to save intake submission to MongoDB Atlas:', err.message);
+      });
+    }
+
+    return submission;
+  }
+
+  async createIntakeSubmissionAsync(submission: CustomerIntakeSubmission): Promise<CustomerIntakeSubmission> {
+    this.intakeSubmissions.unshift(submission);
+    if (isMongoConnected()) {
+      try {
+        await CustomerIntakeModel.create(submission);
+      } catch (err: any) {
+        console.error('[Database] Error persisting intake submission to Atlas:', err.message);
+      }
+    }
     return submission;
   }
 
@@ -596,6 +936,14 @@ class Database {
     if (!item) return null;
 
     Object.assign(item, updates);
+
+    if (isMongoConnected()) {
+      CustomerIntakeModel.updateOne(
+        { $or: [{ id }, { submissionNumber: id }] },
+        { $set: updates }
+      ).catch(() => {});
+    }
+
     return item;
   }
 }

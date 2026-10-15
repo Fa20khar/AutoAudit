@@ -83,93 +83,93 @@ The Admin Operations Panel provides 7 dedicated operational workspaces:
 4. **Service Plan Catalog (`services`):** Management interface for pricing tiers (Basic, Complete, Premium), badges, and feature lists.
 5. **Report Delivery Center (`reports`):** Upload, attach, and audit vehicle history report PDF documents and secure links.
 6. **Payment & Receipts Ledger (`payments`):** Audit gateway transaction references (`ch_...`), card methods, and billing records.
-7. **Platform Settings & Database Diagnostics (`settings`):** Live indicator showing Supabase PostgreSQL connection status, table health check, order counts, and one-click SQL schema copying.
-
-- **Order Detail Workspace:** Full customer profile, vehicle spec breakdown, payment gateway reference, and chronological audit logs.
-- **Staff Action Center:** Status transition buttons with automatic timestamped audit logs.
-- **Report Attachment System:** File name and secure URL input to link generated report PDFs to customer orders.
-- **Internal Staff Notes:** Persistent staff notepad for logging internal research findings per order.
-- **Coupon Manager:** View coupon codes, discount rates, expiry dates, active states, and usage counts.
-- **Email Dispatch Log:** Historical audit trail of all automated customer and staff notification emails.
-
----
-
-## Authentication Requirements
-
-### Current Implementation
-- **Customer Access:** Lightweight, secure tokenless order tracking authenticated via the tuple of customer email address + unique order number (`AA-XXXXX`).
-- **Admin Access:** Protected modal view accessible via staff navigation action with role confirmation and session persistence.
-
-### Planned Supabase Auth Integration
-- **Customer Authentication:** Supabase Auth with Magic Link / OTP email login and Google OAuth to link past vehicle purchases to a persistent user profile.
-- **Admin Authentication:** Email/password or OAuth restricted to authorized staff email domains with Supabase Row Level Security (RLS) enforcement.
-
----
-
-## Main User Journeys
-
-### Journey 1: Customer Purchases a Vehicle History Report
-1. Customer lands on the homepage and enters a 17-digit VIN or US license plate.
-2. The system validates the format and queries NHTSA/Cache to decode the vehicle (e.g. 2017 Honda Accord EX-L).
-3. The customer clicks **"Run Full Audit"**; the Order Modal opens pre-populated with vehicle details.
-4. The customer selects the **Complete Report ($28.99)**.
-5. The customer applies promo code `FAKHAR20` (discounting the total by 20% to $23.19).
-6. The customer enters contact details (name, email, phone) and simulated payment card information.
-7. The order is submitted; the backend persists the order to Supabase PostgreSQL, schedules automated clearinghouse checks, and dispatches an order confirmation email.
-8. The customer receives an instant success screen displaying their order number (`AA-XXXXX`) and delivery estimate.
-
-### Journey 2: Customer Checks Status & Downloads Report
-1. The customer clicks **"Track My Order"** in the top navigation.
-2. The customer enters their email address and order number.
-3. The modal displays the vehicle details, payment receipt, and active progress bar (*Ready / Delivered*).
-4. The customer clicks **"Download Official Report (PDF)"** to review or save the generated report.
-
-### Journey 3: Administrator Fulfills an Order
-1. Staff member opens the **Admin Panel**.
-2. Selects an order with status *Paid / New*.
-3. Transitions status to *Processing*, then *NMVTIS Check*.
-4. Uploads or links the completed audit report PDF.
-5. Marks the order as *Delivered*; the system logs the audit event and records a delivery notification in the email dispatch queue.
-
----
-
-## Functional Requirements
-- **FR-01:** The system must validate 17-character VIN strings against ISO 3779 (no letters I, O, Q).
-- **FR-02:** The system must resolve vehicle specifications via NHTSA vPIC or fallback cache within 2.5 seconds.
-- **FR-03:** The system must calculate order subtotals, discount deductions, and final totals accurately with 2 decimal places.
-- **FR-04:** The system must generate unique, human-readable order numbers in the format `AA-XXXXX`.
-- **FR-05:** The system must log every order status transition in an immutable audit log array containing timestamp, actor, action, and details.
-- **FR-06:** The system must persist order records, coupons, and emails directly to Supabase PostgreSQL when configured, and fall back to local memory without throwing application-breaking exceptions.
-- **FR-07:** The system must allow customer order retrieval by matching both email and order number.
-
----
-
-## Non-Functional Requirements
-- **NFR-01 (Reliability):** Dual-storage architecture ensuring 100% application uptime; if Supabase credentials or tables are temporarily offline, the in-memory engine transparently serves existing data.
-- **NFR-02 (Performance):** Page initial load within 1.2 seconds; client-side VIN validation in under 100ms; backend API endpoints responding in under 300ms.
-- **NFR-03 (Maintainability):** Fully typed TypeScript codebase with zero compilation errors, modular components, and no duplicate state logic.
-- **NFR-04 (Usability):** Zero-jargon customer copy, clear progress indicators, informative toast notifications for every user action, and zero intrusive popups.
-
----
-
-## Security Requirements
-- **SEC-01:** Never expose Supabase service-role keys, database passwords, or private API keys in client-side bundles.
-- **SEC-02:** Client-side Supabase client must use `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` restricted by PostgreSQL Row Level Security (RLS).
-- **SEC-03:** Sanitize and validate all user inputs (VINs, emails, phone numbers, coupon codes) before database insertion.
-- **SEC-04:** All external API communications must use HTTPS with strict timeout boundaries (AbortController).
-
----
-
-## Responsive & Mobile Requirements
-- **Mobile First:** Full responsive compatibility across 320px (iPhone SE), 375px, 768px (iPad portrait), 1024px (iPad landscape), and 1440px+ (desktop).
-- **Touch-Friendly Hit Targets:** All interactive buttons, tabs, inputs, and accordion triggers maintain a minimum tap target of 44x44px.
-- **Sticky / Accessible Navigation:** Fixed header with streamlined mobile menu and mobile-optimized modal drawers.
-
----
-
-## Future Roadmap Features
-- [ ] Integration with live Stripe / PayPal payment gateways.
-- [ ] Native PDF generation engine (server-side PDFKit or Puppeteer rendering).
-- [ ] Direct state DMV title check automation via commercial NMVTIS data partner API.
-- [ ] Supabase Authentication with user account dashboard for repeat vehicle dealership buyers.
-- [ ] Automated SMS delivery via Twilio API.
+86: 7. **Platform Settings & Database Diagnostics (`settings`):** Live indicator showing MongoDB Atlas connection status, ping latency, cluster host, order counts, and migration tools.
+87: 
+88: - **Order Detail Workspace:** Full customer profile, vehicle spec breakdown, payment gateway reference, and chronological audit logs.
+89: - **Staff Action Center:** Status transition buttons with automatic timestamped audit logs.
+90: - **Report Attachment System:** File name and secure URL input to link generated report PDFs to customer orders.
+91: - **Internal Staff Notes:** Persistent staff notepad for logging internal research findings per order.
+92: - **Coupon Manager:** View coupon codes, discount rates, expiry dates, active states, and usage counts.
+93: - **Email Dispatch Log:** Historical audit trail of all automated customer and staff notification emails.
+94: 
+95: ---
+96: 
+97: ## Authentication Requirements
+98: 
+99: ### Current Implementation
+100: - **Customer Access:** Lightweight, secure tokenless order tracking authenticated via the tuple of customer email address + unique order number (`AA-XXXXX`).
+101: - **Admin Access:** Protected modal view accessible via staff navigation action with role confirmation and session persistence.
+102: 
+103: ### Planned Authentication & Account Architecture
+104: - **Customer Authentication:** Server-side sessions with Magic Link / OTP email login to link past vehicle purchases to a persistent user profile.
+105: - **Admin Authentication:** Secure server-side credential verification with session token handling (`x-admin-token` / Bearer).
+106: 
+107: ---
+108: 
+109: ## Main User Journeys
+110: 
+111: ### Journey 1: Customer Purchases a Vehicle History Report
+112: 1. Customer lands on the homepage and enters a 17-digit VIN or US license plate.
+113: 2. The system validates the format and queries NHTSA/Cache to decode the vehicle (e.g. 2017 Honda Accord EX-L).
+114: 3. The customer clicks **"Run Full Audit"**; the Order Modal opens pre-populated with vehicle details.
+115: 4. The customer selects the **Complete Report ($28.99)**.
+116: 5. The customer applies promo code `FAKHAR20` (discounting the total by 20% to $23.19).
+117: 6. The customer enters contact details (name, email, phone) and simulated payment card information.
+118: 7. The order is submitted; the backend persists the order to MongoDB Atlas, schedules automated clearinghouse checks, and dispatches an order confirmation email.
+119: 8. The customer receives an instant success screen displaying their order number (`AA-XXXXX`) and delivery estimate.
+120: 
+121: ### Journey 2: Customer Checks Status & Downloads Report
+122: 1. The customer clicks **"Track My Order"** in the top navigation.
+123: 2. The customer enters their email address and order number.
+124: 3. The modal displays the vehicle details, payment receipt, and active progress bar (*Ready / Delivered*).
+125: 4. The customer clicks **"Download Official Report (PDF)"** to review or save the generated report.
+126: 
+127: ### Journey 3: Administrator Fulfills an Order
+128: 1. Staff member opens the **Admin Panel**.
+129: 2. Selects an order with status *Paid / New*.
+130: 3. Transitions status to *Processing*, then *NMVTIS Check*.
+131: 4. Uploads or links the completed audit report PDF.
+132: 5. Marks the order as *Delivered*; the system logs the audit event and records a delivery notification in the email dispatch queue.
+133: 
+134: ---
+135: 
+136: ## Functional Requirements
+137: - **FR-01:** The system must validate 17-character VIN strings against ISO 3779 (no letters I, O, Q).
+138: - **FR-02:** The system must resolve vehicle specifications via NHTSA vPIC or fallback cache within 2.5 seconds.
+139: - **FR-03:** The system must calculate order subtotals, discount deductions, and final totals accurately with 2 decimal places.
+140: - **FR-04:** The system must generate unique, human-readable order numbers in the format `AA-XXXXX`.
+141: - **FR-05:** The system must log every order status transition in an immutable audit log array containing timestamp, actor, action, and details.
+142: - **FR-06:** The system must persist order records, coupons, and emails directly to MongoDB Atlas when configured, and fall back to local memory without throwing application-breaking exceptions.
+143: - **FR-07:** The system must allow customer order retrieval by matching both email and order number.
+144: 
+145: ---
+146: 
+147: ## Non-Functional Requirements
+148: - **NFR-01 (Reliability):** Dual-storage architecture ensuring 100% application uptime; if MongoDB Atlas is temporarily unreachable, the in-memory engine transparently serves existing data.
+149: - **NFR-02 (Performance):** Page initial load within 1.2 seconds; client-side VIN validation in under 100ms; backend API endpoints responding in under 300ms.
+150: - **NFR-03 (Maintainability):** Fully typed TypeScript codebase with zero compilation errors, modular components, and no duplicate state logic.
+151: - **NFR-04 (Usability):** Zero-jargon customer copy, clear progress indicators, informative toast notifications for every user action, and zero intrusive popups.
+152: 
+153: ---
+154: 
+155: ## Security Requirements
+156: - **SEC-01:** Never expose database connection strings, passwords, or private API keys in client-side bundles.
+157: - **SEC-02:** MongoDB Atlas connection string must remain strictly backend-only via `MONGODB_URI`.
+158: - **SEC-03:** Sanitize and validate all user inputs (VINs, emails, phone numbers, coupon codes) before database insertion.
+159: - **SEC-04:** All external API communications must use HTTPS with strict timeout boundaries (AbortController).
+160: 
+161: ---
+162: 
+163: ## Responsive & Mobile Requirements
+164: - **Mobile First:** Full responsive compatibility across 320px (iPhone SE), 375px, 768px (iPad portrait), 1024px (iPad landscape), and 1440px+ (desktop).
+165: - **Touch-Friendly Hit Targets:** All interactive buttons, tabs, inputs, and accordion triggers maintain a minimum tap target of 44x44px.
+166: - **Sticky / Accessible Navigation:** Fixed header with streamlined mobile menu and mobile-optimized modal drawers.
+167: 
+168: ---
+169: 
+170: ## Future Roadmap Features
+171: - [ ] Integration with live Stripe / PayPal payment gateways.
+172: - [ ] Native PDF generation engine (server-side PDFKit or Puppeteer rendering).
+173: - [ ] Direct state DMV title check automation via commercial NMVTIS data partner API.
+174: - [ ] User account dashboard for repeat vehicle dealership buyers.
+175: - [ ] Automated SMS delivery via Twilio API.

@@ -18,15 +18,14 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * GET /api/intake
  * List customer intake submissions (Admin staff view or email-filtered customer view)
  */
-intakeRouter.get('/', (req: Request, res: Response) => {
+intakeRouter.get('/', async (req: Request, res: Response) => {
   const { email, status } = req.query;
 
   if (!email) {
-    return requireAdminAuth(req, res, () => {
-      let list = db.getIntakeSubmissions();
-      if (status && typeof status === 'string' && status !== 'All') {
-        list = list.filter(item => item.status.toLowerCase() === status.toLowerCase());
-      }
+    return requireAdminAuth(req, res, async () => {
+      const list = await db.getIntakeSubmissionsAsync({
+        status: typeof status === 'string' ? status : undefined
+      });
       res.json({
         success: true,
         count: list.length,
@@ -37,7 +36,7 @@ intakeRouter.get('/', (req: Request, res: Response) => {
 
   // Customer self-service filtered by email
   const cleanEmail = String(email).trim().toLowerCase();
-  const list = db.getIntakeSubmissions().filter(item => item.email.toLowerCase() === cleanEmail);
+  const list = await db.getIntakeSubmissionsAsync({ email: cleanEmail });
   res.json({
     success: true,
     count: list.length,
@@ -153,7 +152,7 @@ intakeRouter.post('/', async (req: Request, res: Response) => {
     status: 'Received'
   };
 
-  db.createIntakeSubmission(submission);
+  await db.createIntakeSubmissionAsync(submission);
 
   let generatedOrder: Order | undefined;
   let reportDownloadUrl: string | undefined;

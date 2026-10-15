@@ -1,0 +1,1298 @@
+{
+  "exportedAt": "2026-10-15T14:06:39.391Z",
+  "orders": [
+    {
+      "id": "ord-1791725166243",
+      "orderNumber": "AA-60721",
+      "serviceId": "premium-auction-audit",
+      "serviceName": "Premium Report",
+      "status": "Delivered",
+      "subtotal": 42.99,
+      "discountAmount": 0,
+      "total": 42.99,
+      "customer": {
+        "fullName": "Fakhar Zaman",
+        "email": "realfakharzaman9@gmail.com",
+        "phone": "+923230876011",
+        "smsNotifications": true
+      },
+      "smsNotifications": true,
+      "vehicle": {
+        "vinOrReg": "1HGCM82633A004352",
+        "isVin": true,
+        "make": "Honda",
+        "model": "Accord Touring 2.0T",
+        "year": 2020,
+        "mileage": "41,800 mi",
+        "countryOrState": "US"
+      },
+      "payment": {
+        "status": "Paid",
+        "gatewayRef": "ch_4q8guk8u8yb",
+        "paidAt": "2026-10-11T13:26:06.243+00:00",
+        "method": "Secure Card Payment"
+      },
+      "internalNotes": "Order received. Automated NMVTIS and title check initialized.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-60721.pdf) by AutoAudit automated intelligence engine.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-60721.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-60721.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-60721.pdf) by AutoAudit automated intelligence engine.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-60721.pdf) by AutoAudit automated intelligence engine.",
+      "resultFile": {
+        "type": "pdf",
+        "fileUrl": "/reports/AutoAudit_Report_1HGCM82633A004352.pdf",
+        "fileName": "AutoAudit_Report_1HGCM82633A004352.pdf",
+        "uploadedAt": "2026-10-11T13:40:14.547Z"
+      },
+      "createdAt": "2026-10-11T13:26:06.243+00:00",
+      "updatedAt": "2026-10-11T13:40:14.547+00:00",
+      "auditLogs": [
+        {
+          "id": "log-1791726014547",
+          "actor": "Admin Staff",
+          "action": "Status updated to Delivered",
+          "details": "Order received. Automated NMVTIS and title check initialized.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-60721.pdf) by AutoAudit automated intelligence engine.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-60721.pdf) by AutoAudit automated intelligence engine.",
+          "timestamp": "2026-10-11T13:40:14.547Z"
+        },
+        {
+          "id": "log-1791726013826",
+          "actor": "Admin Staff",
+          "action": "Status updated to Delivered",
+          "details": "Official dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-60721.pdf) by AutoAudit automated intelligence engine.",
+          "timestamp": "2026-10-11T13:40:13.826Z"
+        },
+        {
+          "id": "log-1791725226290",
+          "actor": "Admin Staff",
+          "action": "Status updated to Delivered",
+          "details": "Official dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-60721.pdf) by AutoAudit automated intelligence engine.",
+          "timestamp": "2026-10-11T13:27:06.290Z"
+        },
+        {
+          "id": "log-1791725174353",
+          "actor": "Admin Staff",
+          "action": "Status updated to Delivered",
+          "details": "Automated vehicle history report assembled and verified.",
+          "timestamp": "2026-10-11T13:26:14.353Z"
+        },
+        {
+          "id": "log-1791725167850",
+          "actor": "Admin Staff",
+          "action": "Status updated to Ready",
+          "details": "Official dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-60721.pdf) by AutoAudit automated intelligence engine.",
+          "timestamp": "2026-10-11T13:26:07.850Z"
+        },
+        {
+          "id": "log-1791725166243-1",
+          "actor": "Customer (Checkout)",
+          "action": "Order Placed",
+          "details": "Standard checkout.",
+          "timestamp": "2026-10-11T13:26:06.243Z"
+        },
+        {
+          "id": "log-1791725166243-2",
+          "actor": "Payment Gateway",
+          "action": "Payment Captured",
+          "details": "$42.99 processed via Secure Card Payment.",
+          "timestamp": "2026-10-11T13:26:06.243Z"
+        }
+      ]
+    },
+    {
+      "id": "ord-1791303109345",
+      "orderNumber": "AA-80419",
+      "serviceId": "comprehensive-vin",
+      "serviceName": "Complete Vehicle History Report",
+      "status": "Paid / New",
+      "subtotal": 28.99,
+      "discountAmount": 0,
+      "total": 28.99,
+      "customer": {
+        "fullName": "Fakhar Zaman",
+        "email": "realfakharzaman9@gmail.com",
+        "phone": "+92 300 1234567",
+        "smsNotifications": true
+      },
+      "smsNotifications": true,
+      "vehicle": {
+        "vinOrReg": "1HGCM82633A004352",
+        "isVin": true,
+        "make": "Honda",
+        "model": "Accord",
+        "year": 2021,
+        "mileage": "32,000 mi",
+        "countryOrState": "United States",
+        "customerNotes": "Plate: ISB-9988. Reason: Considering purchasing a vehicle. Note: None"
+      },
+      "payment": {
+        "status": "Paid",
+        "gatewayRef": "intake_req_REQ-35318",
+        "paidAt": "2026-10-06T16:11:49.345+00:00",
+        "method": "AutoAudit Intake Instant Voucher"
+      },
+      "internalNotes": "AutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp",
+      "createdAt": "2026-10-06T16:11:49.345+00:00",
+      "updatedAt": "2026-10-11T13:40:14.394+00:00",
+      "auditLogs": [
+        {
+          "id": "log-1791726014394",
+          "actor": "Admin Staff",
+          "action": "Status updated to Paid / New",
+          "details": "AutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp",
+          "timestamp": "2026-10-11T13:40:14.394Z"
+        },
+        {
+          "id": "log-1791725226376",
+          "actor": "Admin Staff",
+          "action": "Status updated to Paid / New",
+          "details": "AutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp",
+          "timestamp": "2026-10-11T13:27:06.376Z"
+        },
+        {
+          "id": "log-1791556459920",
+          "actor": "Admin Staff",
+          "action": "Status updated to Paid / New",
+          "details": "AutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp",
+          "timestamp": "2026-10-09T14:34:19.920Z"
+        },
+        {
+          "id": "log-1791379810190",
+          "actor": "Admin Staff",
+          "action": "Status updated to Paid / New",
+          "details": "AutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp",
+          "timestamp": "2026-10-07T13:30:10.190Z"
+        },
+        {
+          "id": "log-1791379809695",
+          "actor": "Admin Staff",
+          "action": "Status updated to Paid / New",
+          "details": "AutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp\nAutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp",
+          "timestamp": "2026-10-07T13:30:09.695Z"
+        },
+        {
+          "id": "log-1791378209943",
+          "actor": "Admin Staff",
+          "action": "Status updated to Paid / New",
+          "details": "AutoAudit Customer Intake Submission #REQ-35318. Preferred Contact: WhatsApp",
+          "timestamp": "2026-10-07T13:03:29.943Z"
+        },
+        {
+          "id": "log-1791303109347",
+          "actor": "Admin Staff",
+          "action": "Status updated to Ready",
+          "details": "Official dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-80419.pdf) by AutoAudit automated intelligence engine.",
+          "timestamp": "2026-10-06T16:11:49.347Z"
+        },
+        {
+          "id": "log-1791303109347",
+          "actor": "AutoAudit Mock Report Generator Service",
+          "action": "Report Attached",
+          "details": "File attached: AutoAudit_Report_1HGCM82633A004352_AA-80419.pdf",
+          "timestamp": "2026-10-06T16:11:49.347Z"
+        },
+        {
+          "id": "log-1791303109345-1",
+          "actor": "Customer Intake Form",
+          "action": "Intake Request Submitted",
+          "details": "Submitted via Google Forms spec intake layer (REQ-35318).",
+          "timestamp": "2026-10-06T16:11:49.345Z"
+        },
+        {
+          "id": "log-1791303109345-2",
+          "actor": "AutoAudit Automated Engine",
+          "action": "Auto-Generate Triggered",
+          "details": "Auto-compiling vehicle intelligence report for Honda Accord (1HGCM82633A004352).",
+          "timestamp": "2026-10-06T16:11:49.345Z"
+        }
+      ]
+    },
+    {
+      "id": "ord-1791176097047",
+      "orderNumber": "AA-67306",
+      "serviceId": "comprehensive-vin",
+      "serviceName": "Complete Report",
+      "status": "Delivered",
+      "subtotal": 28.99,
+      "discountAmount": 0,
+      "total": 28.99,
+      "customer": {
+        "fullName": "Sarah Jenkins",
+        "email": "sarah.jenkins@example.com",
+        "phone": "+1 (555) 492-8192",
+        "smsNotifications": true
+      },
+      "smsNotifications": true,
+      "vehicle": {
+        "vinOrReg": "5UXWX7C5XBA019283",
+        "isVin": true,
+        "make": "BMW",
+        "model": "X3 xDrive30i",
+        "year": 2022,
+        "mileage": "Pending audit",
+        "countryOrState": "US"
+      },
+      "payment": {
+        "status": "Paid",
+        "gatewayRef": "ch_z6f5xpysma9",
+        "paidAt": "2026-10-05T04:54:57.047+00:00",
+        "method": "Secure Card Payment"
+      },
+      "internalNotes": "Order received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.",
+      "resultFile": {
+        "type": "pdf",
+        "fileUrl": "/reports/AutoAudit_Report_5UXWX7C5XBA019283.pdf",
+        "fileName": "AutoAudit_Report_5UXWX7C5XBA019283.pdf",
+        "uploadedAt": "2026-10-11T13:40:14.579Z"
+      },
+      "createdAt": "2026-10-05T04:54:57.047+00:00",
+      "updatedAt": "2026-10-11T13:40:14.579+00:00",
+      "auditLogs": [
+        {
+          "id": "log-1791726014579",
+          "actor": "Admin Staff",
+          "action": "Status updated to Delivered",
+          "details": "Official dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.",
+          "timestamp": "2026-10-11T13:40:14.579Z"
+        },
+        {
+          "id": "log-1791726013842",
+          "actor": "Admin Staff",
+          "action": "Status updated to Delivered",
+          "details": "Order received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.",
+          "timestamp": "2026-10-11T13:40:13.842Z"
+        },
+        {
+          "id": "log-1791725226480",
+          "actor": "Admin Staff",
+          "action": "Status updated to Delivered",
+          "details": "Order received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.",
+          "timestamp": "2026-10-11T13:27:06.480Z"
+        },
+        {
+          "id": "log-1791725226318",
+          "actor": "Admin Staff",
+          "action": "Status updated to Delivered",
+          "details": "Official dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.",
+          "timestamp": "2026-10-11T13:27:06.318Z"
+        },
+        {
+          "id": "log-1791556459787",
+          "actor": "Admin Staff",
+          "action": "Status updated to Delivered",
+          "details": "Official dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.",
+          "timestamp": "2026-10-09T14:34:19.787Z"
+        },
+        {
+          "id": "log-1791379811143",
+          "actor": "Admin Staff",
+          "action": "Status updated to Delivered",
+          "details": "Official dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.",
+          "timestamp": "2026-10-07T13:30:11.143Z"
+        },
+        {
+          "id": "log-1791379810232",
+          "actor": "Admin Staff",
+          "action": "Status updated to Delivered",
+          "details": "Order received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.",
+          "timestamp": "2026-10-07T13:30:10.232Z"
+        },
+        {
+          "id": "log-1791379809767",
+          "actor": "Admin Staff",
+          "action": "Status updated to Delivered",
+          "details": "Official dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.",
+          "timestamp": "2026-10-07T13:30:09.767Z"
+        },
+        {
+          "id": "log-1791378209920",
+          "actor": "Admin Staff",
+          "action": "Status updated to Delivered",
+          "details": "Official dummy report PDF generated (AutoAudit_Report_5UXWX7C5XBA019283_AA-67306.pdf) by AutoAudit automated intelligence engine.",
+          "timestamp": "2026-10-07T13:03:29.920Z"
+        },
+        {
+          "id": "log-1791378209748",
+          "actor": "Admin Staff",
+          "action": "Status updated to Delivered",
+          "details": "Order received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.",
+          "timestamp": "2026-10-07T13:03:29.748Z"
+        },
+        {
+          "id": "log-1791176105162",
+          "actor": "Admin Staff",
+          "action": "Status updated to Delivered",
+          "details": "Automated vehicle history report assembled and verified.",
+          "timestamp": "2026-10-05T04:55:05.162Z"
+        },
+        {
+          "id": "log-1791176101175",
+          "actor": "Admin Staff",
+          "action": "Status updated to In Progress",
+          "details": "Automated clearinghouse lookup started across 50 state DMVs and NMVTIS.",
+          "timestamp": "2026-10-05T04:55:01.174Z"
+        },
+        {
+          "id": "log-1791176097047-1",
+          "actor": "Customer (Checkout)",
+          "action": "Order Placed",
+          "details": "Standard checkout.",
+          "timestamp": "2026-10-05T04:54:57.047Z"
+        },
+        {
+          "id": "log-1791176097047-2",
+          "actor": "Payment Gateway",
+          "action": "Payment Captured",
+          "details": "$28.99 processed via Secure Card Payment.",
+          "timestamp": "2026-10-05T04:54:57.047Z"
+        }
+      ]
+    },
+    {
+      "id": "ord-1791175895626",
+      "orderNumber": "AA-91721",
+      "serviceId": "comprehensive-vin",
+      "serviceName": "Complete Report",
+      "status": "Delivered",
+      "subtotal": 28.99,
+      "discountAmount": 0,
+      "total": 28.99,
+      "customer": {
+        "fullName": "Test Customer",
+        "email": "test.customer@example.com",
+        "phone": "+15551234567",
+        "smsNotifications": true
+      },
+      "smsNotifications": true,
+      "vehicle": {
+        "vinOrReg": "1HGCM82633A004352",
+        "isVin": true,
+        "make": "Honda",
+        "model": "Accord",
+        "year": 2021,
+        "mileage": "Pending audit",
+        "countryOrState": "US"
+      },
+      "payment": {
+        "status": "Paid",
+        "gatewayRef": "ch_ywkt1qu6on",
+        "paidAt": "2026-10-05T04:51:35.626+00:00",
+        "method": "Card"
+      },
+      "internalNotes": "Order received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-91721.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-91721.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-91721.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-91721.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-91721.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-91721.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-91721.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-91721.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-91721.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-91721.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-91721.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-91721.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-91721.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-91721.pdf) by AutoAudit automated intelligence engine.",
+      "resultFile": {
+        "type": "pdf",
+        "fileUrl": "/reports/AutoAudit_Report_1HGCM82633A004352.pdf",
+        "fileName": "AutoAudit_Report_1HGCM82633A004352.pdf",
+        "uploadedAt": "2026-10-11T13:40:14.540Z"
+      },
+      "createdAt": "2026-10-05T04:51:35.626+00:00",
+      "updatedAt": "2026-10-11T13:40:14.54+00:00",
+      "auditLogs": [
+        {
+          "id": "log-1791726014540",
+          "actor": "Admin Staff",
+          "action": "Status updated to Delivered",
+          "details": "Order received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-91721.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-91721.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-91721.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-91721.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-91721.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-91721.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-91721.pdf) by AutoAudit automated intelligence engine.",
+          "timestamp": "2026-10-11T13:40:14.540Z"
+        },
+        {
+          "id": "log-1791725226422",
+          "actor": "Admin Staff",
+          "action": "Status updated to Delivered",
+          "details": "Official dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-91721.pdf) by AutoAudit automated intelligence engine.",
+          "timestamp": "2026-10-11T13:27:06.422Z"
+        },
+        {
+          "id": "log-1791556460418",
+          "actor": "Admin Staff",
+          "action": "Status updated to Delivered",
+          "details": "Order received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-91721.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-91721.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-91721.pdf) by AutoAudit automated intelligence engine.",
+          "timestamp": "2026-10-09T14:34:20.418Z"
+        },
+        {
+          "id": "log-1791379810241",
+          "actor": "Admin Staff",
+          "action": "Status updated to Delivered",
+          "details": "Official dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-91721.pdf) by AutoAudit automated intelligence engine.",
+          "timestamp": "2026-10-07T13:30:10.241Z"
+        },
+        {
+          "id": "log-1791379810061",
+          "actor": "Admin Staff",
+          "action": "Status updated to Delivered",
+          "details": "Order received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-91721.pdf) by AutoAudit automated intelligence engine.",
+          "timestamp": "2026-10-07T13:30:10.061Z"
+        },
+        {
+          "id": "log-1791378209948",
+          "actor": "Admin Staff",
+          "action": "Status updated to Delivered",
+          "details": "Official dummy report PDF generated (AutoAudit_Report_1HGCM82633A004352_AA-91721.pdf) by AutoAudit automated intelligence engine.",
+          "timestamp": "2026-10-07T13:03:29.948Z"
+        },
+        {
+          "id": "log-1791175903756",
+          "actor": "Admin Staff",
+          "action": "Status updated to Delivered",
+          "details": "Automated vehicle history report assembled and verified.",
+          "timestamp": "2026-10-05T04:51:43.756Z"
+        },
+        {
+          "id": "log-1791175899764",
+          "actor": "Admin Staff",
+          "action": "Status updated to In Progress",
+          "details": "Automated clearinghouse lookup started across 50 state DMVs and NMVTIS.",
+          "timestamp": "2026-10-05T04:51:39.764Z"
+        },
+        {
+          "id": "log-1791175895626-1",
+          "actor": "Customer (Checkout)",
+          "action": "Order Placed",
+          "details": "Standard checkout.",
+          "timestamp": "2026-10-05T04:51:35.626Z"
+        },
+        {
+          "id": "log-1791175895626-2",
+          "actor": "Payment Gateway",
+          "action": "Payment Captured",
+          "details": "$28.99 processed via Card.",
+          "timestamp": "2026-10-05T04:51:35.626Z"
+        }
+      ]
+    },
+    {
+      "id": "ord-1790946547077",
+      "orderNumber": "AA-68881",
+      "serviceId": "comprehensive-vin",
+      "serviceName": "Complete Report",
+      "status": "Delivered",
+      "subtotal": 28.99,
+      "discountAmount": 0,
+      "total": 28.99,
+      "customer": {
+        "fullName": "Alexander Vance",
+        "email": "alex.vance@example.com",
+        "phone": "+1 555-0199",
+        "smsNotifications": true
+      },
+      "smsNotifications": true,
+      "vehicle": {
+        "vinOrReg": "1HGCR2F83HA029381",
+        "isVin": true,
+        "make": "Honda",
+        "model": "Accord EX-L",
+        "year": 2021,
+        "mileage": "Pending audit",
+        "countryOrState": "US"
+      },
+      "payment": {
+        "status": "Paid",
+        "gatewayRef": "ch_fbwum0h1f74",
+        "paidAt": "2026-10-02T13:09:07.077+00:00",
+        "method": "Visa ending in 4242"
+      },
+      "internalNotes": "Order received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.",
+      "resultFile": {
+        "type": "pdf",
+        "fileUrl": "/reports/AutoAudit_Report_1HGCR2F83HA029381.pdf",
+        "fileName": "AutoAudit_Report_1HGCR2F83HA029381.pdf",
+        "uploadedAt": "2026-10-11T13:40:14.532Z"
+      },
+      "createdAt": "2026-10-02T13:09:07.077+00:00",
+      "updatedAt": "2026-10-11T13:40:14.532+00:00",
+      "auditLogs": [
+        {
+          "id": "log-1791726014532",
+          "actor": "Admin Staff",
+          "action": "Status updated to Delivered",
+          "details": "Order received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.",
+          "timestamp": "2026-10-11T13:40:14.532Z"
+        },
+        {
+          "id": "log-1791725226409",
+          "actor": "Admin Staff",
+          "action": "Status updated to Delivered",
+          "details": "Order received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.\nOrder received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.",
+          "timestamp": "2026-10-11T13:27:06.409Z"
+        },
+        {
+          "id": "log-1791556459925",
+          "actor": "Admin Staff",
+          "action": "Status updated to Delivered",
+          "details": "Official dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.",
+          "timestamp": "2026-10-09T14:34:19.925Z"
+        },
+        {
+          "id": "log-1791379810225",
+          "actor": "Admin Staff",
+          "action": "Status updated to Delivered",
+          "details": "Official dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.",
+          "timestamp": "2026-10-07T13:30:10.225Z"
+        },
+        {
+          "id": "log-1791379809976",
+          "actor": "Admin Staff",
+          "action": "Status updated to Delivered",
+          "details": "Order received. Automated NMVTIS and title check initialized.\nAutomated clearinghouse lookup started across 50 state DMVs and NMVTIS.\nAutomated vehicle history report assembled and verified.\nOfficial dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.",
+          "timestamp": "2026-10-07T13:30:09.976Z"
+        },
+        {
+          "id": "log-1791378209897",
+          "actor": "Admin Staff",
+          "action": "Status updated to Delivered",
+          "details": "Official dummy report PDF generated (AutoAudit_Report_1HGCR2F83HA029381_AA-68881.pdf) by AutoAudit automated intelligence engine.",
+          "timestamp": "2026-10-07T13:03:29.897Z"
+        },
+        {
+          "id": "log-1790946555218",
+          "actor": "Admin Staff",
+          "action": "Status updated to Delivered",
+          "details": "Automated vehicle history report assembled and verified.",
+          "timestamp": "2026-10-02T13:09:15.218Z"
+        },
+        {
+          "id": "log-1790946551291",
+          "actor": "Admin Staff",
+          "action": "Status updated to In Progress",
+          "details": "Automated clearinghouse lookup started across 50 state DMVs and NMVTIS.",
+          "timestamp": "2026-10-02T13:09:11.291Z"
+        },
+        {
+          "id": "log-1790946547077-1",
+          "actor": "Customer (Checkout)",
+          "action": "Order Placed",
+          "details": "Standard checkout.",
+          "timestamp": "2026-10-02T13:09:07.077Z"
+        },
+        {
+          "id": "log-1790946547077-2",
+          "actor": "Payment Gateway",
+          "action": "Payment Captured",
+          "details": "$28.99 processed via Credit Card.",
+          "timestamp": "2026-10-02T13:09:07.077Z"
+        }
+      ]
+    },
+    {
+      "id": "ord-1790861891722",
+      "orderNumber": "AA-46367",
+      "serviceId": "comprehensive-vin",
+      "serviceName": "Complete Report",
+      "status": "Paid / New",
+      "subtotal": 28.99,
+      "discountAmount": 0,
+      "total": 28.99,
+      "customer": {
+        "fullName": "Fakhar Zaman",
+        "email": "realfakharzaman9@gmail.com",
+        "phone": "+1 (555) 234-5678",
+        "smsNotifications": true
+      },
+      "smsNotifications": true,
+      "vehicle": {
+        "vinOrReg": "1HGCR2F83HA001294",
+        "isVin": true,
+        "make": "Honda",
+        "model": "Accord EX-L",
+        "year": 2017,
+        "mileage": "64,210 mi",
+        "countryOrState": "CA"
+      },
+      "payment": {
+        "status": "Paid",
+        "gatewayRef": "ch_cyfveayeqq5",
+        "paidAt": "2026-10-01T13:38:11.722+00:00",
+        "method": "Credit Card"
+      },
+      "internalNotes": "Order received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.",
+      "createdAt": "2026-10-01T13:38:11.722+00:00",
+      "updatedAt": "2026-10-11T13:40:14.537+00:00",
+      "auditLogs": [
+        {
+          "id": "log-1791726014537",
+          "actor": "Admin Staff",
+          "action": "Status updated to Paid / New",
+          "details": "Order received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.",
+          "timestamp": "2026-10-11T13:40:14.537Z"
+        },
+        {
+          "id": "log-1791725226430",
+          "actor": "Admin Staff",
+          "action": "Status updated to Paid / New",
+          "details": "Order received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.",
+          "timestamp": "2026-10-11T13:27:06.430Z"
+        },
+        {
+          "id": "log-1791556460481",
+          "actor": "Admin Staff",
+          "action": "Status updated to Paid / New",
+          "details": "Order received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.",
+          "timestamp": "2026-10-09T14:34:20.481Z"
+        },
+        {
+          "id": "log-1791379810255",
+          "actor": "Admin Staff",
+          "action": "Status updated to Paid / New",
+          "details": "Order received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.",
+          "timestamp": "2026-10-07T13:30:10.255Z"
+        },
+        {
+          "id": "log-1791379810053",
+          "actor": "Admin Staff",
+          "action": "Status updated to Paid / New",
+          "details": "Order received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.",
+          "timestamp": "2026-10-07T13:30:10.053Z"
+        },
+        {
+          "id": "log-1791378209752",
+          "actor": "Admin Staff",
+          "action": "Status updated to Paid / New",
+          "details": "Order received. Automated NMVTIS and title check initialized.\nOrder received. Automated NMVTIS and title check initialized.",
+          "timestamp": "2026-10-07T13:03:29.752Z"
+        },
+        {
+          "id": "log-1790946184865",
+          "actor": "Admin Staff",
+          "action": "Status updated to Paid / New",
+          "details": "Order received. Automated NMVTIS and title check initialized.",
+          "timestamp": "2026-10-02T13:03:04.865Z"
+        },
+        {
+          "id": "log-1790861891722-1",
+          "actor": "Customer (Checkout)",
+          "action": "Order Placed",
+          "details": "Standard checkout.",
+          "timestamp": "2026-10-01T13:38:11.722Z"
+        },
+        {
+          "id": "log-1790861891722-2",
+          "actor": "Payment Gateway",
+          "action": "Payment Captured",
+          "details": "$28.99 processed via Credit Card.",
+          "timestamp": "2026-10-01T13:38:11.722Z"
+        }
+      ]
+    }
+  ],
+  "coupons": [
+    {
+      "code": "FAKHAR20",
+      "discountPercent": 20,
+      "expiryDate": "2026-12-31",
+      "active": true,
+      "usageCount": 18
+    },
+    {
+      "code": "AUTOAUDIT10",
+      "discountPercent": 10,
+      "expiryDate": "2026-12-31",
+      "active": true,
+      "usageCount": 42
+    },
+    {
+      "code": "SAVE5",
+      "discountPercent": 0,
+      "discountFixed": 5,
+      "expiryDate": "2026-12-31",
+      "active": true,
+      "usageCount": 12
+    }
+  ],
+  "emails": [
+    {
+      "id": "em-1791726073448-ekw",
+      "orderId": "ord-1791725999022",
+      "orderNumber": "AA-46994",
+      "recipientEmail": "fiazseo6@gmail.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-46994)",
+      "type": "report_ready",
+      "body": "Hello Fiaz ali,\n\nGreat news! Your AutoAudit Vehicle History Report for 2010 youn busa (VIN: 99911122233344455) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-46994.",
+      "sentAt": "2026-10-11T13:41:13.448+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791726062435-z3b",
+      "orderId": "ord-1791725999022",
+      "orderNumber": "AA-46994",
+      "recipientEmail": "fiazseo6@gmail.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-46994)",
+      "type": "report_ready",
+      "body": "Hello Fiaz ali,\n\nGreat news! Your AutoAudit Vehicle History Report for 2010 youn busa (VIN: 99911122233344455) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-46994.",
+      "sentAt": "2026-10-11T13:41:02.435+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791726058433-08a",
+      "orderId": "ord-1791725999022",
+      "orderNumber": "AA-46994",
+      "recipientEmail": "fiazseo6@gmail.com",
+      "recipientType": "customer",
+      "subject": "Audit In Progress: Compiling DMV Records for 99911122233344455 (AA-46994)",
+      "type": "processing",
+      "body": "Hello Fiaz ali,\n\nYour vehicle audit for 2010 youn busa (VIN: 99911122233344455) is currently IN-PROGRESS.\n\nOur systems are actively analyzing records from the National Motor Vehicle Title Information System (NMVTIS), municipal salvage auctions, flood registries, and certified odometer databases.\n\nNo manual action is required. We will send you a final email as soon as your PDF report is compiled.",
+      "sentAt": "2026-10-11T13:40:58.433+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791726056415-qz8",
+      "orderId": "ord-1791725999022",
+      "orderNumber": "AA-46994",
+      "recipientEmail": "fiazseo6@gmail.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-46994)",
+      "type": "report_ready",
+      "body": "Hello Fiaz ali,\n\nGreat news! Your AutoAudit Vehicle History Report for 2010 youn busa (VIN: 99911122233344455) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-46994.",
+      "sentAt": "2026-10-11T13:40:56.415+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791726055432-mzv",
+      "orderId": "ord-1791725999022",
+      "orderNumber": "AA-46994",
+      "recipientEmail": "fiazseo6@gmail.com",
+      "recipientType": "customer",
+      "subject": "Order Confirmed: AutoAudit Report for 99911122233344455 (AA-46994)",
+      "type": "order_confirmation",
+      "body": "Hello Fiaz ali,\n\nThank you for choosing AutoAudit! Your order #AA-46994 for 2010 youn busa (VIN: 99911122233344455) has been confirmed and payment has been processed successfully ($15.19 USD).\n\nOur automated systems are now querying the NMVTIS federal title clearinghouse, 50-state DMV registries, and salvage auto auctions.\n\nWe will notify you the moment your report advances to processing.",
+      "sentAt": "2026-10-11T13:40:55.432+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791726014210-yed",
+      "orderId": "ord-1791175895626",
+      "orderNumber": "AA-91721",
+      "recipientEmail": "test.customer@example.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-91721)",
+      "type": "report_ready",
+      "body": "Hello Test Customer,\n\nGreat news! Your AutoAudit Vehicle History Report for 2021 Honda Accord (VIN: 1HGCM82633A004352) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-91721.",
+      "sentAt": "2026-10-11T13:40:14.21+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791726014189-8zk",
+      "orderId": "ord-1791176097047",
+      "orderNumber": "AA-67306",
+      "recipientEmail": "sarah.jenkins@example.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-67306)",
+      "type": "report_ready",
+      "body": "Hello Sarah Jenkins,\n\nGreat news! Your AutoAudit Vehicle History Report for 2022 BMW X3 xDrive30i (VIN: 5UXWX7C5XBA019283) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-67306.",
+      "sentAt": "2026-10-11T13:40:14.189+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791726014142-e4g",
+      "orderId": "ord-1790946547077",
+      "orderNumber": "AA-68881",
+      "recipientEmail": "alex.vance@example.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-68881)",
+      "type": "report_ready",
+      "body": "Hello Alexander Vance,\n\nGreat news! Your AutoAudit Vehicle History Report for 2021 Honda Accord EX-L (VIN: 1HGCR2F83HA029381) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-68881.",
+      "sentAt": "2026-10-11T13:40:14.142+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791726014093-my7",
+      "orderId": "ord-1791725999022",
+      "orderNumber": "AA-46994",
+      "recipientEmail": "fiazseo6@gmail.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-46994)",
+      "type": "report_ready",
+      "body": "Hello Fiaz ali,\n\nGreat news! Your AutoAudit Vehicle History Report for 2010 youn busa (VIN: 99911122233344455) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-46994.",
+      "sentAt": "2026-10-11T13:40:14.093+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791726014052-3z2",
+      "orderId": "ord-1791725166243",
+      "orderNumber": "AA-60721",
+      "recipientEmail": "realfakharzaman9@gmail.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-60721)",
+      "type": "report_ready",
+      "body": "Hello Fakhar Zaman,\n\nGreat news! Your AutoAudit Vehicle History Report for 2020 Honda Accord Touring 2.0T (VIN: 1HGCM82633A004352) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-60721.",
+      "sentAt": "2026-10-11T13:40:14.052+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791726013777-23d",
+      "orderId": "ord-1791175895626",
+      "orderNumber": "AA-91721",
+      "recipientEmail": "test.customer@example.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-91721)",
+      "type": "report_ready",
+      "body": "Hello Test Customer,\n\nGreat news! Your AutoAudit Vehicle History Report for 2021 Honda Accord (VIN: 1HGCM82633A004352) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-91721.",
+      "sentAt": "2026-10-11T13:40:13.777+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791726013763-fcj",
+      "orderId": "ord-1790946547077",
+      "orderNumber": "AA-68881",
+      "recipientEmail": "alex.vance@example.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-68881)",
+      "type": "report_ready",
+      "body": "Hello Alexander Vance,\n\nGreat news! Your AutoAudit Vehicle History Report for 2021 Honda Accord EX-L (VIN: 1HGCR2F83HA029381) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-68881.",
+      "sentAt": "2026-10-11T13:40:13.763+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791726013712-eke",
+      "orderId": "ord-1791176097047",
+      "orderNumber": "AA-67306",
+      "recipientEmail": "sarah.jenkins@example.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-67306)",
+      "type": "report_ready",
+      "body": "Hello Sarah Jenkins,\n\nGreat news! Your AutoAudit Vehicle History Report for 2022 BMW X3 xDrive30i (VIN: 5UXWX7C5XBA019283) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-67306.",
+      "sentAt": "2026-10-11T13:40:13.712+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791726013624-5i2",
+      "orderId": "ord-1791725166243",
+      "orderNumber": "AA-60721",
+      "recipientEmail": "realfakharzaman9@gmail.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-60721)",
+      "type": "report_ready",
+      "body": "Hello Fakhar Zaman,\n\nGreat news! Your AutoAudit Vehicle History Report for 2020 Honda Accord Touring 2.0T (VIN: 1HGCM82633A004352) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-60721.",
+      "sentAt": "2026-10-11T13:40:13.624+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791726013587-xp0",
+      "orderId": "ord-1791725999022",
+      "orderNumber": "AA-46994",
+      "recipientEmail": "fiazseo6@gmail.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-46994)",
+      "type": "report_ready",
+      "body": "Hello Fiaz ali,\n\nGreat news! Your AutoAudit Vehicle History Report for 2010 youn busa (VIN: 99911122233344455) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-46994.",
+      "sentAt": "2026-10-11T13:40:13.587+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791726007048-01b",
+      "orderId": "ord-1791725999022",
+      "orderNumber": "AA-46994",
+      "recipientEmail": "fiazseo6@gmail.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-46994)",
+      "type": "report_ready",
+      "body": "Hello Fiaz ali,\n\nGreat news! Your AutoAudit Vehicle History Report for 2010 youn busa (VIN: 99911122233344455) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-46994.",
+      "sentAt": "2026-10-11T13:40:07.048+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791726003047-90v",
+      "orderId": "ord-1791725999022",
+      "orderNumber": "AA-46994",
+      "recipientEmail": "fiazseo6@gmail.com",
+      "recipientType": "customer",
+      "subject": "Audit In Progress: Compiling DMV Records for 99911122233344455 (AA-46994)",
+      "type": "processing",
+      "body": "Hello Fiaz ali,\n\nYour vehicle audit for 2010 youn busa (VIN: 99911122233344455) is currently IN-PROGRESS.\n\nOur systems are actively analyzing records from the National Motor Vehicle Title Information System (NMVTIS), municipal salvage auctions, flood registries, and certified odometer databases.\n\nNo manual action is required. We will send you a final email as soon as your PDF report is compiled.",
+      "sentAt": "2026-10-11T13:40:03.047+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791726000529-ayi",
+      "orderId": "ord-1791725999022",
+      "orderNumber": "AA-46994",
+      "recipientEmail": "fiazseo6@gmail.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-46994)",
+      "type": "report_ready",
+      "body": "Hello Fiaz ali,\n\nGreat news! Your AutoAudit Vehicle History Report for 2010 youn busa (VIN: 99911122233344455) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-46994.",
+      "sentAt": "2026-10-11T13:40:00.529+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791725999043-a78",
+      "orderId": "ord-1791725999022",
+      "orderNumber": "AA-46994",
+      "recipientEmail": "fiazseo6@gmail.com",
+      "recipientType": "customer",
+      "subject": "Order Confirmed: AutoAudit Report for 99911122233344455 (AA-46994)",
+      "type": "order_confirmation",
+      "body": "Hello Fiaz ali,\n\nThank you for choosing AutoAudit! Your order #AA-46994 for 2010 youn busa (VIN: 99911122233344455) has been confirmed and payment has been processed successfully ($15.19 USD).\n\nOur automated systems are now querying the NMVTIS federal title clearinghouse, 50-state DMV registries, and salvage auto auctions.\n\nWe will notify you the moment your report advances to processing.",
+      "sentAt": "2026-10-11T13:39:59.043+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791725226240-3se",
+      "orderId": "ord-1790946547077",
+      "orderNumber": "AA-68881",
+      "recipientEmail": "alex.vance@example.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-68881)",
+      "type": "report_ready",
+      "body": "Hello Alexander Vance,\n\nGreat news! Your AutoAudit Vehicle History Report for 2021 Honda Accord EX-L (VIN: 1HGCR2F83HA029381) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-68881.",
+      "sentAt": "2026-10-11T13:27:06.24+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791725226237-cty",
+      "orderId": "ord-1791175895626",
+      "orderNumber": "AA-91721",
+      "recipientEmail": "test.customer@example.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-91721)",
+      "type": "report_ready",
+      "body": "Hello Test Customer,\n\nGreat news! Your AutoAudit Vehicle History Report for 2021 Honda Accord (VIN: 1HGCM82633A004352) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-91721.",
+      "sentAt": "2026-10-11T13:27:06.237+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791725226233-xf1",
+      "orderId": "ord-1791176097047",
+      "orderNumber": "AA-67306",
+      "recipientEmail": "sarah.jenkins@example.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-67306)",
+      "type": "report_ready",
+      "body": "Hello Sarah Jenkins,\n\nGreat news! Your AutoAudit Vehicle History Report for 2022 BMW X3 xDrive30i (VIN: 5UXWX7C5XBA019283) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-67306.",
+      "sentAt": "2026-10-11T13:27:06.233+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791725226204-jz8",
+      "orderId": "ord-1791725166243",
+      "orderNumber": "AA-60721",
+      "recipientEmail": "realfakharzaman9@gmail.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-60721)",
+      "type": "report_ready",
+      "body": "Hello Fakhar Zaman,\n\nGreat news! Your AutoAudit Vehicle History Report for 2020 Honda Accord Touring 2.0T (VIN: 1HGCM82633A004352) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-60721.",
+      "sentAt": "2026-10-11T13:27:06.204+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791725174260-t6w",
+      "orderId": "ord-1791725166243",
+      "orderNumber": "AA-60721",
+      "recipientEmail": "realfakharzaman9@gmail.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-60721)",
+      "type": "report_ready",
+      "body": "Hello Fakhar Zaman,\n\nGreat news! Your AutoAudit Vehicle History Report for 2020 Honda Accord Touring 2.0T (VIN: 1HGCM82633A004352) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-60721.",
+      "sentAt": "2026-10-11T13:26:14.26+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791725170259-eb5",
+      "orderId": "ord-1791725166243",
+      "orderNumber": "AA-60721",
+      "recipientEmail": "realfakharzaman9@gmail.com",
+      "recipientType": "customer",
+      "subject": "Audit In Progress: Compiling DMV Records for 1HGCM82633A004352 (AA-60721)",
+      "type": "processing",
+      "body": "Hello Fakhar Zaman,\n\nYour vehicle audit for 2020 Honda Accord Touring 2.0T (VIN: 1HGCM82633A004352) is currently IN-PROGRESS.\n\nOur systems are actively analyzing records from the National Motor Vehicle Title Information System (NMVTIS), municipal salvage auctions, flood registries, and certified odometer databases.\n\nNo manual action is required. We will send you a final email as soon as your PDF report is compiled.",
+      "sentAt": "2026-10-11T13:26:10.259+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791725167751-pc4",
+      "orderId": "ord-1791725166243",
+      "orderNumber": "AA-60721",
+      "recipientEmail": "realfakharzaman9@gmail.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-60721)",
+      "type": "report_ready",
+      "body": "Hello Fakhar Zaman,\n\nGreat news! Your AutoAudit Vehicle History Report for 2020 Honda Accord Touring 2.0T (VIN: 1HGCM82633A004352) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-60721.",
+      "sentAt": "2026-10-11T13:26:07.751+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791725166256-bsw",
+      "orderId": "ord-1791725166243",
+      "orderNumber": "AA-60721",
+      "recipientEmail": "realfakharzaman9@gmail.com",
+      "recipientType": "customer",
+      "subject": "Order Confirmed: AutoAudit Report for 1HGCM82633A004352 (AA-60721)",
+      "type": "order_confirmation",
+      "body": "Hello Fakhar Zaman,\n\nThank you for choosing AutoAudit! Your order #AA-60721 for 2020 Honda Accord Touring 2.0T (VIN: 1HGCM82633A004352) has been confirmed and payment has been processed successfully ($42.99 USD).\n\nOur automated systems are now querying the NMVTIS federal title clearinghouse, 50-state DMV registries, and salvage auto auctions.\n\nWe will notify you the moment your report advances to processing.",
+      "sentAt": "2026-10-11T13:26:06.256+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791556459733-pma",
+      "orderId": "ord-1790946547077",
+      "orderNumber": "AA-68881",
+      "recipientEmail": "alex.vance@example.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-68881)",
+      "type": "report_ready",
+      "body": "Hello Alexander Vance,\n\nGreat news! Your AutoAudit Vehicle History Report for 2021 Honda Accord EX-L (VIN: 1HGCR2F83HA029381) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-68881.",
+      "sentAt": "2026-10-09T14:34:19.733+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791556459730-vii",
+      "orderId": "ord-1791175895626",
+      "orderNumber": "AA-91721",
+      "recipientEmail": "test.customer@example.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-91721)",
+      "type": "report_ready",
+      "body": "Hello Test Customer,\n\nGreat news! Your AutoAudit Vehicle History Report for 2021 Honda Accord (VIN: 1HGCM82633A004352) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-91721.",
+      "sentAt": "2026-10-09T14:34:19.73+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791556459723-cka",
+      "orderId": "ord-1791176097047",
+      "orderNumber": "AA-67306",
+      "recipientEmail": "sarah.jenkins@example.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-67306)",
+      "type": "report_ready",
+      "body": "Hello Sarah Jenkins,\n\nGreat news! Your AutoAudit Vehicle History Report for 2022 BMW X3 xDrive30i (VIN: 5UXWX7C5XBA019283) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-67306.",
+      "sentAt": "2026-10-09T14:34:19.723+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791379810144-bsl",
+      "orderId": "ord-1791176097047",
+      "orderNumber": "AA-67306",
+      "recipientEmail": "sarah.jenkins@example.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-67306)",
+      "type": "report_ready",
+      "body": "Hello Sarah Jenkins,\n\nGreat news! Your AutoAudit Vehicle History Report for 2022 BMW X3 xDrive30i (VIN: 5UXWX7C5XBA019283) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-67306.",
+      "sentAt": "2026-10-07T13:30:10.144+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791379810140-jm2",
+      "orderId": "ord-1791175895626",
+      "orderNumber": "AA-91721",
+      "recipientEmail": "test.customer@example.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-91721)",
+      "type": "report_ready",
+      "body": "Hello Test Customer,\n\nGreat news! Your AutoAudit Vehicle History Report for 2021 Honda Accord (VIN: 1HGCM82633A004352) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-91721.",
+      "sentAt": "2026-10-07T13:30:10.14+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791379810135-pa1",
+      "orderId": "ord-1790946547077",
+      "orderNumber": "AA-68881",
+      "recipientEmail": "alex.vance@example.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-68881)",
+      "type": "report_ready",
+      "body": "Hello Alexander Vance,\n\nGreat news! Your AutoAudit Vehicle History Report for 2021 Honda Accord EX-L (VIN: 1HGCR2F83HA029381) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-68881.",
+      "sentAt": "2026-10-07T13:30:10.135+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791379809848-j0g",
+      "orderId": "ord-1791175895626",
+      "orderNumber": "AA-91721",
+      "recipientEmail": "test.customer@example.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-91721)",
+      "type": "report_ready",
+      "body": "Hello Test Customer,\n\nGreat news! Your AutoAudit Vehicle History Report for 2021 Honda Accord (VIN: 1HGCM82633A004352) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-91721.",
+      "sentAt": "2026-10-07T13:30:09.848+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791379809844-9rc",
+      "orderId": "ord-1790946547077",
+      "orderNumber": "AA-68881",
+      "recipientEmail": "alex.vance@example.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-68881)",
+      "type": "report_ready",
+      "body": "Hello Alexander Vance,\n\nGreat news! Your AutoAudit Vehicle History Report for 2021 Honda Accord EX-L (VIN: 1HGCR2F83HA029381) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-68881.",
+      "sentAt": "2026-10-07T13:30:09.844+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791379809540-qoe",
+      "orderId": "ord-1791176097047",
+      "orderNumber": "AA-67306",
+      "recipientEmail": "sarah.jenkins@example.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-67306)",
+      "type": "report_ready",
+      "body": "Hello Sarah Jenkins,\n\nGreat news! Your AutoAudit Vehicle History Report for 2022 BMW X3 xDrive30i (VIN: 5UXWX7C5XBA019283) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-67306.",
+      "sentAt": "2026-10-07T13:30:09.54+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791378209649-m0h",
+      "orderId": "ord-1790946547077",
+      "orderNumber": "AA-68881",
+      "recipientEmail": "alex.vance@example.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-68881)",
+      "type": "report_ready",
+      "body": "Hello Alexander Vance,\n\nGreat news! Your AutoAudit Vehicle History Report for 2021 Honda Accord EX-L (VIN: 1HGCR2F83HA029381) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-68881.",
+      "sentAt": "2026-10-07T13:03:29.649+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791378209646-gm8",
+      "orderId": "ord-1791175895626",
+      "orderNumber": "AA-91721",
+      "recipientEmail": "test.customer@example.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-91721)",
+      "type": "report_ready",
+      "body": "Hello Test Customer,\n\nGreat news! Your AutoAudit Vehicle History Report for 2021 Honda Accord (VIN: 1HGCM82633A004352) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-91721.",
+      "sentAt": "2026-10-07T13:03:29.646+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791378209641-8qn",
+      "orderId": "ord-1791176097047",
+      "orderNumber": "AA-67306",
+      "recipientEmail": "sarah.jenkins@example.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-67306)",
+      "type": "report_ready",
+      "body": "Hello Sarah Jenkins,\n\nGreat news! Your AutoAudit Vehicle History Report for 2022 BMW X3 xDrive30i (VIN: 5UXWX7C5XBA019283) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-67306.",
+      "sentAt": "2026-10-07T13:03:29.641+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791303109363-ktn",
+      "orderId": "ord-1791303109345",
+      "orderNumber": "AA-80419",
+      "recipientEmail": "realfakharzaman9@gmail.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-80419)",
+      "type": "report_ready",
+      "body": "Hello Fakhar Zaman,\n\nGreat news! Your AutoAudit Vehicle History Report for 2021 Honda Accord (VIN: 1HGCM82633A004352) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-80419.",
+      "sentAt": "2026-10-06T16:11:49.363+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791176105078-dzn",
+      "orderId": "ord-1791176097047",
+      "orderNumber": "AA-67306",
+      "recipientEmail": "sarah.jenkins@example.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-67306)",
+      "type": "report_ready",
+      "body": "Hello Sarah Jenkins,\n\nGreat news! Your AutoAudit Vehicle History Report for 2022 BMW X3 xDrive30i (VIN: 5UXWX7C5XBA019283) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-67306.",
+      "sentAt": "2026-10-05T04:55:05.078+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791176101077-cxr",
+      "orderId": "ord-1791176097047",
+      "orderNumber": "AA-67306",
+      "recipientEmail": "sarah.jenkins@example.com",
+      "recipientType": "customer",
+      "subject": "Audit In Progress: Compiling DMV Records for 5UXWX7C5XBA019283 (AA-67306)",
+      "type": "processing",
+      "body": "Hello Sarah Jenkins,\n\nYour vehicle audit for 2022 BMW X3 xDrive30i (VIN: 5UXWX7C5XBA019283) is currently IN-PROGRESS.\n\nOur systems are actively analyzing records from the National Motor Vehicle Title Information System (NMVTIS), municipal salvage auctions, flood registries, and certified odometer databases.\n\nNo manual action is required. We will send you a final email as soon as your PDF report is compiled.",
+      "sentAt": "2026-10-05T04:55:01.077+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791176097072-csy",
+      "orderId": "ord-1791176097047",
+      "orderNumber": "AA-67306",
+      "recipientEmail": "sarah.jenkins@example.com",
+      "recipientType": "customer",
+      "subject": "Order Confirmed: AutoAudit Report for 5UXWX7C5XBA019283 (AA-67306)",
+      "type": "order_confirmation",
+      "body": "Hello Sarah Jenkins,\n\nThank you for choosing AutoAudit! Your order #AA-67306 for 2022 BMW X3 xDrive30i (VIN: 5UXWX7C5XBA019283) has been confirmed and payment has been processed successfully ($28.99 USD).\n\nOur automated systems are now querying the NMVTIS federal title clearinghouse, 50-state DMV registries, and salvage auto auctions.\n\nWe will notify you the moment your report advances to processing.",
+      "sentAt": "2026-10-05T04:54:57.072+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791175903653-kiq",
+      "orderId": "ord-1791175895626",
+      "orderNumber": "AA-91721",
+      "recipientEmail": "test.customer@example.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-91721)",
+      "type": "report_ready",
+      "body": "Hello Test Customer,\n\nGreat news! Your AutoAudit Vehicle History Report for 2021 Honda Accord (VIN: 1HGCM82633A004352) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-91721.",
+      "sentAt": "2026-10-05T04:51:43.653+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791175899652-2q9",
+      "orderId": "ord-1791175895626",
+      "orderNumber": "AA-91721",
+      "recipientEmail": "test.customer@example.com",
+      "recipientType": "customer",
+      "subject": "Audit In Progress: Compiling DMV Records for 1HGCM82633A004352 (AA-91721)",
+      "type": "processing",
+      "body": "Hello Test Customer,\n\nYour vehicle audit for 2021 Honda Accord (VIN: 1HGCM82633A004352) is currently IN-PROGRESS.\n\nOur systems are actively analyzing records from the National Motor Vehicle Title Information System (NMVTIS), municipal salvage auctions, flood registries, and certified odometer databases.\n\nNo manual action is required. We will send you a final email as soon as your PDF report is compiled.",
+      "sentAt": "2026-10-05T04:51:39.652+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1791175895647-45a",
+      "orderId": "ord-1791175895626",
+      "orderNumber": "AA-91721",
+      "recipientEmail": "test.customer@example.com",
+      "recipientType": "customer",
+      "subject": "Order Confirmed: AutoAudit Report for 1HGCM82633A004352 (AA-91721)",
+      "type": "order_confirmation",
+      "body": "Hello Test Customer,\n\nThank you for choosing AutoAudit! Your order #AA-91721 for 2021 Honda Accord (VIN: 1HGCM82633A004352) has been confirmed and payment has been processed successfully ($28.99 USD).\n\nOur automated systems are now querying the NMVTIS federal title clearinghouse, 50-state DMV registries, and salvage auto auctions.\n\nWe will notify you the moment your report advances to processing.",
+      "sentAt": "2026-10-05T04:51:35.647+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1790946555104-uzy",
+      "orderId": "ord-1790946547077",
+      "orderNumber": "AA-68881",
+      "recipientEmail": "alex.vance@example.com",
+      "recipientType": "customer",
+      "subject": "Your AutoAudit Report is Ready (AA-68881)",
+      "type": "report_ready",
+      "body": "Hello Alexander Vance,\n\nGreat news! Your AutoAudit Vehicle History Report for 2021 Honda Accord EX-L (VIN: 1HGCR2F83HA029381) has been successfully compiled and certified.\n\nSummary Findings:\n- Title Brands: Clean (0 reported)\n- Severe Accidents: 0 reported\n- Odometer: Actual Mileage Verified\n- Safety Recalls: 0 Open Recalls\n\nYou can view, download, and print your official report immediately through the AutoAudit Customer Dashboard using Order Number: AA-68881.",
+      "sentAt": "2026-10-02T13:09:15.104+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1790946551107-34b",
+      "orderId": "ord-1790946547077",
+      "orderNumber": "AA-68881",
+      "recipientEmail": "alex.vance@example.com",
+      "recipientType": "customer",
+      "subject": "Audit In Progress: Compiling DMV Records for 1HGCR2F83HA029381 (AA-68881)",
+      "type": "processing",
+      "body": "Hello Alexander Vance,\n\nYour vehicle audit for 2021 Honda Accord EX-L (VIN: 1HGCR2F83HA029381) is currently IN-PROGRESS.\n\nOur systems are actively analyzing records from the National Motor Vehicle Title Information System (NMVTIS), municipal salvage auctions, flood registries, and certified odometer databases.\n\nNo manual action is required. We will send you a final email as soon as your PDF report is compiled.",
+      "sentAt": "2026-10-02T13:09:11.107+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1790946547099-eav",
+      "orderId": "ord-1790946547077",
+      "orderNumber": "AA-68881",
+      "recipientEmail": "alex.vance@example.com",
+      "recipientType": "customer",
+      "subject": "Order Confirmed: AutoAudit Report for 1HGCR2F83HA029381 (AA-68881)",
+      "type": "order_confirmation",
+      "body": "Hello Alexander Vance,\n\nThank you for choosing AutoAudit! Your order #AA-68881 for 2021 Honda Accord EX-L (VIN: 1HGCR2F83HA029381) has been confirmed and payment has been processed successfully ($28.99 USD).\n\nOur automated systems are now querying the NMVTIS federal title clearinghouse, 50-state DMV registries, and salvage auto auctions.\n\nWe will notify you the moment your report advances to processing.",
+      "sentAt": "2026-10-02T13:09:07.099+00:00",
+      "read": false
+    },
+    {
+      "id": "em-1790861891723",
+      "orderId": "ord-1790861891722",
+      "orderNumber": "AA-46367",
+      "recipientEmail": "realfakharzaman9@gmail.com",
+      "recipientType": "customer",
+      "subject": "Order Confirmed: Complete Report (AA-46367)",
+      "type": "order_confirmation",
+      "body": "Hello Fakhar Zaman,\n\nWe have received your order for vehicle 2017 Honda Accord EX-L (VIN/Reg: 1HGCR2F83HA001294). Your reference number is AA-46367.\n\nOur system is running checks across NMVTIS databases and salvage auctions. You will receive an email as soon as your report is ready.",
+      "sentAt": "2026-10-01T13:38:11.722+00:00",
+      "read": false
+    }
+  ]
+}

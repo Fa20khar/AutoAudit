@@ -14,13 +14,13 @@ emailsRouter.get('/smtp-status', (_req: Request, res: Response) => {
 });
 
 // GET /api/emails (Customer can filter by ?email=..., staff can view all)
-emailsRouter.get('/', (req: Request, res: Response) => {
+emailsRouter.get('/', async (req: Request, res: Response) => {
   const { email, orderNumber } = req.query;
 
   // If customer requests their own emails
   if (typeof email === 'string' && email.trim()) {
     const cleanEmail = email.trim().toLowerCase();
-    const customerEmails = db.getEmails().filter(e => e.recipientEmail.toLowerCase() === cleanEmail);
+    const customerEmails = await db.getEmailsAsync({ email: cleanEmail });
     res.json({
       success: true,
       count: customerEmails.length,
@@ -32,7 +32,7 @@ emailsRouter.get('/', (req: Request, res: Response) => {
   // If filtered by order number
   if (typeof orderNumber === 'string' && orderNumber.trim()) {
     const cleanNum = orderNumber.trim().toUpperCase();
-    const orderEmails = db.getEmails().filter(e => e.orderNumber.toUpperCase() === cleanNum);
+    const orderEmails = await db.getEmailsAsync({ orderNumber: cleanNum });
     res.json({
       success: true,
       count: orderEmails.length,
@@ -42,11 +42,12 @@ emailsRouter.get('/', (req: Request, res: Response) => {
   }
 
   // Otherwise, require staff authorization to view all customer emails
-  requireAdminAuth(req, res, () => {
+  requireAdminAuth(req, res, async () => {
+    const allEmails = await db.getEmailsAsync();
     res.json({
       success: true,
-      count: db.getEmails().length,
-      data: db.getEmails()
+      count: allEmails.length,
+      data: allEmails
     });
   });
 });

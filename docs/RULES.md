@@ -9,7 +9,7 @@ This document defines the strict engineering guidelines and operating rules for 
 1. **Inspect Before Modifying:** Always inspect existing components, services, and schemas before creating new code or modifying existing files. Never guess APIs or property names.
 2. **Reuse Existing Components:** Reuse existing UI components (`Navbar`, `OrderModal`, `MyOrdersModal`, `AdminPanel`, `ToastProvider`, `Logo`, etc.) instead of creating redundant duplicates.
 3. **No Unnecessary Rewrites:** Never rewrite or delete working functionality unless explicitly requested by the user or required to resolve an identified defect.
-4. **Avoid Duplicate Code:** Maintain single sources of truth for business logic (e.g. `src/services/api.ts` for API queries, `server/supabase.ts` for database adapters, `src/types/index.ts` for shared interfaces).
+4. **Avoid Duplicate Code:** Maintain single sources of truth for business logic (e.g. `src/services/api.ts` for API queries, `server/mongodb/` for database models and adapters, `src/types/index.ts` for shared interfaces).
 5. **Focused Diffs:** Keep changes focused on the task at hand. Do not reformat or churn unrelated code, functions, or styling.
 6. **Preserve Backward Compatibility:** Ensure existing API routes, customer order lookup logic, and database schemas remain functional across updates.
 
@@ -48,11 +48,11 @@ This document defines the strict engineering guidelines and operating rules for 
 
 ---
 
-## 4. Database & Supabase Rules
+## 4. Database & MongoDB Atlas Rules
 
-1. **Follow the Dual-Persistence Architecture:** AutoAudit uses an in-memory cache synchronized with Supabase PostgreSQL. Never bypass or break this dual-persistence pipeline.
-2. **Document Schema Modifications:** Never alter the database schema or add columns without updating `supabase/schema.sql`, `server/supabase.ts`, and `docs/MEMORY.md`.
-3. **Safe Error Isolation:** All queries to Supabase must handle missing tables (`isTableMissingError`) gracefully so the application continues operating smoothly on local memory fallback if cloud tables are initializing.
+1. **Follow the MongoDB Atlas Architecture:** AutoAudit uses MongoDB Atlas as its primary application database with Mongoose schemas and indexes, accompanied by an in-memory fallback for local offline development.
+2. **Document Schema Modifications:** Whenever database models are added or modified, update Mongoose schemas under `server/mongodb/models/` and document them.
+3. **Safe Error Isolation:** Connection errors or timeouts must be isolated with conservative timeouts (`serverSelectionTimeoutMS: 5000`) so the server remains responsive.
 4. **Validate Input Data:** Enforce data validation on currency amounts, VIN strings, and customer emails before saving to the database.
 
 ---
@@ -60,12 +60,11 @@ This document defines the strict engineering guidelines and operating rules for 
 ## 5. Security & Credentials Rules
 
 1. **NEVER Expose Secrets in Frontend:** 
-   - Never import, bundle, or reference `SUPABASE_SERVICE_ROLE_KEY` in files under `src/`.
-   - Client code may ONLY access `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+   - Never import, bundle, or reference `MONGODB_URI` in files under `src/` or `import.meta.env`.
+   - Client code communicates strictly with backend proxy endpoints under `/api/*`.
 2. **No Hardcoded Credentials:** Never hardcode API keys, database connection strings, or bearer tokens in source code files.
 3. **Environment Template Sync:** Whenever an environment variable is introduced, immediately document it in `.env.example`.
-4. **Row Level Security (RLS):** Keep Supabase RLS policies enabled on all public tables (`orders`, `services`, `coupons`, `emails`).
-5. **Sanitize Search & Filter Queries:** Validate and sanitize all query parameters in Express endpoints to prevent parameter injection and denial-of-service edge cases.
+4. **Sanitize Search & Filter Queries:** Validate and sanitize all query parameters in Express endpoints to prevent parameter injection and denial-of-service edge cases.
 
 ---
 

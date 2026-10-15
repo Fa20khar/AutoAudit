@@ -4,17 +4,17 @@ This roadmap tracks the development lifecycle of the AutoAudit platform. All tas
 
 ---
 
-## Phase 1 — Project Foundation
+## Phase 1 — Project Foundation & Database Architecture
 - [x] Initialize React 19 + TypeScript + Vite project configuration
 - [x] Configure Tailwind CSS v4 pipeline with `@tailwindcss/vite`
 - [x] Establish full-stack Node.js + Express backend running via `tsx server.ts`
 - [x] Implement API health check endpoint (`GET /api/health`)
-- [x] Setup Supabase PostgreSQL integration (`@supabase/supabase-js`)
-- [x] Write SQL schema migration file (`supabase/schema.sql`) for `orders`, `services`, `coupons`, and `emails`
-- [x] Implement dual-persistence architecture (in-memory fast cache + Supabase sync)
-- [x] Add graceful missing-table and schema cache error recovery (`PGRST205` handling)
-- [x] Create client-side Supabase client (`src/lib/supabaseClient.ts`)
-- [x] Create project documentation source of truth (`docs/` system)
+- [x] Completely remove legacy Supabase dependencies (`@supabase/supabase-js`, `supabase/schema.sql`, `server/supabase.ts`)
+- [x] Implement primary MongoDB Atlas database integration with Mongoose 9 schemas and models
+- [x] Implement dual-persistence architecture (in-memory fast cache + MongoDB Atlas sync)
+- [x] Create safe, idempotent migration utility (`npm run migrate:mongodb`, `npm run migrate:mongodb:dry`)
+- [x] Create connection management module with masked URIs, ping probes, and graceful shutdown (`server/mongodb/connection.ts`)
+- [x] Create comprehensive MongoDB Atlas setup, security, and migration documentation (`docs/MONGODB_ATLAS_SETUP.md`)
 
 ---
 
@@ -39,8 +39,8 @@ This roadmap tracks the development lifecycle of the AutoAudit platform. All tas
 - [x] Build administrative session authorization portal and staff login gate
 - [x] Implement staff credential authentication (`POST /api/auth/admin-login` and `GET /api/auth/verify`)
 - [x] Protect administrative endpoints (`requireAdminAuth` on `/api/orders`, `/api/stats`, `/api/emails`, `/api/orders/:id/*`)
-- [ ] Implement Supabase Auth integration with Magic Link email authentication
-- [ ] Add Google OAuth 2.0 social login via Supabase Auth
+- [ ] Add customer account registration and login backed by MongoDB Atlas
+- [ ] Add OAuth 2.0 social login (Google SSO) for customer and dealer accounts
 - [ ] Create persistent customer profile page showing historical vehicle purchases
 
 ---
@@ -105,14 +105,16 @@ This roadmap tracks the development lifecycle of the AutoAudit platform. All tas
 - [x] Build email dispatch notification history tab in Admin Console
 - [x] Implement Mock SMTP Service Handler and Automated Email Sequence (Confirmation → In-Progress → Ready) with Nodemailer
 - [x] Add Mock SMTP tab, inspector modal with HTML and plain text previews, and manual sequence triggers in Admin Console
-- [x] Add database diagnostics card with live table health and 1-click SQL copy button
+- [x] Add MongoDB Atlas diagnostics card with live cluster ping, masked URI, and collection counts
+- [x] Add administrative MongoDB endpoints (`GET /api/admin/mongodb/status`, `POST /api/admin/mongodb/migrate`)
 
 ---
 
 ## Phase 9 — Security & Data Protection
-- [x] Protect Supabase service-role keys from client bundle exposure
-- [x] Configure PostgreSQL Row Level Security (RLS) policies on all tables
-- [x] Add request timeout protection (`AbortController`) on all external fetch calls
+- [x] Protect MongoDB Atlas connection string and database credentials from client bundle exposure
+- [x] Enforce Mongoose schema validation, required fields, and unique indexes on collections
+- [x] Implement masked connection string logging preventing credential leaks in server logs
+- [x] Add request timeout protection (`AbortController`, `serverSelectionTimeoutMS: 5000`)
 - [x] Implement input sanitization on VIN queries and checkout form payloads
 - [x] Express 5 routing configuration audit: eliminate invalid '*' wildcard path patterns to prevent startup PathError
 - [ ] Add Express rate-limiting middleware (`express-rate-limit`) on `/api/vin/lookup`

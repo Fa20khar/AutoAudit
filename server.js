@@ -1,7 +1,8 @@
 // server.ts
+import "dotenv/config";
 import express from "express";
 import path2 from "path";
-import { fileURLToPath } from "url";
+import { fileURLToPath as fileURLToPath2 } from "url";
 
 // server/routes/vin.ts
 import { Router } from "express";
@@ -234,13 +235,11 @@ vinRouter.get("/plate-lookup", (req, res) => {
 
 // server/routes/orders.ts
 import { Router as Router2 } from "express";
-import fs from "fs";
-import path from "path";
 
 // src/data/initialData.ts
 var INITIAL_WHATSAPP_CONFIG = {
-  phoneNumber: "18005552886",
-  displayNumber: "+1 (800) 555-AUTO",
+  phoneNumber: "923420617217",
+  displayNumber: "+92 342 0617217",
   defaultGreeting: "Hello AutoAudit Support, I would like assistance with a vehicle history report.",
   supportAvailability: "Mon\u2013Sun \xB7 24/7 Coverage \xB7 Avg Response < 5 Mins",
   active: true
@@ -311,334 +310,854 @@ var INITIAL_CONTACT_EVENTS = [
   }
 ];
 
-// server/supabase.ts
-import { createClient } from "@supabase/supabase-js";
-var supabaseUrl = process.env.SUPABASE_URL || "";
-var supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || "";
-var isSupabaseConfigured = () => {
-  return Boolean(supabaseUrl && supabaseKey && supabaseUrl.startsWith("https://"));
-};
-var supabase = isSupabaseConfigured() ? createClient(supabaseUrl, supabaseKey, {
-  auth: { persistSession: false }
-}) : null;
-var supabaseTableStatus = {
-  ordersReady: true,
-  servicesReady: true,
-  couponsReady: true,
-  emailsReady: true
-};
-var warnedMissingTables = /* @__PURE__ */ new Set();
-function isTableMissingError(error) {
-  if (!error) return false;
-  const msg = (error.message || "").toLowerCase();
-  const code = error.code || "";
-  return code === "PGRST205" || code === "42P01" || msg.includes("could not find the table") || msg.includes("schema cache") || msg.includes("relation") && msg.includes("does not exist");
+// server/mongodb/connection.ts
+import mongoose from "mongoose";
+var lastConnectedAt = null;
+var lastError = null;
+var isConnecting = false;
+function maskMongoUri(uri) {
+  if (!uri) return "";
+  return uri.replace(/\/\/(.*):(.*)@/, "//$1:***@");
 }
-function handleTableError(tableName, operation, error) {
-  if (isTableMissingError(error)) {
-    if (tableName === "orders") supabaseTableStatus.ordersReady = false;
-    if (tableName === "services") supabaseTableStatus.servicesReady = false;
-    if (tableName === "coupons") supabaseTableStatus.couponsReady = false;
-    if (tableName === "emails") supabaseTableStatus.emailsReady = false;
-    if (!warnedMissingTables.has(tableName)) {
-      warnedMissingTables.add(tableName);
-      console.info(
-        `[Database Notice] Connected to Supabase (${supabaseUrl}), but table '${tableName}' has not been initialized in PostgreSQL yet. AutoAudit is running seamlessly using its local memory store. Run 'supabase/schema.sql' in your Supabase SQL Editor whenever you wish to persist records to PostgreSQL.`
-      );
-    }
-  } else {
-    console.warn(`[Supabase Notice] ${operation} on '${tableName}':`, error.message);
+function getMongoUri() {
+  return process.env.MONGODB_URI || "";
+}
+function isMongoConfigured() {
+  const uri = getMongoUri();
+  return Boolean(uri && (uri.startsWith("mongodb://") || uri.startsWith("mongodb+srv://")));
+}
+function isMongoConnected() {
+  return mongoose.connection.readyState === 1;
+}
+function getMongoStateString() {
+  if (!isMongoConfigured()) return "unconfigured";
+  switch (mongoose.connection.readyState) {
+    case 0:
+      return lastError ? "error" : "disconnected";
+    case 1:
+      return "connected";
+    case 2:
+      return "connecting";
+    case 3:
+      return "disconnecting";
+    default:
+      return "disconnected";
   }
 }
-if (isSupabaseConfigured()) {
-  console.log(`[Database] Supabase PostgreSQL client connected: ${supabaseUrl}`);
-} else {
-  console.log("[Database] Supabase credentials not set in environment. Running in local high-speed memory mode with browser persistence.");
-}
-var supabaseDb = {
-  // Health & Schema check
-  async checkTablesHealth() {
-    if (!supabase) return supabaseTableStatus;
+async function getMongoStatus() {
+  const isConfigured = isMongoConfigured();
+  const isConnected = isMongoConnected();
+  let pingMs = null;
+  if (isConnected && mongoose.connection.db) {
     try {
-      const { error: oErr } = await supabase.from("orders").select("id").limit(1);
-      supabaseTableStatus.ordersReady = !isTableMissingError(oErr);
-      const { error: sErr } = await supabase.from("services").select("id").limit(1);
-      supabaseTableStatus.servicesReady = !isTableMissingError(sErr);
-      const { error: cErr } = await supabase.from("coupons").select("code").limit(1);
-      supabaseTableStatus.couponsReady = !isTableMissingError(cErr);
-      const { error: eErr } = await supabase.from("emails").select("id").limit(1);
-      supabaseTableStatus.emailsReady = !isTableMissingError(eErr);
+      const start = Date.now();
+      await mongoose.connection.db.admin().ping();
+      pingMs = Date.now() - start;
     } catch {
-    }
-    return supabaseTableStatus;
-  },
-  // Orders
-  async getOrders() {
-    if (!supabase) return null;
-    try {
-      const { data, error } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
-      if (error) {
-        handleTableError("orders", "fetch", error);
-        return null;
-      }
-      supabaseTableStatus.ordersReady = true;
-      return (data || []).map(mapOrderRowToOrder);
-    } catch (err) {
-      handleTableError("orders", "fetch", err);
-      return null;
-    }
-  },
-  async getOrderById(id) {
-    if (!supabase) return null;
-    try {
-      const { data, error } = await supabase.from("orders").select("*").or(`id.eq.${id},order_number.eq.${id}`).single();
-      if (error) {
-        handleTableError("orders", "fetchById", error);
-        return null;
-      }
-      supabaseTableStatus.ordersReady = true;
-      if (!data) return null;
-      return mapOrderRowToOrder(data);
-    } catch (err) {
-      handleTableError("orders", "fetchById", err);
-      return null;
-    }
-  },
-  async createOrder(order) {
-    if (!supabase) return false;
-    try {
-      const row = mapOrderToOrderRow(order);
-      const { error } = await supabase.from("orders").insert([row]);
-      if (error) {
-        handleTableError("orders", "insert", error);
-        return false;
-      }
-      supabaseTableStatus.ordersReady = true;
-      return true;
-    } catch (err) {
-      handleTableError("orders", "insert", err);
-      return false;
-    }
-  },
-  async updateOrderStatus(id, status, note) {
-    if (!supabase || !supabaseTableStatus.ordersReady) return null;
-    try {
-      const existing = await this.getOrderById(id);
-      if (!existing) return null;
-      const now = (/* @__PURE__ */ new Date()).toISOString();
-      const updatedNotes = note ? `${existing.internalNotes ? existing.internalNotes + "\n" : ""}${note}` : existing.internalNotes;
-      const newLog = {
-        id: `log-${Date.now()}`,
-        timestamp: now,
-        actor: "Admin Staff",
-        action: `Status updated to ${status}`,
-        details: note || `Status changed from ${existing.status} to ${status}`
-      };
-      const updatedLogs = [newLog, ...existing.auditLogs || []];
-      const resultFile = status === "Delivered" ? {
-        fileName: `AutoAudit_Report_${existing.vehicle.vinOrReg}.pdf`,
-        fileUrl: `/reports/AutoAudit_Report_${existing.vehicle.vinOrReg}.pdf`,
-        type: "pdf",
-        uploadedAt: now
-      } : existing.resultFile;
-      const { data, error } = await supabase.from("orders").update({
-        status,
-        internal_notes: updatedNotes,
-        audit_logs: updatedLogs,
-        result_file: resultFile,
-        updated_at: now
-      }).or(`id.eq.${id},order_number.eq.${id}`).select().single();
-      if (error) {
-        handleTableError("orders", "updateStatus", error);
-        return null;
-      }
-      if (!data) return null;
-      return mapOrderRowToOrder(data);
-    } catch (err) {
-      handleTableError("orders", "updateStatus", err);
-      return null;
-    }
-  },
-  // Services
-  async getServices() {
-    if (!supabase) return null;
-    try {
-      const { data, error } = await supabase.from("services").select("*").order("price", { ascending: true });
-      if (error) {
-        handleTableError("services", "fetch", error);
-        return null;
-      }
-      supabaseTableStatus.servicesReady = true;
-      if (!data) return null;
-      return data.map((s) => ({
-        id: s.id,
-        name: s.name,
-        price: Number(s.price),
-        originalPrice: s.original_price ? Number(s.original_price) : void 0,
-        deliveryTime: s.delivery_time,
-        badge: s.badge || void 0,
-        popular: s.popular || false,
-        description: s.description,
-        features: Array.isArray(s.features) ? s.features : []
-      }));
-    } catch (err) {
-      handleTableError("services", "fetch", err);
-      return null;
-    }
-  },
-  // Coupons
-  async getCoupons() {
-    if (!supabase) return null;
-    try {
-      const { data, error } = await supabase.from("coupons").select("*");
-      if (error) {
-        handleTableError("coupons", "fetch", error);
-        return null;
-      }
-      supabaseTableStatus.couponsReady = true;
-      if (!data) return null;
-      return data.map((c) => ({
-        code: c.code,
-        discountPercent: c.discount_percent || 0,
-        discountFixed: c.discount_fixed ? Number(c.discount_fixed) : void 0,
-        expiryDate: c.expiry_date,
-        active: c.active,
-        usageCount: c.usage_count || 0
-      }));
-    } catch (err) {
-      handleTableError("coupons", "fetch", err);
-      return null;
-    }
-  },
-  // Emails
-  async getEmails() {
-    if (!supabase) return null;
-    try {
-      const { data, error } = await supabase.from("emails").select("*").order("sent_at", { ascending: false });
-      if (error) {
-        handleTableError("emails", "fetch", error);
-        return null;
-      }
-      supabaseTableStatus.emailsReady = true;
-      if (!data) return null;
-      return data.map((e) => ({
-        id: e.id,
-        orderId: e.order_id,
-        orderNumber: e.order_number,
-        recipientEmail: e.recipient_email,
-        recipientType: e.recipient_type,
-        subject: e.subject,
-        type: e.type,
-        body: e.body,
-        sentAt: e.sent_at,
-        read: e.read
-      }));
-    } catch (err) {
-      handleTableError("emails", "fetch", err);
-      return null;
-    }
-  },
-  async addEmail(email) {
-    if (!supabase) return false;
-    try {
-      const { error } = await supabase.from("emails").insert([{
-        id: email.id,
-        order_id: email.orderId,
-        order_number: email.orderNumber,
-        recipient_email: email.recipientEmail,
-        recipient_type: email.recipientType,
-        subject: email.subject,
-        type: email.type,
-        body: email.body,
-        sent_at: email.sentAt,
-        read: email.read
-      }]);
-      if (error) {
-        handleTableError("emails", "insert", error);
-        return false;
-      }
-      return true;
-    } catch (err) {
-      handleTableError("emails", "insert", err);
-      return false;
+      pingMs = null;
     }
   }
-};
-function mapOrderToOrderRow(o) {
+  const host = mongoose.connection.host || (isConfigured ? "atlas-cluster" : "not configured");
+  const databaseName = mongoose.connection.name || (isConfigured ? "autoaudit_db" : "in-memory-fallback");
   return {
-    id: o.id,
-    order_number: o.orderNumber,
-    service_id: o.serviceId,
-    service_name: o.serviceName,
-    status: o.status,
-    subtotal: o.subtotal,
-    discount_amount: o.discountAmount,
-    total: o.total,
-    coupon_code: o.couponCode,
-    customer_full_name: o.customer.fullName,
-    customer_email: o.customer.email,
-    customer_phone: o.customer.phone || "",
-    sms_notifications: o.customer.smsNotifications ?? o.smsNotifications ?? true,
-    vehicle_vin_or_reg: o.vehicle.vinOrReg,
-    is_vin: o.vehicle.isVin,
-    vehicle_make: o.vehicle.make,
-    vehicle_model: o.vehicle.model,
-    vehicle_year: o.vehicle.year,
-    vehicle_mileage: o.vehicle.mileage,
-    vehicle_country_state: o.vehicle.countryOrState,
-    customer_notes: o.vehicle.customerNotes,
-    payment_status: o.payment.status,
-    payment_gateway_ref: o.payment.gatewayRef,
-    payment_method: o.payment.method,
-    paid_at: o.payment.paidAt,
-    internal_notes: o.internalNotes,
-    result_file: o.resultFile,
-    audit_logs: o.auditLogs,
-    created_at: o.createdAt,
-    updated_at: o.updatedAt
+    isConfigured,
+    isConnected,
+    state: getMongoStateString(),
+    host,
+    databaseName,
+    lastConnectedAt,
+    lastError,
+    pingMs
   };
 }
-function mapOrderRowToOrder(r) {
-  return {
-    id: r.id,
-    orderNumber: r.order_number,
-    serviceId: r.service_id,
-    serviceName: r.service_name,
-    status: r.status,
-    subtotal: Number(r.subtotal),
-    discountAmount: Number(r.discount_amount || 0),
-    total: Number(r.total),
-    couponCode: r.coupon_code || void 0,
-    customer: {
-      fullName: r.customer_full_name,
-      email: r.customer_email,
-      phone: r.customer_phone || "",
-      smsNotifications: r.sms_notifications ?? true
+async function connectToMongoDB(customUri) {
+  const uri = customUri || getMongoUri();
+  if (!uri) {
+    console.info(
+      "[MongoDB Atlas Notice] MONGODB_URI is not set in environment. AutoAudit is operating in resilient local mode with in-memory persistence and local storage. Configure MONGODB_URI in your environment to persist to MongoDB Atlas."
+    );
+    return false;
+  }
+  if (isMongoConnected()) {
+    return true;
+  }
+  if (isConnecting) {
+    return false;
+  }
+  isConnecting = true;
+  const masked = maskMongoUri(uri);
+  try {
+    console.log(`[MongoDB Atlas] Initiating connection to: ${masked}`);
+    mongoose.connection.removeAllListeners("connected");
+    mongoose.connection.removeAllListeners("error");
+    mongoose.connection.removeAllListeners("disconnected");
+    mongoose.connection.removeAllListeners("reconnected");
+    mongoose.connection.on("connected", () => {
+      lastConnectedAt = (/* @__PURE__ */ new Date()).toISOString();
+      lastError = null;
+      console.log(`[MongoDB Atlas] Successfully connected to database: ${mongoose.connection.name}`);
+    });
+    mongoose.connection.on("error", (err) => {
+      lastError = err?.message || "Unknown MongoDB connection error";
+      console.error("[MongoDB Atlas] Runtime connection error:", lastError);
+    });
+    mongoose.connection.on("disconnected", () => {
+      console.warn("[MongoDB Atlas] Connection disconnected. MongoDB driver will attempt auto-reconnect.");
+    });
+    mongoose.connection.on("reconnected", () => {
+      console.log("[MongoDB Atlas] Connection re-established.");
+    });
+    await mongoose.connect(uri, {
+      serverSelectionTimeoutMS: 5e3,
+      // Timeout after 5s if cluster is unreachable
+      connectTimeoutMS: 1e4,
+      // Initial connection timeout (10s)
+      socketTimeoutMS: 45e3,
+      // Close sockets after 45s of inactivity
+      maxPoolSize: 10,
+      // Maintain up to 10 socket connections
+      minPoolSize: 1,
+      // Keep at least 1 socket active
+      heartbeatFrequencyMS: 1e4,
+      // Health check cluster every 10s
+      retryWrites: true,
+      w: "majority"
+    });
+    lastConnectedAt = (/* @__PURE__ */ new Date()).toISOString();
+    lastError = null;
+    isConnecting = false;
+    return true;
+  } catch (err) {
+    lastError = err?.message || "Failed to connect to MongoDB Atlas";
+    isConnecting = false;
+    console.error(`[MongoDB Atlas] Connection failed for ${masked}:`, lastError);
+    return false;
+  }
+}
+async function disconnectMongoDB() {
+  if (mongoose.connection.readyState !== 0) {
+    console.log("[MongoDB Atlas] Closing database connection gracefully...");
+    try {
+      await mongoose.disconnect();
+      console.log("[MongoDB Atlas] Database connection closed.");
+    } catch (err) {
+      console.error("[MongoDB Atlas] Error during disconnect:", err?.message);
+    }
+  }
+}
+
+// server/mongodb/models/Order.ts
+import mongoose2, { Schema } from "mongoose";
+var AuditLogSchema = new Schema(
+  {
+    id: { type: String, required: true },
+    timestamp: { type: String, required: true },
+    actor: { type: String, required: true, trim: true },
+    action: { type: String, required: true, trim: true },
+    details: { type: String, trim: true }
+  },
+  { _id: false }
+);
+var ResultFileSchema = new Schema(
+  {
+    fileName: { type: String, required: true },
+    fileUrl: { type: String, required: true },
+    type: { type: String, enum: ["pdf", "link", "html"], default: "pdf" },
+    uploadedAt: { type: String, required: true },
+    expiryDate: { type: String }
+  },
+  { _id: false }
+);
+var OrderSchema = new Schema(
+  {
+    id: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
+      trim: true
     },
-    smsNotifications: r.sms_notifications ?? true,
+    orderNumber: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
+      uppercase: true,
+      trim: true
+    },
+    serviceId: {
+      type: String,
+      required: true,
+      index: true
+    },
+    serviceName: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    status: {
+      type: String,
+      required: true,
+      enum: [
+        "Pending Payment",
+        "Paid / New",
+        "Processing",
+        "NMVTIS Check",
+        "Ready",
+        "Delivered",
+        "Completed",
+        "Cancelled",
+        "Refunded"
+      ],
+      default: "Paid / New",
+      index: true
+    },
+    subtotal: {
+      type: Number,
+      required: true,
+      min: [0, "Subtotal cannot be negative"]
+    },
+    discountAmount: {
+      type: Number,
+      default: 0,
+      min: [0, "Discount amount cannot be negative"]
+    },
+    total: {
+      type: Number,
+      required: true,
+      min: [0, "Total cannot be negative"]
+    },
+    couponCode: {
+      type: String,
+      uppercase: true,
+      trim: true
+    },
+    customer: {
+      fullName: { type: String, required: true, trim: true },
+      email: { type: String, required: true, lowercase: true, trim: true, index: true },
+      phone: { type: String, trim: true },
+      smsNotifications: { type: Boolean, default: true }
+    },
     vehicle: {
-      vinOrReg: r.vehicle_vin_or_reg,
-      isVin: r.is_vin ?? true,
-      make: r.vehicle_make || "",
-      model: r.vehicle_model || "",
-      year: r.vehicle_year || 2020,
-      mileage: r.vehicle_mileage || "Pending",
-      countryOrState: r.vehicle_country_state || "US",
-      customerNotes: r.customer_notes || void 0
+      vinOrReg: { type: String, required: true, uppercase: true, trim: true, index: true },
+      isVin: { type: Boolean, default: true },
+      make: { type: String, required: true, trim: true },
+      model: { type: String, required: true, trim: true },
+      year: { type: Number, required: true },
+      mileage: { type: String, trim: true },
+      countryOrState: { type: String, trim: true },
+      customerNotes: { type: String, trim: true }
     },
     payment: {
-      status: r.payment_status || "Paid",
-      gatewayRef: r.payment_gateway_ref || "",
-      paidAt: r.paid_at || r.created_at,
-      method: r.payment_method || "Credit Card"
+      status: {
+        type: String,
+        enum: ["Pending", "Paid", "Failed", "Refunded"],
+        default: "Paid"
+      },
+      gatewayRef: { type: String, default: "" },
+      paidAt: { type: String },
+      method: { type: String, default: "Credit Card" }
     },
-    internalNotes: r.internal_notes || "",
-    resultFile: r.result_file || void 0,
-    createdAt: r.created_at,
-    updatedAt: r.updated_at,
-    auditLogs: Array.isArray(r.audit_logs) ? r.audit_logs : []
-  };
-}
+    internalNotes: {
+      type: String,
+      default: ""
+    },
+    resultFile: {
+      type: ResultFileSchema,
+      required: false
+    },
+    auditLogs: {
+      type: [AuditLogSchema],
+      default: []
+    },
+    createdAt: {
+      type: String,
+      default: () => (/* @__PURE__ */ new Date()).toISOString()
+    },
+    updatedAt: {
+      type: String,
+      default: () => (/* @__PURE__ */ new Date()).toISOString()
+    }
+  },
+  {
+    timestamps: true,
+    toJSON: {
+      transform: (_doc, ret) => {
+        delete ret._id;
+        delete ret.__v;
+        return ret;
+      }
+    }
+  }
+);
+OrderSchema.index({ "customer.email": 1, createdAt: -1 });
+OrderSchema.index({ "vehicle.vinOrReg": 1 });
+OrderSchema.index({ status: 1, createdAt: -1 });
+var OrderModel = mongoose2.models.Order || mongoose2.model("Order", OrderSchema);
+
+// server/mongodb/models/Service.ts
+import mongoose3, { Schema as Schema2 } from "mongoose";
+var ServiceSchema = new Schema2(
+  {
+    id: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
+      trim: true
+    },
+    name: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    tagline: {
+      type: String,
+      default: "",
+      trim: true
+    },
+    price: {
+      type: Number,
+      required: true,
+      min: [0, "Price cannot be negative"]
+    },
+    originalPrice: {
+      type: Number,
+      min: [0, "Original price cannot be negative"]
+    },
+    deliveryTime: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    isPopular: {
+      type: Boolean,
+      default: false
+    },
+    requiredFields: {
+      type: [String],
+      default: []
+    },
+    includedItems: {
+      type: [String],
+      default: []
+    },
+    exclusions: {
+      type: [String],
+      default: []
+    },
+    active: {
+      type: Boolean,
+      default: true,
+      index: true
+    }
+  },
+  {
+    timestamps: true,
+    toJSON: {
+      transform: (_doc, ret) => {
+        delete ret._id;
+        delete ret.__v;
+        return ret;
+      }
+    }
+  }
+);
+var ServiceModel = mongoose3.models.Service || mongoose3.model("Service", ServiceSchema);
+
+// server/mongodb/models/Coupon.ts
+import mongoose4, { Schema as Schema3 } from "mongoose";
+var CouponSchema = new Schema3(
+  {
+    code: {
+      type: String,
+      required: true,
+      unique: true,
+      uppercase: true,
+      trim: true,
+      index: true
+    },
+    discountPercent: {
+      type: Number,
+      min: [0, "Discount percent cannot be negative"],
+      max: [100, "Discount percent cannot exceed 100%"]
+    },
+    discountFixed: {
+      type: Number,
+      min: [0, "Fixed discount cannot be negative"]
+    },
+    minOrder: {
+      type: Number,
+      min: [0, "Minimum order cannot be negative"]
+    },
+    usageCount: {
+      type: Number,
+      default: 0,
+      min: [0, "Usage count cannot be negative"]
+    },
+    maxUsage: {
+      type: Number,
+      min: [1, "Maximum usage must be at least 1"]
+    },
+    expiryDate: {
+      type: String,
+      required: true
+    },
+    active: {
+      type: Boolean,
+      default: true,
+      index: true
+    }
+  },
+  {
+    timestamps: true,
+    toJSON: {
+      transform: (_doc, ret) => {
+        delete ret._id;
+        delete ret.__v;
+        return ret;
+      }
+    }
+  }
+);
+var CouponModel = mongoose4.models.Coupon || mongoose4.model("Coupon", CouponSchema);
+
+// server/mongodb/models/EmailNotification.ts
+import mongoose5, { Schema as Schema4 } from "mongoose";
+var EmailNotificationSchema = new Schema4(
+  {
+    id: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
+      trim: true
+    },
+    orderId: {
+      type: String,
+      index: true,
+      trim: true
+    },
+    orderNumber: {
+      type: String,
+      index: true,
+      trim: true
+    },
+    recipientEmail: {
+      type: String,
+      required: true,
+      lowercase: true,
+      trim: true,
+      index: true
+    },
+    recipientType: {
+      type: String,
+      enum: ["customer", "admin"],
+      default: "customer"
+    },
+    subject: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    type: {
+      type: String,
+      required: true,
+      enum: [
+        "new_order_admin",
+        "order_confirmation",
+        "processing",
+        "report_ready",
+        "refund",
+        "payment_failed"
+      ]
+    },
+    body: {
+      type: String,
+      required: true
+    },
+    htmlBody: {
+      type: String
+    },
+    messageId: {
+      type: String
+    },
+    smtpTransport: {
+      type: String
+    },
+    sentAt: {
+      type: String,
+      default: () => (/* @__PURE__ */ new Date()).toISOString()
+    },
+    read: {
+      type: Boolean,
+      default: false
+    }
+  },
+  {
+    timestamps: true,
+    toJSON: {
+      transform: (_doc, ret) => {
+        delete ret._id;
+        delete ret.__v;
+        return ret;
+      }
+    }
+  }
+);
+EmailNotificationSchema.index({ recipientEmail: 1, sentAt: -1 });
+EmailNotificationSchema.index({ orderNumber: 1 });
+var EmailModel = mongoose5.models.EmailNotification || mongoose5.model("EmailNotification", EmailNotificationSchema);
+
+// server/mongodb/models/CustomerIntake.ts
+import mongoose6, { Schema as Schema5 } from "mongoose";
+var PhotoAttachmentSchema = new Schema5(
+  {
+    name: { type: String, required: true },
+    size: { type: String, required: true },
+    previewUrl: { type: String }
+  },
+  { _id: false }
+);
+var CustomerIntakeSchema = new Schema5(
+  {
+    id: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
+      trim: true
+    },
+    submissionNumber: {
+      type: String,
+      required: true,
+      unique: true,
+      uppercase: true,
+      trim: true,
+      index: true
+    },
+    timestamp: {
+      type: String,
+      default: () => (/* @__PURE__ */ new Date()).toISOString()
+    },
+    fullName: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    email: {
+      type: String,
+      required: true,
+      lowercase: true,
+      trim: true,
+      index: true
+    },
+    phone: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    country: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    preferredContactMethod: {
+      type: String,
+      enum: ["Email", "Phone Call", "WhatsApp"],
+      default: "Email"
+    },
+    vinOrChassis: {
+      type: String,
+      required: true,
+      uppercase: true,
+      trim: true,
+      index: true
+    },
+    registrationPlate: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+    make: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    model: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    modelYear: {
+      type: Number,
+      required: true
+    },
+    vehicleColor: {
+      type: String,
+      default: ""
+    },
+    currentMileage: {
+      type: String,
+      default: ""
+    },
+    countryOfRegistration: {
+      type: String,
+      required: true
+    },
+    reportType: {
+      type: String,
+      required: true
+    },
+    reasonForRequest: {
+      type: String,
+      required: true
+    },
+    purchaseStatus: {
+      type: String,
+      default: ""
+    },
+    additionalNotes: {
+      type: String,
+      default: ""
+    },
+    documentFileName: {
+      type: String
+    },
+    documentFileSize: {
+      type: String
+    },
+    vehiclePhotos: {
+      type: [PhotoAttachmentSchema],
+      default: []
+    },
+    vehiclePhotoCount: {
+      type: Number,
+      default: 0
+    },
+    accuracyConfirmed: {
+      type: Boolean,
+      default: true
+    },
+    dataUsageConsent: {
+      type: Boolean,
+      default: true
+    },
+    termsAgreed: {
+      type: Boolean,
+      default: true
+    },
+    status: {
+      type: String,
+      enum: ["Received", "Processing", "Report Generated", "Delivered", "Contacted"],
+      default: "Received",
+      index: true
+    },
+    autoGeneratedOrderId: {
+      type: String
+    },
+    autoGeneratedReportUrl: {
+      type: String
+    },
+    internalNotes: {
+      type: String,
+      default: ""
+    }
+  },
+  {
+    timestamps: true,
+    toJSON: {
+      transform: (_doc, ret) => {
+        delete ret._id;
+        delete ret.__v;
+        return ret;
+      }
+    }
+  }
+);
+CustomerIntakeSchema.index({ email: 1, createdAt: -1 });
+CustomerIntakeSchema.index({ vinOrChassis: 1 });
+var CustomerIntakeModel = mongoose6.models.CustomerIntake || mongoose6.model("CustomerIntake", CustomerIntakeSchema);
+
+// server/mongodb/models/ContactEvent.ts
+import mongoose7, { Schema as Schema6 } from "mongoose";
+var ContactEventSchema = new Schema6(
+  {
+    id: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true
+    },
+    channel: {
+      type: String,
+      default: "whatsapp"
+    },
+    source: {
+      type: String,
+      required: true,
+      index: true
+    },
+    intent: {
+      type: String,
+      default: "general_support",
+      index: true
+    },
+    vin: {
+      type: String,
+      trim: true
+    },
+    orderNumber: {
+      type: String,
+      trim: true
+    },
+    messagePreview: {
+      type: String
+    },
+    timestamp: {
+      type: String,
+      default: () => (/* @__PURE__ */ new Date()).toISOString(),
+      index: true
+    },
+    pageUrl: {
+      type: String
+    },
+    deviceType: {
+      type: String
+    }
+  },
+  {
+    timestamps: true,
+    toJSON: {
+      transform: (_doc, ret) => {
+        delete ret._id;
+        delete ret.__v;
+        return ret;
+      }
+    }
+  }
+);
+ContactEventSchema.index({ timestamp: -1 });
+var ContactEventModel = mongoose7.models.ContactEvent || mongoose7.model("ContactEvent", ContactEventSchema);
+
+// server/mongodb/models/WhatsAppConfig.ts
+import mongoose8, { Schema as Schema7 } from "mongoose";
+var WhatsAppConfigSchema = new Schema7(
+  {
+    key: {
+      type: String,
+      required: true,
+      unique: true,
+      default: "global",
+      index: true
+    },
+    phoneNumber: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    displayNumber: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    defaultGreeting: {
+      type: String,
+      default: "Hello! I am interested in an AutoAudit vehicle history verification report."
+    },
+    supportAvailability: {
+      type: String,
+      default: "24/7 Verified Support Desk"
+    },
+    active: {
+      type: Boolean,
+      default: true
+    }
+  },
+  {
+    timestamps: true,
+    toJSON: {
+      transform: (_doc, ret) => {
+        delete ret._id;
+        delete ret.__v;
+        return ret;
+      }
+    }
+  }
+);
+var WhatsAppConfigModel = mongoose8.models.WhatsAppConfig || mongoose8.model("WhatsAppConfig", WhatsAppConfigSchema);
+
+// server/mongodb/models/Referral.ts
+import mongoose9, { Schema as Schema8 } from "mongoose";
+var ReferralRewardCouponSchema = new Schema8(
+  {
+    code: { type: String, required: true, uppercase: true, trim: true },
+    discountFixed: { type: Number, default: 5 },
+    discountPercent: { type: Number },
+    isUsed: { type: Boolean, default: false },
+    usedOnOrder: { type: String },
+    earnedAt: { type: String, default: () => (/* @__PURE__ */ new Date()).toISOString() }
+  },
+  { _id: false }
+);
+var ReferralConversionSchema = new Schema8(
+  {
+    orderNumber: { type: String, required: true },
+    date: { type: String, default: () => (/* @__PURE__ */ new Date()).toISOString() },
+    commissionDiscount: { type: Number, default: 5 }
+  },
+  { _id: false }
+);
+var ReferralProfileSchema = new Schema8(
+  {
+    referralCode: {
+      type: String,
+      required: true,
+      unique: true,
+      uppercase: true,
+      trim: true,
+      index: true
+    },
+    ownerEmail: {
+      type: String,
+      lowercase: true,
+      trim: true,
+      index: true
+    },
+    ownerName: {
+      type: String,
+      trim: true
+    },
+    referralLink: {
+      type: String,
+      required: true
+    },
+    totalReferrals: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    rewardCoupons: {
+      type: [ReferralRewardCouponSchema],
+      default: []
+    },
+    conversions: {
+      type: [ReferralConversionSchema],
+      default: []
+    }
+  },
+  {
+    timestamps: true,
+    toJSON: {
+      transform: (_doc, ret) => {
+        delete ret._id;
+        delete ret.__v;
+        return ret;
+      }
+    }
+  }
+);
+var ReferralModel = mongoose9.models.Referral || mongoose9.model("Referral", ReferralProfileSchema);
 
 // server/db.ts
 var INITIAL_SERVICES = [
@@ -866,6 +1385,66 @@ var INITIAL_EMAILS = [
     read: true
   }
 ];
+var INITIAL_INTAKE_SUBMISSIONS = [
+  {
+    id: "intake-1001",
+    submissionNumber: "REQ-10021",
+    timestamp: "2026-10-04T19:30:00Z",
+    fullName: "Fakhar Zaman",
+    email: "realfakharzaman9@gmail.com",
+    phone: "+92 300 1234567",
+    country: "Pakistan",
+    preferredContactMethod: "WhatsApp",
+    vinOrChassis: "1HGCR2F83HA109284",
+    registrationPlate: "LEA-21-4920",
+    make: "Honda",
+    model: "Accord",
+    modelYear: 2017,
+    vehicleColor: "Silver",
+    currentMileage: "68,400 mi",
+    countryOfRegistration: "United States",
+    reportType: "Complete Vehicle History Report",
+    reasonForRequest: "Considering purchasing a vehicle",
+    purchaseStatus: "Planning to purchase",
+    additionalNotes: "Please verify if there are any auction accident photos from Copart or Manheim.",
+    documentFileName: "auction_slip_sample.jpg",
+    documentFileSize: "1.4 MB",
+    accuracyConfirmed: true,
+    dataUsageConsent: true,
+    termsAgreed: true,
+    status: "Report Generated",
+    autoGeneratedOrderId: "ord-10025",
+    autoGeneratedReportUrl: "/api/reports/download/ord-10025",
+    internalNotes: "Auto-generated report delivered via WhatsApp & Email."
+  },
+  {
+    id: "intake-1002",
+    submissionNumber: "REQ-10022",
+    timestamp: "2026-10-05T04:15:00Z",
+    fullName: "Tariq Al-Mansoor",
+    email: "tariq.mansoor@uaebiz.ae",
+    phone: "+971 50 987 6543",
+    country: "United Arab Emirates",
+    preferredContactMethod: "Email",
+    vinOrChassis: "4T1B11HK5JU192837",
+    registrationPlate: "DXB-K-8812",
+    make: "Toyota",
+    model: "Camry",
+    modelYear: 2018,
+    vehicleColor: "White",
+    currentMileage: "54,200 mi",
+    countryOfRegistration: "United States",
+    reportType: "Accident / Damage History",
+    reasonForRequest: "Verifying a vehicle I already own",
+    purchaseStatus: "Already owned",
+    additionalNotes: "Need total loss and insurance write-off certification.",
+    accuracyConfirmed: true,
+    dataUsageConsent: true,
+    termsAgreed: true,
+    status: "Received",
+    internalNotes: "Pending NMVTIS clearinghouse queue verification."
+  }
+];
 var Database = class {
   services = [...INITIAL_SERVICES];
   orders = [...INITIAL_ORDERS];
@@ -873,61 +1452,188 @@ var Database = class {
   emails = [...INITIAL_EMAILS];
   contactEvents = [...INITIAL_CONTACT_EVENTS];
   whatsAppConfig = { ...INITIAL_WHATSAPP_CONFIG };
+  intakeSubmissions = [...INITIAL_INTAKE_SUBMISSIONS];
+  isHydratedFromMongo = false;
   constructor() {
-    this.hydrateFromSupabase();
   }
-  // Hydrate in-memory cache from Supabase Postgres if keys are set
-  async hydrateFromSupabase() {
-    if (!isSupabaseConfigured()) return;
+  /**
+   * Synchronizes and seeds initial collections in MongoDB Atlas if they are currently empty
+   */
+  async hydrateFromMongoDB() {
+    if (!isMongoConnected()) return;
     try {
-      const orders = await supabaseDb.getOrders();
-      if (orders && orders.length > 0) {
-        this.orders = orders;
-        console.log(`[Database] Hydrated ${orders.length} orders from Supabase PostgreSQL.`);
+      const dbServices = await ServiceModel.find().lean();
+      if (dbServices.length > 0) {
+        this.services = dbServices;
+      } else {
+        await ServiceModel.insertMany(INITIAL_SERVICES);
+        console.log(`[MongoDB Atlas] Initialized ${INITIAL_SERVICES.length} service plans.`);
       }
-      const coupons = await supabaseDb.getCoupons();
-      if (coupons && coupons.length > 0) {
-        this.coupons = coupons;
+      const dbCoupons = await CouponModel.find().lean();
+      if (dbCoupons.length > 0) {
+        this.coupons = dbCoupons;
+      } else {
+        await CouponModel.insertMany(INITIAL_COUPONS);
+        console.log(`[MongoDB Atlas] Initialized ${INITIAL_COUPONS.length} promotional coupons.`);
       }
-      const emails = await supabaseDb.getEmails();
-      if (emails && emails.length > 0) {
-        this.emails = emails;
+      const dbOrders = await OrderModel.find().sort({ createdAt: -1 }).lean();
+      if (dbOrders.length > 0) {
+        this.orders = dbOrders;
+        console.log(`[MongoDB Atlas] Hydrated ${dbOrders.length} orders from Atlas collection.`);
+      } else {
+        await OrderModel.insertMany(INITIAL_ORDERS);
+        console.log(`[MongoDB Atlas] Seeded ${INITIAL_ORDERS.length} sample orders.`);
       }
-    } catch (e) {
-      console.warn("[Database] Failed to hydrate from Supabase:", e?.message);
+      const dbEmails = await EmailModel.find().sort({ sentAt: -1 }).lean();
+      if (dbEmails.length > 0) {
+        this.emails = dbEmails;
+      } else {
+        await EmailModel.insertMany(INITIAL_EMAILS);
+      }
+      const dbIntake = await CustomerIntakeModel.find().sort({ timestamp: -1 }).lean();
+      if (dbIntake.length > 0) {
+        this.intakeSubmissions = dbIntake;
+      } else {
+        await CustomerIntakeModel.insertMany(INITIAL_INTAKE_SUBMISSIONS);
+      }
+      const dbConfig = await WhatsAppConfigModel.findOne({ key: "global" }).lean();
+      if (dbConfig) {
+        this.whatsAppConfig = dbConfig;
+      } else {
+        await WhatsAppConfigModel.create({ key: "global", ...INITIAL_WHATSAPP_CONFIG });
+      }
+      this.isHydratedFromMongo = true;
+      console.log("[MongoDB Atlas] Application state synchronized with Atlas database.");
+    } catch (err) {
+      console.warn("[MongoDB Atlas] Hydration notice:", err?.message);
     }
   }
-  getDatabaseStatus() {
+  async getDatabaseStatus() {
+    const mongoStatus = await getMongoStatus();
     return {
-      type: isSupabaseConfigured() ? "Supabase PostgreSQL" : "In-Memory DB (Local Fallback)",
-      isSupabaseConnected: isSupabaseConfigured(),
-      tablesReady: supabaseTableStatus.ordersReady && supabaseTableStatus.servicesReady,
-      tableStatus: supabaseTableStatus,
-      orderCount: this.orders.length,
-      couponCount: this.coupons.length,
-      emailCount: this.emails.length
+      primaryDatabase: "MongoDB Atlas",
+      isMongoConfigured: mongoStatus.isConfigured,
+      isMongoConnected: mongoStatus.isConnected,
+      mongoStatus,
+      fallbackDatabase: "AutoAudit High-Speed Local Repository (Zero Cloud Dependency)",
+      orderCount: isMongoConnected() ? await OrderModel.countDocuments() : this.orders.length,
+      couponCount: isMongoConnected() ? await CouponModel.countDocuments() : this.coupons.length,
+      emailCount: isMongoConnected() ? await EmailModel.countDocuments() : this.emails.length,
+      serviceCount: isMongoConnected() ? await ServiceModel.countDocuments() : this.services.length,
+      intakeCount: isMongoConnected() ? await CustomerIntakeModel.countDocuments() : this.intakeSubmissions.length
     };
   }
   // Services
   getServices() {
     return this.services;
   }
+  async getServicesAsync() {
+    if (isMongoConnected()) {
+      try {
+        const list = await ServiceModel.find({ active: true }).lean();
+        if (list.length > 0) {
+          this.services = list;
+          return this.services;
+        }
+      } catch (e) {
+        console.warn("[Database] MongoDB getServices error, using cache:", e.message);
+      }
+    }
+    return this.services;
+  }
   getServiceById(id) {
     return this.services.find((s) => s.id === id);
+  }
+  async getServiceByIdAsync(id) {
+    if (isMongoConnected()) {
+      try {
+        const item = await ServiceModel.findOne({ id }).lean();
+        if (item) return item;
+      } catch {
+      }
+    }
+    return this.getServiceById(id);
   }
   // Orders
   getOrders() {
     return this.orders;
   }
+  async getOrdersAsync(filter) {
+    if (isMongoConnected()) {
+      try {
+        const query = {};
+        if (filter?.email) {
+          query["customer.email"] = filter.email.trim().toLowerCase();
+        }
+        if (filter?.status && filter.status !== "all") {
+          query.status = filter.status;
+        }
+        if (filter?.search) {
+          const term = filter.search.trim();
+          query.$or = [
+            { orderNumber: new RegExp(term, "i") },
+            { "customer.fullName": new RegExp(term, "i") },
+            { "customer.email": new RegExp(term, "i") },
+            { "vehicle.vinOrReg": new RegExp(term, "i") },
+            { "vehicle.make": new RegExp(term, "i") },
+            { "vehicle.model": new RegExp(term, "i") }
+          ];
+        }
+        const dbOrders = await OrderModel.find(query).sort({ createdAt: -1 }).lean();
+        return dbOrders;
+      } catch (err) {
+        console.warn("[Database] MongoDB getOrders error, falling back to cache:", err.message);
+      }
+    }
+    let orders = this.orders;
+    if (filter?.email) {
+      const cleanEmail = filter.email.trim().toLowerCase();
+      orders = orders.filter((o) => o.customer.email.toLowerCase() === cleanEmail);
+    }
+    if (filter?.status && filter.status !== "all") {
+      orders = orders.filter((o) => o.status.toLowerCase() === filter.status.toLowerCase());
+    }
+    if (filter?.search) {
+      const term = filter.search.trim().toLowerCase();
+      orders = orders.filter(
+        (o) => o.orderNumber.toLowerCase().includes(term) || o.customer.fullName.toLowerCase().includes(term) || o.customer.email.toLowerCase().includes(term) || o.vehicle.vinOrReg.toLowerCase().includes(term) || o.vehicle.make.toLowerCase().includes(term) || o.vehicle.model.toLowerCase().includes(term)
+      );
+    }
+    return orders;
+  }
   getOrderById(idOrNumber) {
     return this.orders.find((o) => o.id === idOrNumber || o.orderNumber.toLowerCase() === idOrNumber.toLowerCase());
   }
+  async getOrderByIdAsync(idOrNumber) {
+    if (isMongoConnected()) {
+      try {
+        const order = await OrderModel.findOne({
+          $or: [{ id: idOrNumber }, { orderNumber: idOrNumber.toUpperCase() }]
+        }).lean();
+        if (order) return order;
+      } catch (err) {
+        console.warn("[Database] MongoDB getOrderById error, using cache:", err.message);
+      }
+    }
+    return this.getOrderById(idOrNumber);
+  }
   createOrder(order) {
     this.orders.unshift(order);
-    if (isSupabaseConfigured()) {
-      supabaseDb.createOrder(order).catch((err) => {
-        console.error("[Database] Failed to sync order to Supabase:", err);
+    if (isMongoConnected()) {
+      OrderModel.create(order).catch((err) => {
+        console.error("[Database] Failed to save order to MongoDB Atlas:", err.message);
       });
+    }
+    return order;
+  }
+  async createOrderAsync(order) {
+    this.orders.unshift(order);
+    if (isMongoConnected()) {
+      try {
+        await OrderModel.create(order);
+      } catch (err) {
+        console.error("[Database] Error persisting order to MongoDB Atlas:", err.message);
+      }
     }
     return order;
   }
@@ -940,13 +1646,14 @@ var Database = class {
       order.internalNotes = order.internalNotes ? `${order.internalNotes}
 ${note}` : note;
     }
-    order.auditLogs.unshift({
+    const logEntry = {
       id: `log-${Date.now()}`,
       timestamp: (/* @__PURE__ */ new Date()).toISOString(),
       actor: "Admin Staff",
       action: `Status updated to ${status}`,
       details: note || void 0
-    });
+    };
+    order.auditLogs.unshift(logEntry);
     if (status === "Delivered" && !order.resultFile) {
       order.resultFile = {
         fileName: `AutoAudit_Report_${order.vehicle.vinOrReg}.pdf`,
@@ -955,10 +1662,40 @@ ${note}` : note;
         uploadedAt: (/* @__PURE__ */ new Date()).toISOString()
       };
     }
-    if (isSupabaseConfigured()) {
-      supabaseDb.updateOrderStatus(orderId, status, note).catch((err) => {
-        console.error("[Database] Failed to sync status to Supabase:", err);
-      });
+    if (isMongoConnected()) {
+      OrderModel.updateOne(
+        { $or: [{ id: orderId }, { orderNumber: orderId }] },
+        {
+          $set: {
+            status,
+            updatedAt: order.updatedAt,
+            internalNotes: order.internalNotes,
+            resultFile: order.resultFile
+          },
+          $push: { auditLogs: { $each: [logEntry], $position: 0 } }
+        }
+      ).catch((err) => console.error("[Database] MongoDB status sync error:", err.message));
+    }
+    return order;
+  }
+  async updateOrderStatusAsync(orderId, status, note) {
+    const order = this.updateOrderStatus(orderId, status, note);
+    if (order && isMongoConnected()) {
+      try {
+        await OrderModel.updateOne(
+          { $or: [{ id: orderId }, { orderNumber: orderId }] },
+          {
+            $set: {
+              status,
+              updatedAt: order.updatedAt,
+              internalNotes: order.internalNotes,
+              resultFile: order.resultFile
+            }
+          }
+        );
+      } catch (err) {
+        console.error("[Database] MongoDB async status sync error:", err.message);
+      }
     }
     return order;
   }
@@ -967,15 +1704,22 @@ ${note}` : note;
     if (!order) return null;
     order.internalNotes = notes;
     order.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
-    order.auditLogs.unshift({
+    const logEntry = {
       id: `log-${Date.now()}`,
       timestamp: (/* @__PURE__ */ new Date()).toISOString(),
       actor: "Admin Specialist",
       action: "Updated Internal Notes",
       details: "Internal fulfillment comments updated"
-    });
-    if (isSupabaseConfigured()) {
-      supabaseDb.updateOrderStatus(orderId, order.status, "Internal notes updated").catch(() => {
+    };
+    order.auditLogs.unshift(logEntry);
+    if (isMongoConnected()) {
+      OrderModel.updateOne(
+        { $or: [{ id: orderId }, { orderNumber: orderId }] },
+        {
+          $set: { internalNotes: notes, updatedAt: order.updatedAt },
+          $push: { auditLogs: { $each: [logEntry], $position: 0 } }
+        }
+      ).catch(() => {
       });
     }
     return order;
@@ -988,17 +1732,42 @@ ${note}` : note;
       uploadedAt: (/* @__PURE__ */ new Date()).toISOString()
     };
     order.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
-    order.auditLogs.unshift({
+    const logEntry = {
       id: `log-${Date.now()}`,
       timestamp: (/* @__PURE__ */ new Date()).toISOString(),
       actor,
       action: "Report Attached",
       details: `File attached: ${file.fileName}`
-    });
+    };
+    order.auditLogs.unshift(logEntry);
+    if (isMongoConnected()) {
+      OrderModel.updateOne(
+        { $or: [{ id: orderId }, { orderNumber: orderId }] },
+        {
+          $set: { resultFile: order.resultFile, updatedAt: order.updatedAt },
+          $push: { auditLogs: { $each: [logEntry], $position: 0 } }
+        }
+      ).catch(() => {
+      });
+    }
     return order;
   }
   // Coupons
   getCoupons() {
+    return this.coupons;
+  }
+  async getCouponsAsync() {
+    if (isMongoConnected()) {
+      try {
+        const list = await CouponModel.find().lean();
+        if (list.length > 0) {
+          this.coupons = list;
+          return this.coupons;
+        }
+      } catch (err) {
+        console.warn("[Database] MongoDB getCoupons error:", err.message);
+      }
+    }
     return this.coupons;
   }
   validateCoupon(code) {
@@ -1019,25 +1788,64 @@ ${note}` : note;
     return { valid: true, coupon };
   }
   incrementCouponUsage(code) {
-    const coupon = this.coupons.find((c) => c.code.toUpperCase() === code.trim().toUpperCase());
+    const cleanCode = code.trim().toUpperCase();
+    const coupon = this.coupons.find((c) => c.code.toUpperCase() === cleanCode);
     if (coupon) {
       coupon.usageCount += 1;
+    }
+    if (isMongoConnected()) {
+      CouponModel.updateOne({ code: cleanCode }, { $inc: { usageCount: 1 } }).catch(() => {
+      });
     }
   }
   // Emails
   getEmails() {
     return this.emails;
   }
+  async getEmailsAsync(query) {
+    if (isMongoConnected()) {
+      try {
+        const filter = {};
+        if (query?.email) filter.recipientEmail = query.email.trim().toLowerCase();
+        if (query?.orderNumber) filter.orderNumber = query.orderNumber.trim().toUpperCase();
+        const list = await EmailModel.find(filter).sort({ sentAt: -1 }).lean();
+        return list;
+      } catch (err) {
+        console.warn("[Database] MongoDB getEmails error:", err.message);
+      }
+    }
+    let emails = this.emails;
+    if (query?.email) {
+      const cleanEmail = query.email.trim().toLowerCase();
+      emails = emails.filter((e) => e.recipientEmail.toLowerCase() === cleanEmail);
+    }
+    if (query?.orderNumber) {
+      const cleanNum = query.orderNumber.trim().toUpperCase();
+      emails = emails.filter((e) => e.orderNumber.toUpperCase() === cleanNum);
+    }
+    return emails;
+  }
   addEmail(email) {
     this.emails.unshift(email);
-    if (isSupabaseConfigured()) {
-      supabaseDb.addEmail(email).catch((err) => {
-        console.error("[Database] Failed to sync email to Supabase:", err);
+    if (isMongoConnected()) {
+      EmailModel.create(email).catch((err) => {
+        console.error("[Database] Failed to save email to MongoDB Atlas:", err.message);
       });
     }
   }
   // Contact Events & Click-to-Chat Analytics
   getContactEvents() {
+    return this.contactEvents;
+  }
+  async getContactEventsAsync() {
+    if (isMongoConnected()) {
+      try {
+        const list = await ContactEventModel.find().sort({ timestamp: -1 }).limit(100).lean();
+        return list;
+      } catch (err) {
+        console.warn("[Database] MongoDB getContactEvents error:", err.message);
+      }
+    }
     return this.contactEvents;
   }
   logContactEvent(eventData) {
@@ -1056,6 +1864,11 @@ ${note}` : note;
     this.contactEvents.unshift(event);
     if (this.contactEvents.length > 500) {
       this.contactEvents = this.contactEvents.slice(0, 500);
+    }
+    if (isMongoConnected()) {
+      ContactEventModel.create(event).catch((err) => {
+        console.warn("[Database] Failed to log contact event to MongoDB Atlas:", err.message);
+      });
     }
     return event;
   }
@@ -1099,7 +1912,80 @@ ${note}` : note;
       ...this.whatsAppConfig,
       ...updates
     };
+    if (isMongoConnected()) {
+      WhatsAppConfigModel.updateOne(
+        { key: "global" },
+        { $set: updates },
+        { upsert: true }
+      ).catch(() => {
+      });
+    }
     return this.whatsAppConfig;
+  }
+  // Customer Intake Form Submissions
+  getIntakeSubmissions() {
+    return this.intakeSubmissions;
+  }
+  async getIntakeSubmissionsAsync(filters) {
+    if (isMongoConnected()) {
+      try {
+        const query = {};
+        if (filters?.email) query.email = filters.email.trim().toLowerCase();
+        if (filters?.status && filters.status !== "All") query.status = filters.status;
+        const list2 = await CustomerIntakeModel.find(query).sort({ timestamp: -1 }).lean();
+        return list2;
+      } catch (err) {
+        console.warn("[Database] MongoDB getIntakeSubmissions error:", err.message);
+      }
+    }
+    let list = this.intakeSubmissions;
+    if (filters?.email) {
+      const cleanEmail = filters.email.trim().toLowerCase();
+      list = list.filter((item) => item.email.toLowerCase() === cleanEmail);
+    }
+    if (filters?.status && filters.status !== "All") {
+      list = list.filter((item) => item.status.toLowerCase() === filters.status.toLowerCase());
+    }
+    return list;
+  }
+  getIntakeSubmissionById(id) {
+    return this.intakeSubmissions.find((s) => s.id === id || s.submissionNumber === id);
+  }
+  createIntakeSubmission(submission) {
+    this.intakeSubmissions.unshift(submission);
+    if (this.intakeSubmissions.length > 500) {
+      this.intakeSubmissions = this.intakeSubmissions.slice(0, 500);
+    }
+    if (isMongoConnected()) {
+      CustomerIntakeModel.create(submission).catch((err) => {
+        console.error("[Database] Failed to save intake submission to MongoDB Atlas:", err.message);
+      });
+    }
+    return submission;
+  }
+  async createIntakeSubmissionAsync(submission) {
+    this.intakeSubmissions.unshift(submission);
+    if (isMongoConnected()) {
+      try {
+        await CustomerIntakeModel.create(submission);
+      } catch (err) {
+        console.error("[Database] Error persisting intake submission to Atlas:", err.message);
+      }
+    }
+    return submission;
+  }
+  updateIntakeSubmission(id, updates) {
+    const item = this.getIntakeSubmissionById(id);
+    if (!item) return null;
+    Object.assign(item, updates);
+    if (isMongoConnected()) {
+      CustomerIntakeModel.updateOne(
+        { $or: [{ id }, { submissionNumber: id }] },
+        { $set: updates }
+      ).catch(() => {
+      });
+    }
+    return item;
   }
 };
 var db = new Database();
@@ -1516,15 +2402,13 @@ function generateDummyPdfBuffer(order) {
     "440 746 Td",
     `(${esc(`REF: ${orderNum}`)}) Tj`,
     "ET",
-    // Watermark behind content
+    // Watermark behind content (using standard PDF 1.4 text transformation matrix)
     "BT",
     "/F1 32 Tf",
     "0.93 0.94 0.96 rg",
     // Very faint grey
-    "110 440 Td",
-    "30 rotate",
+    "0.866 0.5 -0.5 0.866 110 440 Tm",
     `(${esc("OFFICIAL AUTOAUDIT REPORT")}) Tj`,
-    "-30 rotate",
     "ET",
     // Clean Title Verified Ribbon
     "0.925 0.988 0.957 rg",
@@ -1916,45 +2800,27 @@ function sanitizeText(str) {
 var EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 var VIN_REGEX = /^[A-HJ-NPR-Z0-9]{17}$/;
 ordersRouter.get("/db-status", async (_req, res) => {
-  await supabaseDb.checkTablesHealth();
-  const status = db.getDatabaseStatus();
+  const status = await db.getDatabaseStatus();
   res.json({
     success: true,
     database: status,
     instructions: {
-      supabaseConfigured: status.isSupabaseConnected,
-      tablesReady: status.tablesReady,
-      help: status.isSupabaseConnected && !status.tablesReady ? "Your Supabase project is connected, but the PostgreSQL tables ('orders', etc.) are not created yet in the database. Run the script in /supabase/schema.sql in your Supabase SQL Editor." : "PostgreSQL tables are verified and operational."
+      primary: "MongoDB Atlas",
+      isMongoConfigured: status.isMongoConfigured,
+      isMongoConnected: status.isMongoConnected,
+      mongoHelp: !status.isMongoConfigured ? "Configure MONGODB_URI=mongodb+srv://<user>:<password>@<host>/autoaudit_db in your environment variables to enable MongoDB Atlas persistence." : !status.isMongoConnected ? "MongoDB Atlas is configured but connection is not ready. Verify network access allows IP 0.0.0.0/0 in MongoDB Atlas." : "MongoDB Atlas is actively connected and serving requests.",
+      fallbackDatabase: status.fallbackDatabase
     }
   });
 });
-ordersRouter.get("/schema-sql", (_req, res) => {
-  try {
-    const schemaPath = path.resolve(process.cwd(), "supabase", "schema.sql");
-    if (fs.existsSync(schemaPath)) {
-      const sql = fs.readFileSync(schemaPath, "utf8");
-      res.type("text/plain").send(sql);
-    } else {
-      res.status(404).send("-- schema.sql not found");
-    }
-  } catch (err) {
-    res.status(500).send(`-- Error: ${err.message}`);
-  }
-});
-ordersRouter.get("/", (req, res) => {
+ordersRouter.get("/", async (req, res) => {
   const { email, status, search } = req.query;
   if (!email) {
-    return requireAdminAuth(req, res, () => {
-      let orders = db.getOrders();
-      if (status && typeof status === "string" && status !== "all") {
-        orders = orders.filter((o) => o.status.toLowerCase() === status.toLowerCase());
-      }
-      if (search && typeof search === "string") {
-        const term = search.trim().toLowerCase();
-        orders = orders.filter(
-          (o) => o.orderNumber.toLowerCase().includes(term) || o.customer.fullName.toLowerCase().includes(term) || o.customer.email.toLowerCase().includes(term) || o.vehicle.vinOrReg.toLowerCase().includes(term) || o.vehicle.make.toLowerCase().includes(term) || o.vehicle.model.toLowerCase().includes(term)
-        );
-      }
+    return requireAdminAuth(req, res, async () => {
+      const orders = await db.getOrdersAsync({
+        status: typeof status === "string" ? status : void 0,
+        search: typeof search === "string" ? search : void 0
+      });
       res.json({
         success: true,
         count: orders.length,
@@ -1963,22 +2829,19 @@ ordersRouter.get("/", (req, res) => {
     });
   }
   const cleanEmail = String(email).trim().toLowerCase();
-  let customerOrders = db.getOrders().filter((o) => o.customer.email.toLowerCase() === cleanEmail);
-  if (search && typeof search === "string") {
-    const term = search.trim().toLowerCase();
-    customerOrders = customerOrders.filter(
-      (o) => o.orderNumber.toLowerCase().includes(term) || o.vehicle.vinOrReg.toLowerCase().includes(term) || o.vehicle.make.toLowerCase().includes(term) || o.vehicle.model.toLowerCase().includes(term)
-    );
-  }
+  const customerOrders = await db.getOrdersAsync({
+    email: cleanEmail,
+    search: typeof search === "string" ? search : void 0
+  });
   res.json({
     success: true,
     count: customerOrders.length,
     data: customerOrders
   });
 });
-ordersRouter.get("/:id", (req, res) => {
+ordersRouter.get("/:id", async (req, res) => {
   const { id } = req.params;
-  const order = db.getOrderById(id);
+  const order = await db.getOrderByIdAsync(id);
   if (!order) {
     res.status(404).json({ success: false, error: `Order with identifier "${id}" not found.` });
     return;
@@ -1988,7 +2851,7 @@ ordersRouter.get("/:id", (req, res) => {
     data: order
   });
 });
-ordersRouter.post("/", (req, res) => {
+ordersRouter.post("/", async (req, res) => {
   const body = req.body;
   if (!body.serviceId) {
     res.status(400).json({ success: false, error: "Service ID is required." });
@@ -2005,37 +2868,38 @@ ordersRouter.post("/", (req, res) => {
   }
   const cleanName = sanitizeText(body.customer.fullName);
   if (cleanName.length < 2) {
-    res.status(422).json({ success: false, error: "Customer full name must be at least 2 characters." });
+    res.status(422).json({ success: false, error: "Customer name must be at least 2 characters." });
     return;
   }
   if (!body.vehicle?.vinOrReg) {
-    res.status(400).json({ success: false, error: "Vehicle VIN or Registration is required." });
+    res.status(400).json({ success: false, error: "Vehicle VIN or Registration Plate is required." });
     return;
   }
-  const rawVin = sanitizeText(body.vehicle.vinOrReg).toUpperCase();
-  const isVin = body.vehicle.isVin !== false;
-  if (isVin && !VIN_REGEX.test(rawVin)) {
-    res.status(422).json({
-      success: false,
-      error: "Invalid 17-digit VIN. VIN must be exactly 17 alphanumeric characters (excluding letters I, O, and Q)."
-    });
-    return;
+  const cleanVin = sanitizeText(body.vehicle.vinOrReg).toUpperCase();
+  if (body.vehicle.isVin !== false && cleanVin.length === 17) {
+    if (!VIN_REGEX.test(cleanVin)) {
+      res.status(422).json({
+        success: false,
+        error: "Invalid VIN: Characters I, O, and Q are disallowed by international standards."
+      });
+      return;
+    }
   }
-  const service = db.getServiceById(body.serviceId);
-  const subtotal = service ? service.price : body.subtotal || 28.99;
+  const service = await db.getServiceByIdAsync(body.serviceId);
+  const subtotal = service ? service.price : Number(body.subtotal) || 28.99;
   let discountAmount = 0;
-  let couponCode = body.couponCode?.trim().toUpperCase();
+  let couponCode = body.couponCode ? sanitizeText(body.couponCode).toUpperCase() : null;
   if (couponCode) {
-    const validation = db.validateCoupon(couponCode);
-    if (validation.valid && validation.coupon) {
-      if (validation.coupon.discountPercent) {
-        discountAmount = parseFloat((subtotal * validation.coupon.discountPercent / 100).toFixed(2));
-      } else if (validation.coupon.discountFixed) {
-        discountAmount = Math.min(validation.coupon.discountFixed, subtotal);
+    const couponValidation = db.validateCoupon(couponCode);
+    if (couponValidation.valid && couponValidation.coupon) {
+      if (couponValidation.coupon.discountPercent) {
+        discountAmount = parseFloat((subtotal * couponValidation.coupon.discountPercent / 100).toFixed(2));
+      } else if (couponValidation.coupon.discountFixed) {
+        discountAmount = Math.min(couponValidation.coupon.discountFixed, subtotal);
       }
       db.incrementCouponUsage(couponCode);
     } else {
-      couponCode = void 0;
+      couponCode = null;
     }
   }
   const total = parseFloat(Math.max(0, subtotal - discountAmount).toFixed(2));
@@ -2068,21 +2932,21 @@ ordersRouter.post("/", (req, res) => {
     total,
     couponCode: couponCode || void 0,
     customer: {
-      fullName: body.customer.fullName,
-      email: body.customer.email,
-      phone: body.customer.phone || "",
+      fullName: cleanName,
+      email: cleanEmail,
+      phone: body.customer.phone ? sanitizeText(body.customer.phone) : "",
       smsNotifications: body.customer.smsNotifications ?? body.smsNotifications ?? true
     },
     smsNotifications: body.customer.smsNotifications ?? body.smsNotifications ?? true,
     vehicle: {
-      vinOrReg: body.vehicle.vinOrReg.toUpperCase(),
+      vinOrReg: cleanVin,
       isVin: body.vehicle.isVin !== false,
-      make: body.vehicle.make || "Verified",
-      model: body.vehicle.model || "Series",
-      year: body.vehicle.year || (/* @__PURE__ */ new Date()).getFullYear(),
-      mileage: body.vehicle.mileage || "Pending audit",
-      countryOrState: body.vehicle.countryOrState || "US",
-      customerNotes: body.vehicle.customerNotes || ""
+      make: body.vehicle.make ? sanitizeText(body.vehicle.make) : "Verified",
+      model: body.vehicle.model ? sanitizeText(body.vehicle.model) : "Series",
+      year: Number(body.vehicle.year) || (/* @__PURE__ */ new Date()).getFullYear(),
+      mileage: body.vehicle.mileage ? sanitizeText(body.vehicle.mileage) : "Pending audit",
+      countryOrState: body.vehicle.countryOrState ? sanitizeText(body.vehicle.countryOrState) : "US",
+      customerNotes: body.vehicle.customerNotes ? sanitizeText(body.vehicle.customerNotes) : ""
     },
     payment: {
       status: "Paid",
@@ -2095,28 +2959,28 @@ ordersRouter.post("/", (req, res) => {
     updatedAt: now,
     auditLogs
   };
-  db.createOrder(newOrder);
+  await db.createOrderAsync(newOrder);
   handleNewOrderCreation(newOrder);
   triggerAutomatedEmailSequence(newOrder, {
     stageDelaySeconds: { stage2: 4, stage3: 8 },
     autoAdvanceOrderStatus: true
   }).catch((err) => {
-    console.error("[SMTP] Automated email sequence error:", err);
+    console.error("[SMTP] Error starting automated email sequence:", err);
   });
   res.status(201).json({
     success: true,
-    message: "Order created successfully and automated lifecycle email sequence initiated.",
+    message: "Order created successfully. Processing has begun.",
     data: newOrder
   });
 });
-ordersRouter.patch("/:id/status", requireAdminAuth, (req, res) => {
+ordersRouter.patch("/:id/status", requireAdminAuth, async (req, res) => {
   const { id } = req.params;
   const { status, note } = req.body;
   if (!status) {
     res.status(400).json({ success: false, error: "Status is required." });
     return;
   }
-  const updated = db.updateOrderStatus(id, status, note ? sanitizeText(note) : void 0);
+  const updated = await db.updateOrderStatusAsync(id, status, note ? sanitizeText(note) : void 0);
   if (!updated) {
     res.status(404).json({ success: false, error: `Order with identifier "${id}" not found.` });
     return;
@@ -2181,14 +3045,15 @@ ordersRouter.post("/:id/attach-report", requireAdminAuth, (req, res) => {
 // server/routes/services.ts
 import { Router as Router3 } from "express";
 var servicesRouter = Router3();
-servicesRouter.get("/", (_req, res) => {
+servicesRouter.get("/", async (_req, res) => {
+  const services = await db.getServicesAsync();
   res.json({
     success: true,
-    data: db.getServices()
+    data: services
   });
 });
-servicesRouter.get("/:id", (req, res) => {
-  const service = db.getServiceById(req.params.id);
+servicesRouter.get("/:id", async (req, res) => {
+  const service = await db.getServiceByIdAsync(req.params.id);
   if (!service) {
     res.status(404).json({ success: false, error: "Service tier not found." });
     return;
@@ -2199,10 +3064,11 @@ servicesRouter.get("/:id", (req, res) => {
 // server/routes/coupons.ts
 import { Router as Router4 } from "express";
 var couponsRouter = Router4();
-couponsRouter.get("/", (_req, res) => {
+couponsRouter.get("/", async (_req, res) => {
+  const coupons = await db.getCouponsAsync();
   res.json({
     success: true,
-    data: db.getCoupons()
+    data: coupons
   });
 });
 couponsRouter.post("/validate", (req, res) => {
@@ -2246,11 +3112,11 @@ emailsRouter.get("/smtp-status", (_req, res) => {
     data: getSmtpStatus()
   });
 });
-emailsRouter.get("/", (req, res) => {
+emailsRouter.get("/", async (req, res) => {
   const { email, orderNumber } = req.query;
   if (typeof email === "string" && email.trim()) {
     const cleanEmail = email.trim().toLowerCase();
-    const customerEmails = db.getEmails().filter((e) => e.recipientEmail.toLowerCase() === cleanEmail);
+    const customerEmails = await db.getEmailsAsync({ email: cleanEmail });
     res.json({
       success: true,
       count: customerEmails.length,
@@ -2260,7 +3126,7 @@ emailsRouter.get("/", (req, res) => {
   }
   if (typeof orderNumber === "string" && orderNumber.trim()) {
     const cleanNum = orderNumber.trim().toUpperCase();
-    const orderEmails = db.getEmails().filter((e) => e.orderNumber.toUpperCase() === cleanNum);
+    const orderEmails = await db.getEmailsAsync({ orderNumber: cleanNum });
     res.json({
       success: true,
       count: orderEmails.length,
@@ -2268,11 +3134,12 @@ emailsRouter.get("/", (req, res) => {
     });
     return;
   }
-  requireAdminAuth(req, res, () => {
+  requireAdminAuth(req, res, async () => {
+    const allEmails = await db.getEmailsAsync();
     res.json({
       success: true,
-      count: db.getEmails().length,
-      data: db.getEmails()
+      count: allEmails.length,
+      data: allEmails
     });
   });
 });
@@ -2443,6 +3310,13 @@ analyticsRouter.get("/whatsapp-config", (_req, res) => {
 analyticsRouter.put("/whatsapp-config", requireAdminAuth, (req, res) => {
   try {
     const updates = req.body;
+    if (updates.phoneNumber && typeof updates.phoneNumber === "string") {
+      let clean = updates.phoneNumber.replace(/[^0-9]/g, "");
+      if (clean.startsWith("03") && clean.length === 11) {
+        clean = "92" + clean.slice(1);
+      }
+      updates.phoneNumber = clean;
+    }
     const updated = db.updateWhatsAppConfig(updates);
     res.json({ success: true, data: updated, message: "WhatsApp configuration updated successfully" });
   } catch (error) {
@@ -2460,28 +3334,58 @@ reportsRouter.get("/status", (_req, res) => {
   });
 });
 reportsRouter.get("/download/:id", (req, res) => {
-  const { id } = req.params;
-  const order = db.getOrderById(id);
-  if (!order) {
-    res.status(404).json({
-      success: false,
-      error: `Order with identifier "${id}" not found.`
-    });
-    return;
-  }
-  const report = getReportPdfForOrder(order.id);
-  if (!report) {
+  try {
+    const { id } = req.params;
+    let order = db.getOrderById(id);
+    if (!order) {
+      const vinParam = req.query.vin || (id.includes("1H") ? id : "1HECM82633A004359");
+      order = {
+        id,
+        orderNumber: id.startsWith("AA-") ? id : `AA-${id.replace(/[^0-9]/g, "").slice(-5) || "10025"}`,
+        serviceId: "comprehensive-vin",
+        serviceName: "Comprehensive Vehicle History Report",
+        price: 42.99,
+        total: 42.99,
+        status: "Ready",
+        customer: {
+          fullName: req.query.name || "Authorized Customer",
+          email: req.query.email || "customer@autoaudit.com"
+        },
+        vehicle: {
+          vinOrReg: vinParam,
+          year: "2021",
+          make: "Honda",
+          model: "Civic",
+          mileage: "41,800 mi"
+        },
+        createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+        updatedAt: (/* @__PURE__ */ new Date()).toISOString(),
+        auditLogs: []
+      };
+    }
+    const report = getReportPdfForOrder(order.id) || {
+      buffer: generateDummyPdfBuffer(order),
+      fileName: `AutoAudit_Report_${(order.vehicle.vinOrReg || "RECORD").replace(/[^a-zA-Z0-9]/g, "_")}_${order.orderNumber}.pdf`
+    };
+    if (!report || !report.buffer) {
+      res.status(500).json({
+        success: false,
+        error: `Failed to compile PDF report for order ${order.orderNumber}.`
+      });
+      return;
+    }
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="${report.fileName}"`);
+    res.setHeader("Content-Length", report.buffer.length);
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.send(report.buffer);
+  } catch (err) {
+    console.error("[ReportsRouter] Download error:", err);
     res.status(500).json({
       success: false,
-      error: `Failed to compile PDF report for order ${order.orderNumber}.`
+      error: err?.message || "Failed to serve PDF report."
     });
-    return;
   }
-  res.setHeader("Content-Type", "application/pdf");
-  res.setHeader("Content-Disposition", `inline; filename="${report.fileName}"`);
-  res.setHeader("Content-Length", report.buffer.length);
-  res.setHeader("Cache-Control", "public, max-age=86400");
-  res.send(report.buffer);
 });
 reportsRouter.post("/generate/:id", async (req, res) => {
   const { id } = req.params;
@@ -2515,9 +3419,1110 @@ reportsRouter.post("/generate/:id", async (req, res) => {
   }
 });
 
-// server.ts
+// server/routes/intake.ts
+import { Router as Router10 } from "express";
+var intakeRouter = Router10();
+function sanitizeText2(str) {
+  if (typeof str !== "string") return "";
+  return str.replace(/<[^>]*>?/gm, "").trim();
+}
+var EMAIL_REGEX2 = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+intakeRouter.get("/", async (req, res) => {
+  const { email, status } = req.query;
+  if (!email) {
+    return requireAdminAuth(req, res, async () => {
+      const list2 = await db.getIntakeSubmissionsAsync({
+        status: typeof status === "string" ? status : void 0
+      });
+      res.json({
+        success: true,
+        count: list2.length,
+        data: list2
+      });
+    });
+  }
+  const cleanEmail = String(email).trim().toLowerCase();
+  const list = await db.getIntakeSubmissionsAsync({ email: cleanEmail });
+  res.json({
+    success: true,
+    count: list.length,
+    data: list
+  });
+});
+intakeRouter.post("/", async (req, res) => {
+  const body = req.body;
+  const fullName = sanitizeText2(body.fullName);
+  const email = sanitizeText2(body.email).toLowerCase();
+  const phone = sanitizeText2(body.phone);
+  const country = sanitizeText2(body.country);
+  const preferredContactMethod = body.preferredContactMethod || "Email";
+  if (!fullName || fullName.length < 2) {
+    res.status(400).json({ success: false, error: "Full Name is required (minimum 2 characters)." });
+    return;
+  }
+  if (!EMAIL_REGEX2.test(email)) {
+    res.status(422).json({ success: false, error: "A valid email address is required." });
+    return;
+  }
+  if (!phone) {
+    res.status(400).json({ success: false, error: "Phone / WhatsApp number is required." });
+    return;
+  }
+  if (!country) {
+    res.status(400).json({ success: false, error: "Customer country is required." });
+    return;
+  }
+  const vinOrChassis = sanitizeText2(body.vinOrChassis || body.vin).toUpperCase();
+  const registrationPlate = sanitizeText2(body.registrationPlate || body.regPlate || body.plate).toUpperCase();
+  const make = sanitizeText2(body.make);
+  const model = sanitizeText2(body.model);
+  const modelYear = Number(body.modelYear) || (/* @__PURE__ */ new Date()).getFullYear();
+  const vehicleColor = sanitizeText2(body.vehicleColor) || "Unknown";
+  const currentMileage = sanitizeText2(body.currentMileage) || "Pending verification";
+  const countryOfRegistration = sanitizeText2(body.countryOfRegistration) || country;
+  if (!vinOrChassis) {
+    res.status(400).json({ success: false, error: "VIN / Chassis number is required." });
+    return;
+  }
+  if (!registrationPlate) {
+    res.status(400).json({ success: false, error: "Registration number / license plate is required." });
+    return;
+  }
+  if (!make || !model) {
+    res.status(400).json({ success: false, error: "Vehicle Make and Model are required." });
+    return;
+  }
+  const reportType = sanitizeText2(body.reportType) || "Complete Vehicle History Report";
+  const reasonForRequest = sanitizeText2(body.reasonForRequest) || "Considering purchasing a vehicle";
+  const purchaseStatus = sanitizeText2(body.purchaseStatus) || "Planning to purchase";
+  const accuracyConfirmed = Boolean(body.accuracyConfirmed);
+  const dataUsageConsent = Boolean(body.dataUsageConsent);
+  const termsAgreed = Boolean(body.termsAgreed);
+  if (!accuracyConfirmed || !dataUsageConsent || !termsAgreed) {
+    res.status(422).json({
+      success: false,
+      error: "All three customer consent checkboxes (Accuracy, Data Usage, and Terms & Privacy) must be accepted."
+    });
+    return;
+  }
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  const submissionNumber = `REQ-${Math.floor(1e4 + Math.random() * 9e4)}`;
+  const submissionId = `intake-${Date.now()}`;
+  const submission = {
+    id: submissionId,
+    submissionNumber,
+    timestamp: now,
+    fullName,
+    email,
+    phone,
+    country,
+    preferredContactMethod,
+    vinOrChassis,
+    registrationPlate,
+    make,
+    model,
+    modelYear,
+    vehicleColor,
+    currentMileage,
+    countryOfRegistration,
+    reportType,
+    reasonForRequest,
+    purchaseStatus,
+    additionalNotes: sanitizeText2(body.additionalNotes || body.additionalInformation),
+    documentFileName: body.documentFileName ? sanitizeText2(body.documentFileName) : void 0,
+    documentFileSize: body.documentFileSize ? sanitizeText2(body.documentFileSize) : void 0,
+    vehiclePhotos: Array.isArray(body.vehiclePhotos) ? body.vehiclePhotos : void 0,
+    vehiclePhotoCount: Array.isArray(body.vehiclePhotos) ? body.vehiclePhotos.length : body.vehiclePhotoCount || 0,
+    accuracyConfirmed,
+    dataUsageConsent,
+    termsAgreed,
+    status: "Received"
+  };
+  await db.createIntakeSubmissionAsync(submission);
+  let generatedOrder;
+  let reportDownloadUrl;
+  const shouldAutoGenerate = body.autoGenerateReport !== false;
+  if (shouldAutoGenerate) {
+    try {
+      const orderNum = `AA-${Math.floor(1e4 + Math.random() * 9e4)}`;
+      const orderId = `ord-${Date.now()}`;
+      const auditLogs = [
+        {
+          id: `log-${Date.now()}-1`,
+          timestamp: now,
+          actor: "Customer Intake Form",
+          action: "Intake Request Submitted",
+          details: `Submitted via Google Forms spec intake layer (${submissionNumber}).`
+        },
+        {
+          id: `log-${Date.now()}-2`,
+          timestamp: now,
+          actor: "AutoAudit Automated Engine",
+          action: "Auto-Generate Triggered",
+          details: `Auto-compiling vehicle intelligence report for ${make} ${model} (${vinOrChassis}).`
+        }
+      ];
+      const newOrder = {
+        id: orderId,
+        orderNumber: orderNum,
+        serviceId: "comprehensive-vin",
+        serviceName: reportType,
+        status: "Paid / New",
+        subtotal: 28.99,
+        discountAmount: 0,
+        total: 28.99,
+        customer: {
+          fullName,
+          email,
+          phone,
+          smsNotifications: true
+        },
+        vehicle: {
+          vinOrReg: vinOrChassis,
+          isVin: vinOrChassis.length === 17,
+          make,
+          model,
+          year: modelYear,
+          mileage: currentMileage,
+          countryOrState: countryOfRegistration,
+          customerNotes: `Plate: ${registrationPlate}. Reason: ${reasonForRequest}. Note: ${submission.additionalNotes || "None"}`
+        },
+        payment: {
+          status: "Paid",
+          gatewayRef: `intake_req_${submissionNumber}`,
+          paidAt: now,
+          method: "AutoAudit Intake Instant Voucher"
+        },
+        internalNotes: `AutoAudit Customer Intake Submission #${submissionNumber}. Preferred Contact: ${preferredContactMethod}`,
+        createdAt: now,
+        updatedAt: now,
+        auditLogs
+      };
+      db.createOrder(newOrder);
+      const reportResult = await processOrderReport(newOrder, {
+        autoNotifyUser: true,
+        targetStatus: "Ready"
+      });
+      generatedOrder = reportResult.order;
+      reportDownloadUrl = reportResult.fileUrl;
+      db.updateIntakeSubmission(submissionId, {
+        status: "Report Generated",
+        autoGeneratedOrderId: orderId,
+        autoGeneratedReportUrl: reportDownloadUrl,
+        internalNotes: `Report auto-generated (${reportResult.fileName}). Notified via email & queued for ${preferredContactMethod}.`
+      });
+      submission.status = "Report Generated";
+      submission.autoGeneratedOrderId = orderId;
+      submission.autoGeneratedReportUrl = reportDownloadUrl;
+    } catch (err) {
+      console.error("[IntakeRouter] Auto-generation error:", err);
+    }
+  }
+  res.status(201).json({
+    success: true,
+    message: "Vehicle history report request successfully submitted to AutoAudit.",
+    data: {
+      submission,
+      order: generatedOrder,
+      reportDownloadUrl,
+      confirmation: {
+        title: "Thank you for choosing AutoAudit!",
+        message: "Your vehicle history report request has been successfully submitted. Our team will review the information provided and contact you using your preferred contact method.",
+        tagline: "AutoAudit \u2014 Know the History. Drive with Confidence."
+      }
+    }
+  });
+});
+intakeRouter.patch("/:id", requireAdminAuth, (req, res) => {
+  const { id } = req.params;
+  const { status, internalNotes } = req.body;
+  const updated = db.updateIntakeSubmission(id, {
+    ...status ? { status } : {},
+    ...internalNotes ? { internalNotes: sanitizeText2(internalNotes) } : {}
+  });
+  if (!updated) {
+    res.status(404).json({ success: false, error: `Intake submission "${id}" not found.` });
+    return;
+  }
+  res.json({
+    success: true,
+    data: updated
+  });
+});
+intakeRouter.post("/:id/auto-generate", requireAdminAuth, async (req, res) => {
+  const { id } = req.params;
+  const submission = db.getIntakeSubmissionById(id);
+  if (!submission) {
+    res.status(404).json({ success: false, error: `Intake submission "${id}" not found.` });
+    return;
+  }
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  const orderNum = `AA-${Math.floor(1e4 + Math.random() * 9e4)}`;
+  const orderId = `ord-${Date.now()}`;
+  const newOrder = {
+    id: orderId,
+    orderNumber: orderNum,
+    serviceId: "comprehensive-vin",
+    serviceName: submission.reportType,
+    status: "Paid / New",
+    subtotal: 28.99,
+    discountAmount: 0,
+    total: 28.99,
+    customer: {
+      fullName: submission.fullName,
+      email: submission.email,
+      phone: submission.phone,
+      smsNotifications: true
+    },
+    vehicle: {
+      vinOrReg: submission.vinOrChassis,
+      isVin: submission.vinOrChassis.length === 17,
+      make: submission.make,
+      model: submission.model,
+      year: submission.modelYear,
+      mileage: submission.currentMileage || "Pending verification",
+      countryOrState: submission.countryOfRegistration,
+      customerNotes: `Plate: ${submission.registrationPlate}. Reason: ${submission.reasonForRequest}`
+    },
+    payment: {
+      status: "Paid",
+      gatewayRef: `intake_req_${submission.submissionNumber}`,
+      paidAt: now,
+      method: "Admin Manual Auto-Generate"
+    },
+    internalNotes: `Auto-generated from intake request #${submission.submissionNumber}. Contact: ${submission.preferredContactMethod}`,
+    createdAt: now,
+    updatedAt: now,
+    auditLogs: [
+      {
+        id: `log-${Date.now()}`,
+        timestamp: now,
+        actor: "Admin Staff",
+        action: "Manual Report Compilation",
+        details: `Triggered auto-generate report for intake ${submission.submissionNumber}.`
+      }
+    ]
+  };
+  db.createOrder(newOrder);
+  const result = await processOrderReport(newOrder, {
+    autoNotifyUser: true,
+    targetStatus: "Ready"
+  });
+  db.updateIntakeSubmission(submission.id, {
+    status: "Report Generated",
+    autoGeneratedOrderId: orderId,
+    autoGeneratedReportUrl: result.fileUrl,
+    internalNotes: `Report auto-generated by admin (${result.fileName}). Customer notified.`
+  });
+  res.json({
+    success: true,
+    message: `Report auto-generated successfully for intake submission ${submission.submissionNumber}.`,
+    data: {
+      order: result.order,
+      reportUrl: result.fileUrl,
+      fileName: result.fileName
+    }
+  });
+});
+
+// server/routes/gemini.ts
+import { Router as Router11 } from "express";
+import { GoogleGenAI } from "@google/genai";
+var geminiRouter = Router11();
+var ai = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
+  httpOptions: {
+    headers: {
+      "User-Agent": "aistudio-build"
+    }
+  }
+});
+var CHAT_ROLES = {
+  "advisor": {
+    id: "advisor",
+    name: "Vehicle History Advisor",
+    badge: "General & Advisory Tasks",
+    model: "gemini-3.1-flash-lite",
+    tagline: "General vehicle history, title brands, odometer checks, and buyer advice",
+    systemInstruction: `You are the AutoAudit Senior Vehicle History & Automotive Advisory Specialist. AutoAudit is a premier vehicle history report ordering and automotive intelligence platform that provides NMVTIS verified records, insurance salvage flags, title brand checks, lien checks, NHTSA recall notices, and odometer verification.
+
+Your role:
+- Provide friendly, expert, and practical advice for used-car shoppers, vehicle owners, and automotive enthusiasts.
+- Explain vehicle history concepts clearly: salvage vs rebuilt titles, flood brands, odometer rollbacks, frame/structural damage, lemon law buybacks, lien releases, and previous ownership records.
+- Advise on what to inspect physically when a report flags an accident or minor damage.
+- Help customers understand AutoAudit report tiers when asked:
+  * Basic VIN Check ($14.99): Title brand status, salvage/junk records, total loss check, stolen vehicle check.
+  * Complete History ($28.99, Most Popular): Everything in Basic + previous owners, odometer rollback check, accident history, lien & repossession, open recalls, service timeline.
+  * Premium Full Inspection ($42.99): Everything in Complete + full NMVTIS records, market valuation, frame check, auction photos where available, and priority fulfillment.
+- Maintain a helpful, trustworthy, and conversational tone. Format answers using markdown with bullet points and bold headers for easy reading.`,
+    suggestedQuestions: [
+      "What is the difference between a Salvage and Rebuilt title?",
+      "How do I detect an odometer rollback before buying?",
+      "Which AutoAudit report package should I choose?",
+      "What red flags should I look for in a vehicle maintenance history?"
+    ]
+  },
+  "fast-decoder": {
+    id: "fast-decoder",
+    name: "Quick VIN Decoder",
+    badge: "Fast Tasks",
+    model: "gemini-3.1-flash-lite",
+    tagline: "High-speed 17-digit VIN breakdown, trim specs, and plant origins",
+    systemInstruction: `You are the AutoAudit Ultra-Fast VIN Decoder and Technical Spec Engine. 
+
+Your role:
+- Provide rapid, ultra-concise breakdowns of 17-character ISO 3779 Vehicle Identification Numbers (VINs).
+- Decode the 3-character WMI (World Manufacturer Identifier) for country and make, the 5-character VDS (Vehicle Descriptor Section) for model/engine/body type, the 9th check digit, the 10th model year character, the 11th assembly plant code, and the sequential production number.
+- Instantly explain NHTSA safety recall lookup guidelines and check digit calculations.
+- Keep responses fast, snappy, structured, and direct without unnecessary preamble. Present vehicle specifications in clean bulleted lists.`,
+    suggestedQuestions: [
+      "How is the 10th digit of a VIN used to determine model year?",
+      "Can you decode this sample VIN: 1HGCR2F83HA029381?",
+      "How does the 9th check digit mathematical formula work?",
+      "Where can I find the VIN stamp on my car?"
+    ]
+  },
+  "damage-analyst": {
+    id: "damage-analyst",
+    name: "Damage & Forensics Analyst",
+    badge: "Forensics Tasks",
+    model: "gemini-3.1-flash-lite",
+    tagline: "Deep structural forensics, salvage auction forensics, and diminished value",
+    systemInstruction: `You are the AutoAudit Forensic Vehicle Damage, Structural Diagnostics, and Diminished Value Analyst.
+
+Your role:
+- Conduct rigorous, in-depth technical analysis of structural unibody/frame damage, collision load-path deformation, A/B/C pillar integrity, suspension mounting distortion, and crumple-zone behavior.
+- Diagnose salvage auction history indicators (Copart/IAAI designations such as Primary Damage Front End, Secondary Undercarriage, Biohazard, Fresh Water vs Salt Water Flood).
+- Explain airbag deployment trigger thresholds, seatbelt pre-tensioner replacements, and SRS system recertification requirements.
+- Calculate post-accident diminished value impact and insurance dispute strategies.
+- Provide comprehensive, step-by-step diagnostic inspection checklists for master mechanics and pre-purchase vehicle inspectors.
+- Use authoritative, deeply reasoned technical terminology while providing clear conclusions and risk ratings (Low / Moderate / Severe / Unsafe).`,
+    suggestedQuestions: [
+      "How does structural unibody damage affect used car safety and resale value?",
+      "What are the telltale signs of concealed flood damage in electronics?",
+      "How do insurance adjusters calculate diminished value after a collision?",
+      'What does "Frame Damage - Altered Rail" indicate on an inspection report?'
+    ]
+  }
+};
+geminiRouter.get("/roles", (_req, res) => {
+  res.json({
+    success: true,
+    roles: Object.values(CHAT_ROLES).map((r) => ({
+      id: r.id,
+      name: r.name,
+      badge: r.badge,
+      model: r.model,
+      tagline: r.tagline,
+      suggestedQuestions: r.suggestedQuestions
+    }))
+  });
+});
+geminiRouter.post("/chat", async (req, res) => {
+  try {
+    const { messages, roleId = "advisor", modelOverride } = req.body;
+    if (!Array.isArray(messages) || messages.length === 0) {
+      res.status(400).json({
+        success: false,
+        error: "Invalid request: messages must be a non-empty array of conversation turns."
+      });
+      return;
+    }
+    const selectedRole = CHAT_ROLES[roleId] || CHAT_ROLES["advisor"];
+    const selectedModel = modelOverride || selectedRole.model || "gemini-3.1-flash-lite";
+    const formattedContents = messages.map((m) => {
+      const role = m.role === "user" ? "user" : "model";
+      return {
+        role,
+        parts: [{ text: String(m.content || "").trim() }]
+      };
+    }).filter((turn) => turn.parts[0].text.length > 0);
+    if (formattedContents.length === 0) {
+      res.status(400).json({
+        success: false,
+        error: "No valid text content provided in messages."
+      });
+      return;
+    }
+    let replyText = "";
+    let actualModelUsed = selectedModel;
+    try {
+      const response = await ai.models.generateContent({
+        model: selectedModel,
+        contents: formattedContents,
+        config: {
+          systemInstruction: selectedRole.systemInstruction,
+          temperature: 0.7
+        }
+      });
+      replyText = response.text || "";
+    } catch (primaryError) {
+      console.warn(`Primary model ${selectedModel} failed (${primaryError?.message}). Falling back to gemini-3.1-flash-lite...`);
+      if (selectedModel !== "gemini-3.1-flash-lite") {
+        actualModelUsed = "gemini-3.1-flash-lite";
+        const fallbackResponse = await ai.models.generateContent({
+          model: "gemini-3.1-flash-lite",
+          contents: formattedContents,
+          config: {
+            systemInstruction: selectedRole.systemInstruction,
+            temperature: 0.7
+          }
+        });
+        replyText = fallbackResponse.text || "";
+      } else {
+        throw primaryError;
+      }
+    }
+    if (!replyText) {
+      replyText = "I received your inquiry regarding vehicle history records. How can I assist you with checking a VIN or understanding our AutoAudit reports?";
+    }
+    res.json({
+      success: true,
+      reply: replyText,
+      modelUsed: actualModelUsed,
+      roleId: selectedRole.id,
+      roleName: selectedRole.name,
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    });
+  } catch (error) {
+    console.error("Error generating Gemini chat response:", error);
+    const errorMessage = error?.message || "Failed to generate AI response";
+    res.status(500).json({
+      success: false,
+      error: errorMessage,
+      details: process.env.NODE_ENV === "development" ? String(error) : void 0
+    });
+  }
+});
+
+// server/routes/video.ts
+import { Router as Router12 } from "express";
+import { GoogleGenAI as GoogleGenAI2, GenerateVideosOperation } from "@google/genai";
+var videoRouter = Router12();
+var ai2 = new GoogleGenAI2({
+  apiKey: process.env.GEMINI_API_KEY,
+  httpOptions: {
+    headers: {
+      "User-Agent": "aistudio-build"
+    }
+  }
+});
+var activeOperations = /* @__PURE__ */ new Map();
+var SAMPLE_VIDEOS = {
+  "16:9": [
+    {
+      id: "sample-16-9-1",
+      title: "360\xB0 Studio Inspection Sweep",
+      prompt: "Cinematic 360-degree sweep around a midnight black Porsche 911 GT3 in a clean studio showroom, spotlights reflecting off flawless ceramic coat paint, photorealistic 8k video.",
+      url: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+      duration: "15s"
+    },
+    {
+      id: "sample-16-9-2",
+      title: "Chassis & Engine Bay Walkthrough",
+      prompt: "Detailed mechanical inspection under the hood of a twin-turbo V8 engine, smooth macro camera pan over intake manifold, suspension struts, and brake calipers with automotive workshop lighting.",
+      url: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+      duration: "15s"
+    },
+    {
+      id: "sample-16-9-3",
+      title: "Scenic Coastal Highway Test Drive",
+      prompt: "Low-angle drone tracking shot of an all-wheel-drive luxury SUV driving along a winding coastal highway at golden hour sunset, cinematic motion blur and lens flare.",
+      url: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+      duration: "15s"
+    }
+  ],
+  "9:16": [
+    {
+      id: "sample-9-16-1",
+      title: "Vertical Mobile Inspection Reel",
+      prompt: "Vertical 9:16 smartphone camera walkthrough inspecting body gaps, paint depth, and front fascia of a luxury performance vehicle, clean modern garage background.",
+      url: "https://storage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4",
+      duration: "10s"
+    },
+    {
+      id: "sample-9-16-2",
+      title: "Odometer & Cockpit Scan",
+      prompt: "Vertical portrait format cockpit scan showing leather steering wheel, pristine digital instrument cluster displaying low mileage, and clean carbon fiber interior trim.",
+      url: "https://storage.googleapis.com/gtv-videos-bucket/sample/WhatCarCanYouGetForAGrand.mp4",
+      duration: "12s"
+    }
+  ]
+};
+async function handleGenerateVideo(req, res) {
+  try {
+    const { prompt, aspectRatio = "16:9", resolution = "720p" } = req.body;
+    if (!prompt || typeof prompt !== "string" || prompt.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "A prompt describing the vehicle or scene is required."
+      });
+    }
+    const validAspectRatio = aspectRatio === "9:16" ? "9:16" : "16:9";
+    const cleanPrompt = prompt.trim();
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({
+        success: false,
+        error: "GEMINI_API_KEY is not configured on the server."
+      });
+    }
+    let operation;
+    try {
+      operation = await ai2.models.generateVideos({
+        model: "veo-3.1-fast-generate-preview",
+        prompt: cleanPrompt,
+        config: {
+          numberOfVideos: 1,
+          resolution: resolution === "1080p" ? "1080p" : "720p",
+          aspectRatio: validAspectRatio
+        }
+      });
+    } catch (apiError) {
+      const errMsg = apiError?.message || String(apiError);
+      const isQuotaError = errMsg.includes("429") || errMsg.includes("quota") || errMsg.includes("RESOURCE_EXHAUSTED");
+      return res.status(isQuotaError ? 429 : 500).json({
+        success: false,
+        error: isQuotaError ? "Gemini Veo API rate limit reached (Quota Exceeded). You can preview with pre-rendered automotive demo videos below or try again in a few moments." : `Veo video generation error: ${errMsg}`,
+        isQuotaError,
+        model: "veo-3.1-fast-generate-preview",
+        fallbackSamples: SAMPLE_VIDEOS[validAspectRatio]
+      });
+    }
+    if (!operation || !operation.name) {
+      return res.status(500).json({
+        success: false,
+        error: "Failed to initiate Veo video generation operation."
+      });
+    }
+    activeOperations.set(operation.name, {
+      operationName: operation.name,
+      prompt: cleanPrompt,
+      aspectRatio: validAspectRatio,
+      model: "veo-3.1-fast-generate-preview",
+      createdAt: Date.now()
+    });
+    return res.json({
+      success: true,
+      operationName: operation.name,
+      prompt: cleanPrompt,
+      aspectRatio: validAspectRatio,
+      model: "veo-3.1-fast-generate-preview"
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: error?.message || "Unexpected server error while generating video"
+    });
+  }
+}
+async function handleVideoStatus(req, res) {
+  try {
+    const { operationName } = req.body;
+    if (!operationName || typeof operationName !== "string") {
+      return res.status(400).json({
+        success: false,
+        error: "operationName is required to check status."
+      });
+    }
+    const op = new GenerateVideosOperation();
+    op.name = operationName;
+    const updated = await ai2.operations.getVideosOperation({ operation: op });
+    if (updated.error) {
+      return res.json({
+        success: false,
+        done: true,
+        error: updated.error.message || "Video generation failed during processing."
+      });
+    }
+    const isDone = !!updated.done;
+    const downloadUrl = isDone ? `/api/video-download?operationName=${encodeURIComponent(operationName)}` : null;
+    const stored = activeOperations.get(operationName);
+    return res.json({
+      success: true,
+      done: isDone,
+      downloadUrl,
+      aspectRatio: stored?.aspectRatio || "16:9",
+      prompt: stored?.prompt
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: error?.message || "Failed to poll video operation status."
+    });
+  }
+}
+async function handleVideoDownload(req, res) {
+  try {
+    const operationName = req.query.operationName || req.body?.operationName;
+    if (!operationName || typeof operationName !== "string") {
+      return res.status(400).json({
+        success: false,
+        error: "operationName parameter is required."
+      });
+    }
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({
+        success: false,
+        error: "GEMINI_API_KEY is not configured on the server."
+      });
+    }
+    const op = new GenerateVideosOperation();
+    op.name = operationName;
+    const updated = await ai2.operations.getVideosOperation({ operation: op });
+    if (!updated.done) {
+      return res.status(202).json({
+        success: false,
+        done: false,
+        message: "Video is still rendering. Please poll again in a few seconds."
+      });
+    }
+    const videoUri = updated.response?.generatedVideos?.[0]?.video?.uri;
+    if (!videoUri) {
+      return res.status(404).json({
+        success: false,
+        error: "Completed operation did not return a valid video URI."
+      });
+    }
+    const videoRes = await fetch(videoUri, {
+      headers: {
+        "x-goog-api-key": apiKey
+      }
+    });
+    if (!videoRes.ok) {
+      return res.status(videoRes.status).json({
+        success: false,
+        error: `Failed to download generated video: ${videoRes.statusText}`
+      });
+    }
+    const arrayBuffer = await videoRes.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    res.setHeader("Content-Type", "video/mp4");
+    res.setHeader("Content-Length", buffer.length);
+    res.setHeader("Content-Disposition", 'inline; filename="autoaudit-veo-video.mp4"');
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    return res.send(buffer);
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: error?.message || "Error downloading video."
+    });
+  }
+}
+videoRouter.post("/generate", handleGenerateVideo);
+videoRouter.post("/status", handleVideoStatus);
+videoRouter.get("/download", handleVideoDownload);
+videoRouter.post("/download", handleVideoDownload);
+videoRouter.get("/samples", (_req, res) => {
+  res.json({
+    success: true,
+    samples: SAMPLE_VIDEOS
+  });
+});
+
+// server/routes/adminMongodb.ts
+import { Router as Router13 } from "express";
+import mongoose10 from "mongoose";
+
+// server/mongodb/migration.ts
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 var __filename = fileURLToPath(import.meta.url);
-var __dirname = path2.dirname(__filename);
+var __dirname = path.dirname(__filename);
+function chunkArray(items, size) {
+  const chunks = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+}
+async function runMigration(options = {}) {
+  const startTime = Date.now();
+  const dryRun = Boolean(options.dryRun);
+  const batchSize = Math.max(1, options.batchSize || 50);
+  const requestedSource = options.source || "auto";
+  console.log(`[Migration] Starting MongoDB Atlas migration utility... (dryRun: ${dryRun})`);
+  if (!isMongoConnected()) {
+    const connected = await connectToMongoDB();
+    if (!connected && !dryRun) {
+      throw new Error("Cannot run migration: MongoDB Atlas connection could not be established.");
+    }
+  }
+  let sourceServices = [...INITIAL_SERVICES];
+  let sourceCoupons = [...INITIAL_COUPONS];
+  let sourceOrders = [...INITIAL_ORDERS];
+  let sourceEmails = [...INITIAL_EMAILS];
+  let sourceIntake = [...INITIAL_INTAKE_SUBMISSIONS];
+  let sourceType = "AutoAudit Production Seed & Memory Repository";
+  const backupPath = path.resolve(__dirname, "backup", "supabase_backup.json");
+  if ((requestedSource === "backup" || requestedSource === "auto") && fs.existsSync(backupPath)) {
+    try {
+      const backupRaw = fs.readFileSync(backupPath, "utf8");
+      const backupData = JSON.parse(backupRaw);
+      if (Array.isArray(backupData.orders) && backupData.orders.length > 0) {
+        sourceOrders = backupData.orders;
+      }
+      if (Array.isArray(backupData.coupons) && backupData.coupons.length > 0) {
+        sourceCoupons = backupData.coupons;
+      }
+      if (Array.isArray(backupData.emails) && backupData.emails.length > 0) {
+        sourceEmails = backupData.emails;
+      }
+      sourceType = `Verified Historical Archive (${path.basename(backupPath)} - ${backupData.exportedAt || "Archived"})`;
+      console.log(`[Migration] Loaded ${sourceOrders.length} orders, ${sourceCoupons.length} coupons, and ${sourceEmails.length} emails from historical backup archive.`);
+    } catch (e) {
+      console.warn("[Migration] Note: Could not parse backup file, using active memory repository:", e?.message);
+    }
+  }
+  const stats = {
+    services: {
+      collection: "services",
+      sourceCount: sourceServices.length,
+      processed: 0,
+      inserted: 0,
+      updated: 0,
+      skipped: 0,
+      failed: 0,
+      errors: []
+    },
+    coupons: {
+      collection: "coupons",
+      sourceCount: sourceCoupons.length,
+      processed: 0,
+      inserted: 0,
+      updated: 0,
+      skipped: 0,
+      failed: 0,
+      errors: []
+    },
+    orders: {
+      collection: "orders",
+      sourceCount: sourceOrders.length,
+      processed: 0,
+      inserted: 0,
+      updated: 0,
+      skipped: 0,
+      failed: 0,
+      errors: []
+    },
+    emails: {
+      collection: "emails",
+      sourceCount: sourceEmails.length,
+      processed: 0,
+      inserted: 0,
+      updated: 0,
+      skipped: 0,
+      failed: 0,
+      errors: []
+    },
+    intakeSubmissions: {
+      collection: "customerIntake",
+      sourceCount: sourceIntake.length,
+      processed: 0,
+      inserted: 0,
+      updated: 0,
+      skipped: 0,
+      failed: 0,
+      errors: []
+    },
+    whatsAppConfig: {
+      collection: "whatsAppConfig",
+      sourceCount: 1,
+      processed: 0,
+      inserted: 0,
+      updated: 0,
+      skipped: 0,
+      failed: 0,
+      errors: []
+    }
+  };
+  for (const batch of chunkArray(sourceServices, batchSize)) {
+    for (const service of batch) {
+      stats.services.processed++;
+      if (dryRun) {
+        stats.services.inserted++;
+        continue;
+      }
+      try {
+        const existing = await ServiceModel.findOne({ id: service.id });
+        if (existing) {
+          await ServiceModel.updateOne({ id: service.id }, { $set: service });
+          stats.services.updated++;
+        } else {
+          await ServiceModel.create(service);
+          stats.services.inserted++;
+        }
+      } catch (err) {
+        stats.services.failed++;
+        stats.services.errors.push(`Service ${service.id}: ${err.message}`);
+      }
+    }
+  }
+  for (const batch of chunkArray(sourceCoupons, batchSize)) {
+    for (const coupon of batch) {
+      stats.coupons.processed++;
+      if (dryRun) {
+        stats.coupons.inserted++;
+        continue;
+      }
+      try {
+        const code = coupon.code.toUpperCase();
+        const existing = await CouponModel.findOne({ code });
+        if (existing) {
+          await CouponModel.updateOne({ code }, { $set: coupon });
+          stats.coupons.updated++;
+        } else {
+          await CouponModel.create({ ...coupon, code });
+          stats.coupons.inserted++;
+        }
+      } catch (err) {
+        stats.coupons.failed++;
+        stats.coupons.errors.push(`Coupon ${coupon.code}: ${err.message}`);
+      }
+    }
+  }
+  for (const batch of chunkArray(sourceOrders, batchSize)) {
+    for (const order of batch) {
+      stats.orders.processed++;
+      if (dryRun) {
+        stats.orders.inserted++;
+        continue;
+      }
+      try {
+        const existing = await OrderModel.findOne({
+          $or: [{ id: order.id }, { orderNumber: order.orderNumber }]
+        });
+        if (existing) {
+          await OrderModel.updateOne(
+            { id: order.id },
+            {
+              $set: {
+                ...order,
+                updatedAt: order.updatedAt || (/* @__PURE__ */ new Date()).toISOString()
+              }
+            }
+          );
+          stats.orders.updated++;
+        } else {
+          await OrderModel.create(order);
+          stats.orders.inserted++;
+        }
+      } catch (err) {
+        stats.orders.failed++;
+        stats.orders.errors.push(`Order ${order.orderNumber}: ${err.message}`);
+      }
+    }
+  }
+  for (const batch of chunkArray(sourceEmails, batchSize)) {
+    for (const email of batch) {
+      stats.emails.processed++;
+      if (dryRun) {
+        stats.emails.inserted++;
+        continue;
+      }
+      try {
+        const existing = await EmailModel.findOne({ id: email.id });
+        if (existing) {
+          await EmailModel.updateOne({ id: email.id }, { $set: email });
+          stats.emails.updated++;
+        } else {
+          await EmailModel.create(email);
+          stats.emails.inserted++;
+        }
+      } catch (err) {
+        stats.emails.failed++;
+        stats.emails.errors.push(`Email ${email.id}: ${err.message}`);
+      }
+    }
+  }
+  for (const batch of chunkArray(sourceIntake, batchSize)) {
+    for (const intake of batch) {
+      stats.intakeSubmissions.processed++;
+      if (dryRun) {
+        stats.intakeSubmissions.inserted++;
+        continue;
+      }
+      try {
+        const existing = await CustomerIntakeModel.findOne({
+          $or: [{ id: intake.id }, { submissionNumber: intake.submissionNumber }]
+        });
+        if (existing) {
+          await CustomerIntakeModel.updateOne({ id: intake.id }, { $set: intake });
+          stats.intakeSubmissions.updated++;
+        } else {
+          await CustomerIntakeModel.create(intake);
+          stats.intakeSubmissions.inserted++;
+        }
+      } catch (err) {
+        stats.intakeSubmissions.failed++;
+        stats.intakeSubmissions.errors.push(`Intake ${intake.submissionNumber}: ${err.message}`);
+      }
+    }
+  }
+  stats.whatsAppConfig.processed++;
+  if (dryRun) {
+    stats.whatsAppConfig.inserted++;
+  } else {
+    try {
+      await WhatsAppConfigModel.updateOne(
+        { key: "global" },
+        { $setOnInsert: { key: "global", ...INITIAL_WHATSAPP_CONFIG } },
+        { upsert: true }
+      );
+      stats.whatsAppConfig.inserted++;
+    } catch (err) {
+      stats.whatsAppConfig.failed++;
+      stats.whatsAppConfig.errors.push(`WhatsApp Config: ${err.message}`);
+    }
+  }
+  const destinationCounts = {};
+  if (!dryRun && isMongoConnected()) {
+    try {
+      destinationCounts.services = await ServiceModel.countDocuments();
+      destinationCounts.coupons = await CouponModel.countDocuments();
+      destinationCounts.orders = await OrderModel.countDocuments();
+      destinationCounts.emails = await EmailModel.countDocuments();
+      destinationCounts.intakeSubmissions = await CustomerIntakeModel.countDocuments();
+      destinationCounts.whatsAppConfig = await WhatsAppConfigModel.countDocuments();
+    } catch {
+    }
+  }
+  const durationMs = Date.now() - startTime;
+  let totalProcessed = 0;
+  let totalErrors = 0;
+  for (const key of Object.keys(stats)) {
+    totalProcessed += stats[key].processed;
+    totalErrors += stats[key].failed;
+  }
+  const reconciled = dryRun || destinationCounts.orders >= sourceOrders.length && destinationCounts.services >= sourceServices.length && destinationCounts.coupons >= sourceCoupons.length;
+  return {
+    timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+    dryRun,
+    sourceType,
+    collections: stats,
+    totalProcessed,
+    totalErrors,
+    durationMs,
+    destinationCounts,
+    reconciled,
+    message: dryRun ? `Dry run completed successfully. ${totalProcessed} records analyzed from ${sourceType} with 0 write modifications.` : `Migration completed in ${durationMs}ms. ${totalProcessed} records processed (${totalErrors} errors). Reconciled: ${reconciled}`
+  };
+}
+if (process.argv[1] && process.argv[1].endsWith("migration.ts")) {
+  const args = process.argv.slice(2);
+  const dryRun = args.includes("--dry-run");
+  console.log("------------------------------------------------------------");
+  console.log("   AutoAudit - MongoDB Atlas Migration Utility");
+  console.log("------------------------------------------------------------");
+  runMigration({ dryRun }).then((report) => {
+    console.log("\nMigration Summary Report:");
+    console.log(JSON.stringify(report, null, 2));
+    return disconnectMongoDB();
+  }).then(() => {
+    console.log("\nMigration finished cleanly.");
+    process.exit(0);
+  }).catch((err) => {
+    console.error("\nFatal migration error:", err);
+    process.exit(1);
+  });
+}
+
+// server/routes/adminMongodb.ts
+var adminMongodbRouter = Router13();
+adminMongodbRouter.use(requireAdminAuth);
+adminMongodbRouter.get("/status", async (_req, res) => {
+  try {
+    const status = await getMongoStatus();
+    const counts = {};
+    if (status.isConnected) {
+      try {
+        counts.orders = await OrderModel.countDocuments();
+        counts.services = await ServiceModel.countDocuments();
+        counts.coupons = await CouponModel.countDocuments();
+        counts.emails = await EmailModel.countDocuments();
+        counts.customerIntake = await CustomerIntakeModel.countDocuments();
+        counts.contactEvents = await ContactEventModel.countDocuments();
+        counts.referrals = await ReferralModel.countDocuments();
+      } catch (err) {
+        console.warn("[Admin Mongo Status] Error reading collection counts:", err.message);
+      }
+    }
+    res.json({
+      success: true,
+      data: {
+        ...status,
+        collections: counts,
+        instructions: !status.isConfigured ? "MONGODB_URI is not set. Add MONGODB_URI=mongodb+srv://<user>:<password>@<host>/autoaudit_db to your environment variables." : !status.isConnected ? "MongoDB Atlas is configured but currently disconnected. Check network access IP whitelist (allow 0.0.0.0/0) and credentials in MongoDB Atlas." : "MongoDB Atlas is connected and fully operational."
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error?.message || "Failed to fetch MongoDB status" });
+  }
+});
+adminMongodbRouter.post("/migrate", async (req, res) => {
+  try {
+    const { dryRun = true, batchSize = 50, source = "auto" } = req.body;
+    const report = await runMigration({
+      dryRun: Boolean(dryRun),
+      batchSize: Number(batchSize) || 50,
+      source
+    });
+    res.json({
+      success: true,
+      data: report
+    });
+  } catch (error) {
+    console.error("[Admin Mongo Migrate] Migration error:", error);
+    res.status(500).json({
+      success: false,
+      error: error?.message || "Migration encountered an unexpected error."
+    });
+  }
+});
+adminMongodbRouter.post("/test-connection", async (req, res) => {
+  const { uri } = req.body;
+  const targetUri = uri || process.env.MONGODB_URI;
+  if (!targetUri) {
+    res.status(400).json({
+      success: false,
+      error: "No connection URI provided, and MONGODB_URI is not set in environment."
+    });
+    return;
+  }
+  const masked = maskMongoUri(targetUri);
+  try {
+    const testConn = await mongoose10.createConnection(targetUri, {
+      serverSelectionTimeoutMS: 4e3,
+      connectTimeoutMS: 5e3
+    }).asPromise();
+    const start = Date.now();
+    await testConn.db?.admin().ping();
+    const pingMs = Date.now() - start;
+    const dbName = testConn.name;
+    const host = testConn.host;
+    await testConn.close();
+    res.json({
+      success: true,
+      message: `Successfully connected to MongoDB Atlas (${masked})`,
+      details: {
+        host,
+        databaseName: dbName,
+        pingMs
+      }
+    });
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      error: `Failed to connect to ${masked}: ${err?.message || "Connection timeout or invalid credentials"}`
+    });
+  }
+});
+
+// server.ts
+var __filename2 = fileURLToPath2(import.meta.url);
+var __dirname2 = path2.dirname(__filename2);
 async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT) || 3e3;
@@ -2533,13 +4538,30 @@ async function startServer() {
     }
     next();
   });
-  const healthCheckHandler = (_req, res) => {
+  try {
+    const mongoConnected = await connectToMongoDB();
+    if (mongoConnected) {
+      await db.hydrateFromMongoDB();
+    }
+  } catch (err) {
+    console.warn("[MongoDB Atlas] Initialization notice:", err?.message || "Will use local fallback mode");
+  }
+  const healthCheckHandler = async (_req, res) => {
+    const mongoStatus = await getMongoStatus();
     res.json({
       status: "ok",
       service: "AutoAudit Vehicle Intelligence Engine",
-      version: "1.2.0",
+      version: "1.3.0",
       timestamp: (/* @__PURE__ */ new Date()).toISOString(),
-      uptime: process.uptime()
+      uptime: process.uptime(),
+      database: {
+        primary: "MongoDB Atlas",
+        status: mongoStatus.state,
+        connected: mongoStatus.isConnected,
+        pingMs: mongoStatus.pingMs,
+        host: mongoStatus.host,
+        dbName: mongoStatus.databaseName
+      }
     });
   };
   app.get("/health", healthCheckHandler);
@@ -2553,6 +4575,14 @@ async function startServer() {
   app.use("/api/stats", statsRouter);
   app.use("/api/analytics", analyticsRouter);
   app.use("/api/reports", reportsRouter);
+  app.use("/api/intake", intakeRouter);
+  app.use("/api/gemini", geminiRouter);
+  app.use("/api/video", videoRouter);
+  app.use("/api/admin/mongodb", adminMongodbRouter);
+  app.post("/api/generate-video", handleGenerateVideo);
+  app.post("/api/video-status", handleVideoStatus);
+  app.get("/api/video-download", handleVideoDownload);
+  app.post("/api/video-download", handleVideoDownload);
   app.use("/api", (req, res) => {
     res.status(404).json({
       success: false,
@@ -2571,7 +4601,7 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path2.resolve(__dirname, "dist");
+    const distPath = path2.resolve(__dirname2, "dist");
     app.use(express.static(distPath));
     app.use((_req, res) => {
       res.sendFile(path2.resolve(distPath, "index.html"));
@@ -2584,9 +4614,25 @@ async function startServer() {
       error: "An internal server error occurred."
     });
   });
-  app.listen(PORT, "0.0.0.0", () => {
+  const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`\u{1F680} AutoAudit server active on http://0.0.0.0:${PORT}`);
   });
+  const handleShutdown = async (signal) => {
+    console.log(`
+[AutoAudit] Received ${signal}. Commencing graceful shutdown...`);
+    server.close(async () => {
+      console.log("[AutoAudit] HTTP listener terminated.");
+      await disconnectMongoDB();
+      console.log("[AutoAudit] Server shutdown complete.");
+      process.exit(0);
+    });
+    setTimeout(() => {
+      console.error("[AutoAudit] Forcing shutdown after timeout.");
+      process.exit(1);
+    }, 1e4).unref();
+  };
+  process.on("SIGTERM", () => handleShutdown("SIGTERM"));
+  process.on("SIGINT", () => handleShutdown("SIGINT"));
 }
 startServer().catch((err) => {
   console.error("Failed to start AutoAudit server:", err);

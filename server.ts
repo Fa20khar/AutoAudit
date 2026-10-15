@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express, { Request, Response } from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -13,6 +14,9 @@ import { reportsRouter } from './server/routes/reports';
 import { intakeRouter } from './server/routes/intake';
 import { geminiRouter } from './server/routes/gemini';
 import { videoRouter, handleGenerateVideo, handleVideoStatus, handleVideoDownload } from './server/routes/video';
+import { adminMongodbRouter } from './server/routes/adminMongodb';
+import { connectToMongoDB, disconnectMongoDB, getMongoStatus } from './server/mongodb/connection';
+import { db } from './server/db';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -37,14 +41,33 @@ async function startServer() {
     next();
   });
 
+  // Connect to MongoDB Atlas (primary application database)
+  try {
+    const mongoConnected = await connectToMongoDB();
+    if (mongoConnected) {
+      await db.hydrateFromMongoDB();
+    }
+  } catch (err: any) {
+    console.warn('[MongoDB Atlas] Initialization notice:', err?.message || 'Will use local fallback mode');
+  }
+
   // Health Check endpoints: /health for cloud/Railway deployment probes & /api/health for frontend
-  const healthCheckHandler = (_req: Request, res: Response) => {
+  const healthCheckHandler = async (_req: Request, res: Response) => {
+    const mongoStatus = await getMongoStatus();
     res.json({
       status: 'ok',
       service: 'AutoAudit Vehicle Intelligence Engine',
-      version: '1.2.0',
+      version: '1.3.0',
       timestamp: new Date().toISOString(),
-      uptime: process.uptime()
+      uptime: process.uptime(),
+      database: {
+        primary: 'MongoDB Atlas',
+        status: mongoStatus.state,
+        connected: mongoStatus.isConnected,
+        pingMs: mongoStatus.pingMs,
+        host: mongoStatus.host,
+        dbName: mongoStatus.databaseName
+      }
     });
   };
   app.get('/health', healthCheckHandler);
@@ -63,6 +86,7 @@ async function startServer() {
   app.use('/api/intake', intakeRouter);
   app.use('/api/gemini', geminiRouter);
   app.use('/api/video', videoRouter);
+  app.use('/api/admin/mongodb', adminMongodbRouter);
 
   // Standard Veo 3 Video Generation Endpoints (SKILL.md pattern)
   app.post('/api/generate-video', handleGenerateVideo);
@@ -110,9 +134,29 @@ async function startServer() {
     });
   });
 
-  app.listen(PORT, '0.0.0.0', () => {
+  const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 AutoAudit server active on http://0.0.0.0:${PORT}`);
   });
+
+  // Graceful server shutdown on process signals
+  const handleShutdown = async (signal: string) => {
+    console.log(`\n[AutoAudit] Received ${signal}. Commencing graceful shutdown...`);
+    server.close(async () => {
+      console.log('[AutoAudit] HTTP listener terminated.');
+      await disconnectMongoDB();
+      console.log('[AutoAudit] Server shutdown complete.');
+      process.exit(0);
+    });
+
+    // Force exit after 10 seconds if graceful shutdown hangs
+    setTimeout(() => {
+      console.error('[AutoAudit] Forcing shutdown after timeout.');
+      process.exit(1);
+    }, 10000).unref();
+  };
+
+  process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+  process.on('SIGINT', () => handleShutdown('SIGINT'));
 }
 
 startServer().catch(err => {
