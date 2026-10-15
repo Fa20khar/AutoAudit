@@ -7,3 +7,4 @@ export { CustomerIntakeModel } from './models/CustomerIntake';
 export { ContactEventModel } from './models/ContactEvent';
 export { WhatsAppConfigModel } from './models/WhatsAppConfig';
 export { ReferralModel } from './models/Referral';
+export { AdminUserModel } from './models/AdminUser';

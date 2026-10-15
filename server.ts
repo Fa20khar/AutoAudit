@@ -14,8 +14,10 @@ import { reportsRouter } from './server/routes/reports';
 import { intakeRouter } from './server/routes/intake';
 import { geminiRouter } from './server/routes/gemini';
 import { videoRouter, handleGenerateVideo, handleVideoStatus, handleVideoDownload } from './server/routes/video';
+import { adminRouter } from './server/routes/admin';
 import { adminMongodbRouter } from './server/routes/adminMongodb';
 import { connectToMongoDB, disconnectMongoDB, getMongoStatus } from './server/mongodb/connection';
+import { ensureDefaultAdminAccount } from './server/middleware/auth';
 import { db } from './server/db';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -46,6 +48,7 @@ async function startServer() {
     const mongoConnected = await connectToMongoDB();
     if (mongoConnected) {
       await db.hydrateFromMongoDB();
+      await ensureDefaultAdminAccount();
     }
   } catch (err: any) {
     console.warn('[MongoDB Atlas] Initialization notice:', err?.message || 'Will use local fallback mode');
@@ -75,6 +78,7 @@ async function startServer() {
 
   // REST API Route Mounts
   app.use('/api/auth', authRouter);
+  app.use('/api/admin', adminRouter); // Strictly protects all /api/admin/* routes via requireAdminAuth
   app.use('/api/vin', vinRouter);
   app.use('/api/orders', ordersRouter);
   app.use('/api/services', servicesRouter);
@@ -86,7 +90,6 @@ async function startServer() {
   app.use('/api/intake', intakeRouter);
   app.use('/api/gemini', geminiRouter);
   app.use('/api/video', videoRouter);
-  app.use('/api/admin/mongodb', adminMongodbRouter);
 
   // Standard Veo 3 Video Generation Endpoints (SKILL.md pattern)
   app.post('/api/generate-video', handleGenerateVideo);

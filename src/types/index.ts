@@ -213,3 +213,21 @@ export interface CustomerIntakeSubmission {
   internalNotes?: string;
 }
 
+export interface AdminUser {
+  id: string;
+  email: string;
+  name?: string;
+  role: 'superadmin' | 'staff_admin' | 'fulfillment_specialist';
+  loginTime?: string;
+  expiresAt?: string;
+}
+
+export interface AdminAuthResponse {
+  success: boolean;
+  message: string;
+  token: string;
+  tokenType: string;
+  expiresIn: string;
+  user: AdminUser;
+}
+

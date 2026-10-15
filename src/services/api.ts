@@ -1,4 +1,4 @@
-import { Order, ServicePlan, Coupon, EmailNotification, ContactEvent, ContactAnalyticsSummary, WhatsAppConfig, CustomerIntakeSubmission } from '../types';
+import { Order, ServicePlan, Coupon, EmailNotification, ContactEvent, ContactAnalyticsSummary, WhatsAppConfig, CustomerIntakeSubmission, AdminUser, AdminAuthResponse } from '../types';
 
 /**
  * Custom Error class with HTTP status code and timeout details
@@ -36,11 +36,16 @@ async function request<T>(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-  const adminToken = typeof window !== 'undefined' ? sessionStorage.getItem('autoaudit_admin_token') : null;
+  const adminToken = typeof window !== 'undefined' 
+    ? (sessionStorage.getItem('autoaudit_admin_token') || localStorage.getItem('autoaudit_admin_token')) 
+    : null;
 
   const headers: Record<string, string> = {
     'Accept': 'application/json',
-    ...(adminToken ? { 'x-admin-token': adminToken } : {}),
+    ...(adminToken ? { 
+      'Authorization': `Bearer ${adminToken}`,
+      'x-admin-token': adminToken 
+    } : {}),
     ...(options.headers as Record<string, string> || {})
   };
 
