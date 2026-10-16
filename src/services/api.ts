@@ -53,8 +53,13 @@ async function request<T>(
     headers['Content-Type'] = 'application/json';
   }
 
+  const apiBase = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL
+    ? String(import.meta.env.VITE_API_BASE_URL)
+    : '').replace(/\/$/, '');
+  const url = endpoint.startsWith('http') ? endpoint : `${apiBase}${endpoint}`;
+
   try {
-    const response = await fetch(endpoint, {
+    const response = await fetch(url, {
       ...options,
       headers,
       signal: controller.signal
@@ -278,6 +283,47 @@ export const api = {
     return res.data;
   },
 
+  async updateOrderPaymentStatus(
+    id: string,
+    status: 'Paid' | 'Pending' | 'Failed' | 'Refunded',
+    notes?: string,
+    timeoutMs = 8000
+  ): Promise<Order> {
+    const res = await request<{ success: boolean; message: string; data: Order }>(
+      `/api/orders/${encodeURIComponent(id)}/payment`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ status, notes })
+      },
+      timeoutMs
+    );
+    return res.data;
+  },
+
+  async approveOrderPayment(id: string, notes?: string, timeoutMs = 8000): Promise<Order> {
+    const res = await request<{ success: boolean; message: string; data: Order }>(
+      `/api/orders/${encodeURIComponent(id)}/approve-payment`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ notes })
+      },
+      timeoutMs
+    );
+    return res.data;
+  },
+
+  async rejectOrderPayment(id: string, reason?: string, timeoutMs = 8000): Promise<Order> {
+    const res = await request<{ success: boolean; message: string; data: Order }>(
+      `/api/orders/${encodeURIComponent(id)}/reject-payment`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ reason })
+      },
+      timeoutMs
+    );
+    return res.data;
+  },
+
   /**
    * Mock Report Generator API Methods
    */
@@ -429,10 +475,28 @@ export const api = {
    */
   async adminLogin(credentials: { email?: string; password?: string; accessKey?: string }, timeoutMs = 8000): Promise<{
     success: boolean;
-    token: string;
-    user: any;
+    message: string;
+    token?: string;
+    user?: any;
+    requires2FA?: boolean;
+    setup2FARequired?: boolean;
+    preAuthToken?: string;
+    secret?: string;
+    otpauthUrl?: string;
+    backupCodes?: string[];
   }> {
-    const res = await request<{ success: boolean; message: string; token: string; user: any }>(
+    const res = await request<{
+      success: boolean;
+      message: string;
+      token?: string;
+      user?: any;
+      requires2FA?: boolean;
+      setup2FARequired?: boolean;
+      preAuthToken?: string;
+      secret?: string;
+      otpauthUrl?: string;
+      backupCodes?: string[];
+    }>(
       '/api/auth/admin-login',
       {
         method: 'POST',
@@ -445,6 +509,144 @@ export const api = {
       sessionStorage.setItem('autoaudit_admin_token', res.token);
     }
     return res;
+  },
+
+  /**
+   * Completes initial 2FA linking by verifying the first 6-digit TOTP code
+   */
+  async verify2FASetup(
+    payload: { preAuthToken: string; code: string },
+    timeoutMs = 8000
+  ): Promise<{
+    success: boolean;
+    message: string;
+    token: string;
+    user: any;
+  }> {
+    const res = await request<{
+      success: boolean;
+      message: string;
+      token: string;
+      user: any;
+    }>(
+      '/api/auth/2fa/verify-setup',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      },
+      timeoutMs
+    );
+
+    if (res.token && typeof window !== 'undefined') {
+      sessionStorage.setItem('autoaudit_admin_token', res.token);
+    }
+    return res;
+  },
+
+  /**
+   * Verifies standard 6-digit TOTP code (or emergency backup code) during login
+   */
+  async verify2FALogin(
+    payload: { preAuthToken: string; code: string },
+    timeoutMs = 8000
+  ): Promise<{
+    success: boolean;
+    message: string;
+    token: string;
+    user: any;
+  }> {
+    const res = await request<{
+      success: boolean;
+      message: string;
+      token: string;
+      user: any;
+    }>(
+      '/api/auth/2fa/verify-login',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      },
+      timeoutMs
+    );
+
+    if (res.token && typeof window !== 'undefined') {
+      sessionStorage.setItem('autoaudit_admin_token', res.token);
+    }
+    return res;
+  },
+
+  /**
+   * Requests a new 2FA setup QR code for re-linking authenticator app
+   */
+  async request2FAReset(timeoutMs = 8000): Promise<{
+    success: boolean;
+    preAuthToken: string;
+    secret: string;
+    otpauthUrl: string;
+    backupCodes: string[];
+    message: string;
+  }> {
+    return await request<{
+      success: boolean;
+      preAuthToken: string;
+      secret: string;
+      otpauthUrl: string;
+      backupCodes: string[];
+      message: string;
+    }>(
+      '/api/auth/2fa/reset-request',
+      { method: 'POST' },
+      timeoutMs
+    );
+  },
+
+  async verifyAdminToken(timeoutMs = 6000): Promise<{
+    success: boolean;
+    authenticated: boolean;
+    user?: any;
+  }> {
+    try {
+      return await request<{ success: boolean; authenticated: boolean; user?: any }>(
+        '/api/auth/verify',
+        { method: 'GET' },
+        timeoutMs
+      );
+    } catch {
+      return { success: false, authenticated: false };
+    }
+  },
+
+  async getSetupStatus(timeoutMs = 5000): Promise<{
+    success: boolean;
+    isSetupComplete: boolean;
+    canSetup: boolean;
+  }> {
+    try {
+      return await request<{ success: boolean; isSetupComplete: boolean; canSetup: boolean }>(
+        '/api/auth/setup-status',
+        { method: 'GET' },
+        timeoutMs
+      );
+    } catch {
+      return { success: false, isSetupComplete: true, canSetup: false };
+    }
+  },
+
+  async setupInitialAdmin(
+    payload: { setupSecret: string; email: string; password: string; name?: string },
+    timeoutMs = 8000
+  ): Promise<{ success: boolean; message: string }> {
+    return await request<{ success: boolean; message: string }>(
+      '/api/auth/setup-admin',
+      {
+        method: 'POST',
+        headers: {
+          'x-admin-setup-secret': payload.setupSecret
+        },
+        body: JSON.stringify(payload)
+      },
+      timeoutMs
+    );
   },
 
   adminLogout(): void {

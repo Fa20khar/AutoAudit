@@ -18,13 +18,19 @@ import { adminRouter } from './server/routes/admin';
 import { adminMongodbRouter } from './server/routes/adminMongodb';
 import { connectToMongoDB, disconnectMongoDB, getMongoStatus } from './server/mongodb/connection';
 import { ensureDefaultAdminAccount } from './server/middleware/auth';
+import { validateSecurityOnStartup } from './server/utils/jwt';
 import { db } from './server/db';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function startServer() {
+  // Validate backend security configurations and log diagnostics
+  validateSecurityOnStartup();
+
   const app = express();
+  // Enable proxy trust so req.ip correctly reflects the client IP behind Railway / Vercel ingress
+  app.set('trust proxy', 1);
   const PORT = Number(process.env.PORT) || 3000;
   const isProduction = process.env.NODE_ENV === 'production';
 
@@ -35,7 +41,7 @@ async function startServer() {
   app.use((req: Request, res: Response, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-admin-token');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-admin-token, x-admin-setup-secret');
     if (req.method === 'OPTIONS') {
       res.sendStatus(204);
       return;

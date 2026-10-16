@@ -1159,6 +1159,66 @@ var ReferralProfileSchema = new Schema8(
 );
 var ReferralModel = mongoose9.models.Referral || mongoose9.model("Referral", ReferralProfileSchema);
 
+// server/mongodb/models/AdminUser.ts
+import mongoose10, { Schema as Schema9 } from "mongoose";
+var AdminUserSchema = new Schema9(
+  {
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+      index: true
+    },
+    passwordHash: {
+      type: String,
+      required: true
+    },
+    name: {
+      type: String,
+      default: "AutoAudit Administrator"
+    },
+    role: {
+      type: String,
+      enum: ["superadmin", "staff_admin", "fulfillment_specialist"],
+      default: "staff_admin"
+    },
+    isActive: {
+      type: Boolean,
+      default: true
+    },
+    twoFactorEnabled: {
+      type: Boolean,
+      default: false
+    },
+    twoFactorSecret: {
+      type: String
+    },
+    twoFactorPendingSecret: {
+      type: String
+    },
+    backupCodes: {
+      type: [String],
+      default: []
+    },
+    lastLogin: {
+      type: Date
+    },
+    loginAttempts: {
+      type: Number,
+      default: 0
+    },
+    lockUntil: {
+      type: Date
+    }
+  },
+  {
+    timestamps: true
+  }
+);
+var AdminUserModel = mongoose10.models.AdminUser || mongoose10.model("AdminUser", AdminUserSchema, "admin_users");
+
 // server/db.ts
 var INITIAL_SERVICES = [
   {
@@ -1699,6 +1759,70 @@ ${note}` : note;
     }
     return order;
   }
+  updateOrderPaymentStatus(orderId, paymentStatus, adminActor = "Staff Administrator", notes) {
+    const order = this.getOrderById(orderId);
+    if (!order) return null;
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    order.payment = {
+      ...order.payment,
+      status: paymentStatus,
+      paidAt: paymentStatus === "Paid" ? now : void 0
+    };
+    if (paymentStatus === "Paid" && order.status === "Pending") {
+      order.status = "Paid / New";
+    }
+    order.updatedAt = now;
+    if (notes) {
+      order.internalNotes = order.internalNotes ? `${order.internalNotes}
+${notes}` : notes;
+    }
+    const logEntry = {
+      id: `log-${Date.now()}-payment`,
+      timestamp: now,
+      actor: adminActor,
+      action: paymentStatus === "Paid" ? "Payment Verified & Approved" : `Payment Status Changed to ${paymentStatus}`,
+      details: notes || `Admin ${adminActor} updated payment status to ${paymentStatus} for $${order.total.toFixed(2)}.`
+    };
+    order.auditLogs.unshift(logEntry);
+    if (isMongoConnected()) {
+      OrderModel.updateOne(
+        { $or: [{ id: orderId }, { orderNumber: orderId }] },
+        {
+          $set: {
+            "payment.status": paymentStatus,
+            "payment.paidAt": order.payment.paidAt,
+            status: order.status,
+            updatedAt: order.updatedAt,
+            internalNotes: order.internalNotes
+          },
+          $push: { auditLogs: { $each: [logEntry], $position: 0 } }
+        }
+      ).catch((err) => console.error("[Database] MongoDB payment status sync error:", err.message));
+    }
+    return order;
+  }
+  async updateOrderPaymentStatusAsync(orderId, paymentStatus, adminActor = "Staff Administrator", notes) {
+    const order = this.updateOrderPaymentStatus(orderId, paymentStatus, adminActor, notes);
+    if (order && isMongoConnected()) {
+      try {
+        await OrderModel.updateOne(
+          { $or: [{ id: orderId }, { orderNumber: orderId }] },
+          {
+            $set: {
+              "payment.status": paymentStatus,
+              "payment.paidAt": order.payment.paidAt,
+              status: order.status,
+              updatedAt: order.updatedAt,
+              internalNotes: order.internalNotes
+            }
+          }
+        );
+      } catch (err) {
+        console.error("[Database] MongoDB async payment sync error:", err.message);
+      }
+    }
+    return order;
+  }
   updateOrderNotes(orderId, notes) {
     const order = this.getOrderById(orderId);
     if (!order) return null;
@@ -1990,38 +2114,322 @@ ${note}` : note;
 };
 var db = new Database();
 
+// server/utils/jwt.ts
+import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
+import crypto from "crypto";
+var runtimeSecret = null;
+function getJwtSecret() {
+  const isProduction = process.env.NODE_ENV === "production";
+  const envSecret = process.env.JWT_SECRET;
+  if (envSecret && envSecret.trim().length >= 32) {
+    return envSecret.trim();
+  }
+  if (isProduction) {
+    throw new Error(
+      "FATAL SECURITY CONFIGURATION ERROR: Production requires a strong JWT_SECRET (minimum 32 characters) configured in backend environment variables. The server will not start with an ephemeral or fallback key."
+    );
+  }
+  if (envSecret && envSecret.trim().length < 32) {
+    console.warn(
+      "\u26A0\uFE0F  [Security Warning] JWT_SECRET in environment variables is shorter than 32 characters. Using a cryptographically secure 256-bit runtime key instead."
+    );
+  }
+  if (!runtimeSecret) {
+    runtimeSecret = crypto.randomBytes(32).toString("hex");
+    console.warn(
+      "\u{1F6E1}\uFE0F  [Security Alert] JWT_SECRET is not configured in backend environment. Generated an ephemeral 256-bit cryptographic secret for this runtime session. For persistent admin sessions across reboots, set JWT_SECRET in your Railway / hosting environment variables."
+    );
+  }
+  return runtimeSecret;
+}
+function validateSecurityOnStartup() {
+  const isProduction = process.env.NODE_ENV === "production";
+  const jwtConfigured = Boolean(process.env.JWT_SECRET && process.env.JWT_SECRET.trim().length >= 32);
+  const setupSecretConfigured = Boolean(process.env.ADMIN_SETUP_SECRET && process.env.ADMIN_SETUP_SECRET.trim().length >= 16);
+  if (isProduction && !jwtConfigured) {
+    throw new Error(
+      "FATAL DEPLOYMENT ERROR: JWT_SECRET environment variable is missing or less than 32 characters in production. AutoAudit refuses to boot to prevent insecure ephemeral tokens."
+    );
+  }
+  console.log("----------------------------------------------------");
+  console.log("\u{1F512} AutoAudit Security Subsystem Initialized");
+  console.log(`   Environment:             ${process.env.NODE_ENV || "development"}`);
+  console.log(`   JWT_SECRET:              ${jwtConfigured ? "\u2705 Configured (256+ bit key)" : "\u26A0\uFE0F  Generated Ephemeral Key (Dev Only)"}`);
+  console.log(`   ADMIN_SETUP_SECRET:      ${setupSecretConfigured ? "\u2705 Enabled for initial provisioning" : "\u26AA Unset (Endpoint disabled)"}`);
+  console.log("   Password Hashing:        \u2705 bcrypt (12 salt rounds)");
+  console.log("   Brute-force Limiter:     \u2705 Active (5 attempts / 15m lock)");
+  console.log("----------------------------------------------------");
+  return { jwtConfigured, setupSecretConfigured, isProduction };
+}
+function timingSafeEqualString(a, b) {
+  if (typeof a !== "string" || typeof b !== "string") return false;
+  const bufA = Buffer.from(a, "utf-8");
+  const bufB = Buffer.from(b, "utf-8");
+  if (bufA.length !== bufB.length) {
+    crypto.timingSafeEqual(bufA, bufA);
+    return false;
+  }
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+function signAdminToken(user, expiresIn = "8h") {
+  const secret = getJwtSecret();
+  const payload = {
+    sub: user.id,
+    email: user.email.toLowerCase().trim(),
+    name: user.name || "AutoAudit Administrator",
+    role: user.role || "staff_admin"
+  };
+  return jwt.sign(payload, secret, {
+    algorithm: "HS256",
+    expiresIn,
+    issuer: "AutoAudit-Auth-Engine",
+    audience: "autoaudit-admin-console"
+  });
+}
+function verifyAdminToken(token) {
+  try {
+    const secret = getJwtSecret();
+    const decoded = jwt.verify(token, secret, {
+      algorithms: ["HS256"],
+      issuer: "AutoAudit-Auth-Engine",
+      audience: "autoaudit-admin-console"
+    });
+    return decoded;
+  } catch {
+    return null;
+  }
+}
+function sign2FAPreAuthToken(payload, expiresIn = "10m") {
+  const secret = getJwtSecret();
+  return jwt.sign(
+    {
+      sub: payload.sub,
+      email: payload.email.toLowerCase().trim(),
+      purpose: payload.purpose,
+      pendingSecret: payload.pendingSecret
+    },
+    secret,
+    {
+      algorithm: "HS256",
+      expiresIn,
+      issuer: "AutoAudit-Auth-Engine",
+      audience: "autoaudit-2fa-preauth"
+    }
+  );
+}
+function verify2FAPreAuthToken(token) {
+  try {
+    const secret = getJwtSecret();
+    const decoded = jwt.verify(token, secret, {
+      algorithms: ["HS256"],
+      issuer: "AutoAudit-Auth-Engine",
+      audience: "autoaudit-2fa-preauth"
+    });
+    return decoded;
+  } catch {
+    return null;
+  }
+}
+async function hashPassword(plainText) {
+  const salt = await bcrypt.genSalt(12);
+  return bcrypt.hash(plainText, salt);
+}
+async function comparePassword(plainText, hash) {
+  if (!plainText || !hash) return false;
+  return bcrypt.compare(plainText, hash);
+}
+
 // server/middleware/auth.ts
-var DEFAULT_ADMIN_TOKEN = process.env.ADMIN_SECRET_KEY || "autoaudit-secure-staff-token-2026";
-var DEFAULT_ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@autoaudit.com";
-var DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "AutoAudit2026!";
+var loginRateLimitMap = /* @__PURE__ */ new Map();
+var MAX_ATTEMPTS = 5;
+var LOCKOUT_DURATION_MS = 15 * 60 * 1e3;
+function checkLoginRateLimit(ip) {
+  const now = Date.now();
+  const entry = loginRateLimitMap.get(ip);
+  if (!entry) {
+    return { allowed: true };
+  }
+  if (entry.lockUntil && entry.lockUntil > now) {
+    const waitSeconds = Math.ceil((entry.lockUntil - now) / 1e3);
+    return { allowed: false, waitSeconds };
+  }
+  if (entry.lockUntil && entry.lockUntil <= now) {
+    loginRateLimitMap.delete(ip);
+    return { allowed: true };
+  }
+  return { allowed: true };
+}
+function recordFailedLoginAttempt(ip) {
+  const now = Date.now();
+  const entry = loginRateLimitMap.get(ip) || { attempts: 0 };
+  entry.attempts += 1;
+  if (entry.attempts >= MAX_ATTEMPTS) {
+    entry.lockUntil = now + LOCKOUT_DURATION_MS;
+    console.warn(`[Security Alert] IP ${ip} temporarily locked out after ${MAX_ATTEMPTS} failed admin authentication attempts.`);
+  }
+  loginRateLimitMap.set(ip, entry);
+}
+function resetLoginAttempts(ip) {
+  loginRateLimitMap.delete(ip);
+}
+if (typeof setInterval !== "undefined") {
+  setInterval(() => {
+    const now = Date.now();
+    for (const [ip, entry] of loginRateLimitMap.entries()) {
+      if (entry.lockUntil && entry.lockUntil <= now) {
+        loginRateLimitMap.delete(ip);
+      }
+    }
+  }, 10 * 60 * 1e3).unref();
+}
+var inMemoryRootUser = null;
+function setInMemoryRootUser(user) {
+  inMemoryRootUser = user;
+}
+function getInMemoryRootUser() {
+  return inMemoryRootUser;
+}
+function updateInMemoryRoot2FA(enabled, secret, backupCodes = []) {
+  if (inMemoryRootUser) {
+    inMemoryRootUser.twoFactorEnabled = enabled;
+    inMemoryRootUser.twoFactorSecret = secret;
+    inMemoryRootUser.backupCodes = backupCodes;
+  }
+}
+async function isAnyAdminConfigured() {
+  try {
+    if (isMongoConnected()) {
+      const count = await AdminUserModel.countDocuments({ isActive: true });
+      if (count > 0) return true;
+    }
+  } catch (err) {
+    console.warn("[Admin Check] MongoDB query warning:", err?.message);
+  }
+  return inMemoryRootUser !== null;
+}
+async function ensureDefaultAdminAccount() {
+  const adminEmail = (process.env.ADMIN_EMAIL || "admin@autoaudit.com").toLowerCase().trim();
+  const initialPassword = process.env.ADMIN_INITIAL_PASSWORD || process.env.ADMIN_PASSWORD;
+  if (!initialPassword || initialPassword.trim().length === 0) {
+    console.log("[Auth Subsystem] No initial admin password configured in environment. Admin accounts must be created via one-time setup.");
+    return;
+  }
+  try {
+    if (isMongoConnected()) {
+      const existingAdmin = await AdminUserModel.findOne({ email: adminEmail });
+      if (!existingAdmin) {
+        const passwordHash = await hashPassword(initialPassword.trim());
+        await AdminUserModel.create({
+          email: adminEmail,
+          passwordHash,
+          name: "AutoAudit Root Administrator",
+          role: "superadmin",
+          isActive: true,
+          loginAttempts: 0
+        });
+        console.log(`[Auth Provisioning] Initialized root administrator (${adminEmail}) in MongoDB Atlas with bcrypt protection.`);
+      }
+    } else {
+      const passwordHash = await hashPassword(initialPassword.trim());
+      inMemoryRootUser = {
+        email: adminEmail,
+        passwordHash,
+        name: "AutoAudit Administrator"
+      };
+    }
+  } catch (err) {
+    console.warn("[Auth Provisioning] Could not seed admin user in MongoDB:", err?.message || err);
+  }
+}
+async function authenticateAdmin(email, password) {
+  if (!email || !password) {
+    return { success: false };
+  }
+  const normalizedEmail = email.toLowerCase().trim();
+  if (isMongoConnected()) {
+    try {
+      const user = await AdminUserModel.findOne({ email: normalizedEmail, isActive: true });
+      if (user && user.passwordHash) {
+        const isMatch = await comparePassword(password, user.passwordHash);
+        if (isMatch) {
+          user.lastLogin = /* @__PURE__ */ new Date();
+          user.loginAttempts = 0;
+          await user.save();
+          return {
+            success: true,
+            user: {
+              id: user._id.toString(),
+              email: user.email,
+              name: user.name || "AutoAudit Staff",
+              role: user.role || "staff_admin",
+              twoFactorEnabled: Boolean(user.twoFactorEnabled && user.twoFactorSecret),
+              twoFactorSecret: user.twoFactorSecret
+            }
+          };
+        }
+      }
+    } catch (err) {
+      console.warn("[Auth Error] Error querying AdminUserModel:", err?.message);
+    }
+  }
+  if (inMemoryRootUser && normalizedEmail === inMemoryRootUser.email) {
+    const isMatch = await comparePassword(password, inMemoryRootUser.passwordHash);
+    if (isMatch) {
+      return {
+        success: true,
+        user: {
+          id: "admin_sys_root",
+          email: inMemoryRootUser.email,
+          name: inMemoryRootUser.name,
+          role: "superadmin",
+          twoFactorEnabled: Boolean(inMemoryRootUser.twoFactorEnabled && inMemoryRootUser.twoFactorSecret),
+          twoFactorSecret: inMemoryRootUser.twoFactorSecret
+        }
+      };
+    }
+  }
+  return { success: false };
+}
 function requireAdminAuth(req, res, next) {
-  const token = req.headers["x-admin-token"] || (req.headers.authorization && req.headers.authorization.startsWith("Bearer ") ? req.headers.authorization.slice(7) : null);
+  let token = null;
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    token = authHeader.slice(7).trim();
+  } else if (req.headers["x-admin-token"]) {
+    const xToken = req.headers["x-admin-token"];
+    token = Array.isArray(xToken) ? xToken[0] : xToken;
+  }
   if (!token) {
     res.status(401).json({
       success: false,
-      error: "Unauthorized: Staff authorization token is required to access administrative resources."
+      code: "TOKEN_REQUIRED",
+      error: "Unauthorized: Staff JWT authorization token is required to access administrative resources."
     });
     return;
   }
-  if (token !== DEFAULT_ADMIN_TOKEN && token !== "session-verified-autoaudit-staff") {
+  const decoded = verifyAdminToken(token);
+  if (!decoded) {
+    res.status(401).json({
+      success: false,
+      code: "TOKEN_INVALID_OR_EXPIRED",
+      error: "Unauthorized: Invalid or expired staff JWT session. Please authenticate again."
+    });
+    return;
+  }
+  const ALLOWED_ADMIN_ROLES = ["superadmin", "staff_admin", "fulfillment_specialist"];
+  if (!decoded.role || !ALLOWED_ADMIN_ROLES.includes(decoded.role)) {
     res.status(403).json({
       success: false,
-      error: "Forbidden: Invalid or expired staff authorization token."
+      code: "FORBIDDEN_ROLE",
+      error: "Forbidden: Insufficient administrative privileges."
     });
     return;
   }
+  req.adminUser = decoded;
+  req.user = decoded;
   next();
 }
-function verifyAdminCredentials(email, password, accessKey) {
-  if (accessKey && (accessKey === DEFAULT_ADMIN_TOKEN || accessKey === "AutoAudit2026!")) {
-    return true;
-  }
-  if (email && password && (email.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase() || email.toLowerCase() === "admin@autoaudit.com") && password === DEFAULT_ADMIN_PASSWORD) {
-    return true;
-  }
-  return false;
-}
-var ADMIN_AUTH_TOKEN = "session-verified-autoaudit-staff";
 
 // server/services/smtp.ts
 import nodemailer from "nodemailer";
@@ -2833,10 +3241,14 @@ ordersRouter.get("/", async (req, res) => {
     email: cleanEmail,
     search: typeof search === "string" ? search : void 0
   });
+  const sanitizedOrders = customerOrders.map((order) => {
+    const { internalNotes, ...safeOrder } = order;
+    return safeOrder;
+  });
   res.json({
     success: true,
-    count: customerOrders.length,
-    data: customerOrders
+    count: sanitizedOrders.length,
+    data: sanitizedOrders
   });
 });
 ordersRouter.get("/:id", async (req, res) => {
@@ -2846,9 +3258,21 @@ ordersRouter.get("/:id", async (req, res) => {
     res.status(404).json({ success: false, error: `Order with identifier "${id}" not found.` });
     return;
   }
+  let isStaff = false;
+  const authHeader = req.headers.authorization;
+  const xToken = req.headers["x-admin-token"];
+  const rawToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : Array.isArray(xToken) ? xToken[0] : xToken;
+  if (rawToken && verifyAdminToken(rawToken)) {
+    isStaff = true;
+  }
+  let sanitizedOrder = order;
+  if (!isStaff) {
+    const { internalNotes, ...safeOrder } = order;
+    sanitizedOrder = safeOrder;
+  }
   res.json({
     success: true,
-    data: order
+    data: sanitizedOrder
   });
 });
 ordersRouter.post("/", async (req, res) => {
@@ -2967,10 +3391,121 @@ ordersRouter.post("/", async (req, res) => {
   }).catch((err) => {
     console.error("[SMTP] Error starting automated email sequence:", err);
   });
+  const { internalNotes, ...safeNewOrder } = newOrder;
   res.status(201).json({
     success: true,
     message: "Order created successfully. Processing has begun.",
-    data: newOrder
+    data: safeNewOrder
+  });
+});
+ordersRouter.patch("/:id/payment", requireAdminAuth, async (req, res) => {
+  const { id } = req.params;
+  const { status, notes } = req.body;
+  const authReq = req;
+  if (!authReq.adminUser?.role || !["superadmin", "staff_admin"].includes(authReq.adminUser.role)) {
+    res.status(403).json({
+      success: false,
+      code: "FORBIDDEN_ROLE",
+      error: "Forbidden: Only administrators (superadmin or staff_admin) are authorized to modify payment status."
+    });
+    return;
+  }
+  const adminActor = authReq.adminUser?.email || authReq.adminUser?.name || "Staff Administrator";
+  if (!status || !["Paid", "Pending", "Failed", "Refunded"].includes(status)) {
+    res.status(400).json({
+      success: false,
+      error: "Valid payment status is required: Paid, Pending, Failed, or Refunded."
+    });
+    return;
+  }
+  const updated = await db.updateOrderPaymentStatusAsync(
+    id,
+    status,
+    adminActor,
+    notes ? sanitizeText(notes) : void 0
+  );
+  if (!updated) {
+    res.status(404).json({ success: false, error: `Order with identifier "${id}" not found.` });
+    return;
+  }
+  if (status === "Paid") {
+    handleNewOrderCreation(updated);
+    triggerAutomatedEmailSequence(updated, {
+      stageDelaySeconds: { stage2: 4, stage3: 8 },
+      autoAdvanceOrderStatus: true
+    }).catch((err) => {
+      console.error("[SMTP] Error starting automated email sequence on payment approval:", err);
+    });
+  }
+  res.json({
+    success: true,
+    message: `Payment status for order ${updated.orderNumber} successfully set to "${status}" by ${adminActor}.`,
+    data: updated
+  });
+});
+ordersRouter.post("/:id/approve-payment", requireAdminAuth, async (req, res) => {
+  const { id } = req.params;
+  const { notes } = req.body || {};
+  const authReq = req;
+  if (!authReq.adminUser?.role || !["superadmin", "staff_admin"].includes(authReq.adminUser.role)) {
+    res.status(403).json({
+      success: false,
+      code: "FORBIDDEN_ROLE",
+      error: "Forbidden: Only administrators (superadmin or staff_admin) are authorized to approve payments."
+    });
+    return;
+  }
+  const adminActor = authReq.adminUser?.email || authReq.adminUser?.name || "Staff Administrator";
+  const updated = await db.updateOrderPaymentStatusAsync(
+    id,
+    "Paid",
+    adminActor,
+    notes ? sanitizeText(notes) : "Manual QR payment verified and confirmed by administrator."
+  );
+  if (!updated) {
+    res.status(404).json({ success: false, error: `Order with identifier "${id}" not found.` });
+    return;
+  }
+  handleNewOrderCreation(updated);
+  triggerAutomatedEmailSequence(updated, {
+    stageDelaySeconds: { stage2: 4, stage3: 8 },
+    autoAdvanceOrderStatus: true
+  }).catch((err) => {
+    console.error("[SMTP] Error on payment approval:", err);
+  });
+  res.json({
+    success: true,
+    message: `Payment confirmed for order ${updated.orderNumber}. Processing initiated.`,
+    data: updated
+  });
+});
+ordersRouter.post("/:id/reject-payment", requireAdminAuth, async (req, res) => {
+  const { id } = req.params;
+  const { reason } = req.body || {};
+  const authReq = req;
+  if (!authReq.adminUser?.role || !["superadmin", "staff_admin"].includes(authReq.adminUser.role)) {
+    res.status(403).json({
+      success: false,
+      code: "FORBIDDEN_ROLE",
+      error: "Forbidden: Only administrators (superadmin or staff_admin) are authorized to reject payments."
+    });
+    return;
+  }
+  const adminActor = authReq.adminUser?.email || authReq.adminUser?.name || "Staff Administrator";
+  const updated = await db.updateOrderPaymentStatusAsync(
+    id,
+    "Failed",
+    adminActor,
+    reason ? sanitizeText(reason) : "Payment receipt could not be verified by administrator."
+  );
+  if (!updated) {
+    res.status(404).json({ success: false, error: `Order with identifier "${id}" not found.` });
+    return;
+  }
+  res.json({
+    success: true,
+    message: `Payment rejected for order ${updated.orderNumber}.`,
+    data: updated
   });
 });
 ordersRouter.patch("/:id/status", requireAdminAuth, async (req, res) => {
@@ -3227,35 +3762,574 @@ statsRouter.get("/", requireAdminAuth, (_req, res) => {
 
 // server/routes/auth.ts
 import { Router as Router7 } from "express";
+
+// server/utils/totp.ts
+import crypto2 from "crypto";
+var BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+function base32Encode(buffer) {
+  let bits = 0;
+  let value = 0;
+  let output = "";
+  for (let i = 0; i < buffer.length; i++) {
+    value = value << 8 | buffer[i];
+    bits += 8;
+    while (bits >= 5) {
+      output += BASE32_ALPHABET[value >>> bits - 5 & 31];
+      bits -= 5;
+    }
+  }
+  if (bits > 0) {
+    output += BASE32_ALPHABET[value << 5 - bits & 31];
+  }
+  return output;
+}
+function base32Decode(base32String) {
+  const cleanInput = base32String.toUpperCase().replace(/[\s=-]/g, "");
+  let bits = 0;
+  let value = 0;
+  const bytes = [];
+  for (let i = 0; i < cleanInput.length; i++) {
+    const index = BASE32_ALPHABET.indexOf(cleanInput[i]);
+    if (index === -1) {
+      continue;
+    }
+    value = value << 5 | index;
+    bits += 5;
+    if (bits >= 8) {
+      bytes.push(value >>> bits - 8 & 255);
+      bits -= 8;
+    }
+  }
+  return Buffer.from(bytes);
+}
+function generateTotpSecret(numBytes = 20) {
+  const randomBuffer = crypto2.randomBytes(numBytes);
+  return base32Encode(randomBuffer);
+}
+function generateHotp(keyBuffer, counter, digits = 6) {
+  const counterBuffer = Buffer.alloc(8);
+  counterBuffer.writeBigInt64BE(BigInt(counter));
+  const hmac = crypto2.createHmac("sha1", keyBuffer);
+  hmac.update(counterBuffer);
+  const digest = hmac.digest();
+  const offset = digest[digest.length - 1] & 15;
+  const binary = (digest[offset] & 127) << 24 | (digest[offset + 1] & 255) << 16 | (digest[offset + 2] & 255) << 8 | digest[offset + 3] & 255;
+  const otp = binary % Math.pow(10, digits);
+  return otp.toString().padStart(digits, "0");
+}
+function verifyTotp(token, secretBase32, options) {
+  if (!token || typeof token !== "string") return false;
+  const cleanToken = token.trim();
+  if (cleanToken.length !== 6 || !/^\d{6}$/.test(cleanToken)) {
+    return false;
+  }
+  const keyBuffer = base32Decode(secretBase32);
+  if (keyBuffer.length === 0) return false;
+  const window = options?.window ?? 1;
+  const timeStepSeconds = options?.timeStepSeconds ?? 30;
+  const timestampMs = options?.timestampMs ?? Date.now();
+  const currentCounter = Math.floor(timestampMs / 1e3 / timeStepSeconds);
+  for (let offset = -window; offset <= window; offset++) {
+    const expectedOtp = generateHotp(keyBuffer, currentCounter + offset, 6);
+    if (crypto2.timingSafeEqual(Buffer.from(cleanToken), Buffer.from(expectedOtp))) {
+      return true;
+    }
+  }
+  return false;
+}
+function generateOtpAuthUrl(options) {
+  const issuer = options.issuer || "AutoAudit";
+  const label = `${issuer}:${options.email.trim()}`;
+  const encodedLabel = encodeURIComponent(label);
+  const encodedIssuer = encodeURIComponent(issuer);
+  const cleanSecret = options.secret.toUpperCase().replace(/[\s=-]/g, "");
+  return `otpauth://totp/${encodedLabel}?secret=${cleanSecret}&issuer=${encodedIssuer}&algorithm=SHA1&digits=6&period=30`;
+}
+function generateBackupCodes(count = 8) {
+  const codes = [];
+  for (let i = 0; i < count; i++) {
+    const raw = crypto2.randomBytes(4).toString("hex").toUpperCase();
+    codes.push(`${raw.slice(0, 4)}-${raw.slice(4)}`);
+  }
+  return codes;
+}
+
+// server/routes/auth.ts
 var authRouter = Router7();
-authRouter.post("/admin-login", (req, res) => {
-  const { email, password, accessKey } = req.body;
-  const isValid = verifyAdminCredentials(email, password, accessKey);
-  if (!isValid) {
+authRouter.get("/setup-status", async (_req, res) => {
+  const adminExists = await isAnyAdminConfigured();
+  const setupSecretConfigured = Boolean(
+    process.env.ADMIN_SETUP_SECRET && process.env.ADMIN_SETUP_SECRET.trim().length >= 16
+  );
+  res.json({
+    success: true,
+    isSetupComplete: adminExists,
+    canSetup: !adminExists && setupSecretConfigured
+  });
+});
+authRouter.post("/setup-admin", async (req, res) => {
+  const clientIp = req.ip || req.socket.remoteAddress || "unknown-client";
+  const configuredSetupSecret = process.env.ADMIN_SETUP_SECRET;
+  if (!configuredSetupSecret || configuredSetupSecret.trim().length < 16) {
+    res.status(403).json({
+      success: false,
+      code: "SETUP_DISABLED",
+      error: "One-time admin setup is disabled on this server because ADMIN_SETUP_SECRET is not configured in backend environment variables."
+    });
+    return;
+  }
+  const alreadyConfigured = await isAnyAdminConfigured();
+  if (alreadyConfigured) {
+    res.status(403).json({
+      success: false,
+      code: "SETUP_ALREADY_COMPLETED",
+      error: "Initial administrator setup has already been completed. This endpoint is permanently disabled."
+    });
+    return;
+  }
+  const providedSecret = req.headers["x-admin-setup-secret"] || req.body?.setupSecret;
+  if (!providedSecret || typeof providedSecret !== "string") {
     res.status(401).json({
       success: false,
+      code: "SETUP_SECRET_REQUIRED",
+      error: "ADMIN_SETUP_SECRET must be supplied via x-admin-setup-secret header or setupSecret field."
+    });
+    return;
+  }
+  const isMatch = timingSafeEqualString(providedSecret.trim(), configuredSetupSecret.trim());
+  if (!isMatch) {
+    recordFailedLoginAttempt(clientIp);
+    res.status(401).json({
+      success: false,
+      code: "INVALID_SETUP_SECRET",
+      error: "Invalid setup secret. Unauthorized administrative provisioning attempt."
+    });
+    return;
+  }
+  const { email, password, name } = req.body || {};
+  if (!email || !password) {
+    res.status(400).json({
+      success: false,
+      error: "Administrator email and password are required."
+    });
+    return;
+  }
+  if (typeof password !== "string" || password.length < 8) {
+    res.status(400).json({
+      success: false,
+      error: "Password must be at least 8 characters long."
+    });
+    return;
+  }
+  const normalizedEmail = email.toLowerCase().trim();
+  const passwordHash = await hashPassword(password);
+  try {
+    if (isMongoConnected()) {
+      await AdminUserModel.create({
+        email: normalizedEmail,
+        passwordHash,
+        name: name || "Root Administrator",
+        role: "superadmin",
+        isActive: true,
+        loginAttempts: 0
+      });
+    } else {
+      setInMemoryRootUser({
+        email: normalizedEmail,
+        passwordHash,
+        name: name || "Root Administrator"
+      });
+    }
+    console.log(`[Security Alert] Initial root administrator account (${normalizedEmail}) provisioned successfully via setup endpoint.`);
+    res.status(201).json({
+      success: true,
+      message: "Root administrator account initialized successfully. Setup endpoint is now permanently locked."
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err?.message || "Failed to initialize administrator account."
+    });
+  }
+});
+authRouter.post("/admin-login", async (req, res) => {
+  const clientIp = req.ip || req.socket.remoteAddress || "unknown-client";
+  const rateLimitCheck = checkLoginRateLimit(clientIp);
+  if (!rateLimitCheck.allowed) {
+    res.status(429).json({
+      success: false,
+      code: "RATE_LIMITED",
+      error: `Too many failed login attempts from this address. Access temporarily locked for ${rateLimitCheck.waitSeconds}s.`
+    });
+    return;
+  }
+  const { email, password, accessKey } = req.body || {};
+  const targetPassword = password || accessKey;
+  if (!email || !targetPassword) {
+    recordFailedLoginAttempt(clientIp);
+    res.status(400).json({
+      success: false,
+      code: "MISSING_CREDENTIALS",
+      error: "Both staff email address and password are required."
+    });
+    return;
+  }
+  const authResult = await authenticateAdmin(email, targetPassword);
+  if (!authResult.success || !authResult.user) {
+    recordFailedLoginAttempt(clientIp);
+    res.status(401).json({
+      success: false,
+      code: "INVALID_CREDENTIALS",
       error: "Invalid administrative credentials. Access restricted to authorized AutoAudit staff."
+    });
+    return;
+  }
+  resetLoginAttempts(clientIp);
+  if (authResult.user.twoFactorEnabled && authResult.user.twoFactorSecret) {
+    const preAuthToken2 = sign2FAPreAuthToken(
+      {
+        sub: authResult.user.id,
+        email: authResult.user.email,
+        purpose: "2fa_login"
+      },
+      "10m"
+    );
+    res.json({
+      success: true,
+      requires2FA: true,
+      setup2FARequired: false,
+      preAuthToken: preAuthToken2,
+      user: {
+        id: authResult.user.id,
+        email: authResult.user.email,
+        name: authResult.user.name
+      },
+      message: "Password accepted. Two-factor authenticator code required."
+    });
+    return;
+  }
+  const newSecret = generateTotpSecret(20);
+  const otpauthUrl = generateOtpAuthUrl({
+    secret: newSecret,
+    email: authResult.user.email,
+    issuer: "AutoAudit"
+  });
+  const backupCodes = generateBackupCodes(8);
+  try {
+    if (isMongoConnected()) {
+      await AdminUserModel.findByIdAndUpdate(authResult.user.id, {
+        twoFactorPendingSecret: newSecret,
+        backupCodes
+      });
+    } else {
+      updateInMemoryRoot2FA(false, newSecret, backupCodes);
+    }
+  } catch (err) {
+    console.warn("[2FA Setup] Error storing pending secret:", err?.message);
+  }
+  const preAuthToken = sign2FAPreAuthToken(
+    {
+      sub: authResult.user.id,
+      email: authResult.user.email,
+      purpose: "2fa_setup",
+      pendingSecret: newSecret
+    },
+    "15m"
+  );
+  res.json({
+    success: true,
+    requires2FA: true,
+    setup2FARequired: true,
+    preAuthToken,
+    secret: newSecret,
+    otpauthUrl,
+    backupCodes,
+    user: {
+      id: authResult.user.id,
+      email: authResult.user.email,
+      name: authResult.user.name
+    },
+    message: "Initial two-factor setup required. Scan the QR code to link your authenticator app."
+  });
+});
+authRouter.post("/2fa/verify-setup", async (req, res) => {
+  const clientIp = req.ip || req.socket.remoteAddress || "unknown-client";
+  const { preAuthToken, code } = req.body || {};
+  if (!preAuthToken || !code) {
+    res.status(400).json({
+      success: false,
+      code: "MISSING_DATA",
+      error: "Both pre-authentication token and 6-digit TOTP code are required."
+    });
+    return;
+  }
+  const decoded = verify2FAPreAuthToken(preAuthToken);
+  if (!decoded || decoded.purpose !== "2fa_setup" || !decoded.pendingSecret) {
+    res.status(401).json({
+      success: false,
+      code: "INVALID_PREAUTH_TOKEN",
+      error: "Pre-authentication session expired or invalid. Please sign in with your password again."
+    });
+    return;
+  }
+  const isValid = verifyTotp(String(code), decoded.pendingSecret, { window: 1 });
+  if (!isValid) {
+    recordFailedLoginAttempt(clientIp);
+    res.status(400).json({
+      success: false,
+      code: "INVALID_2FA_CODE",
+      error: "Invalid 6-digit authenticator code. Make sure your device clock is synchronized and try again."
+    });
+    return;
+  }
+  resetLoginAttempts(clientIp);
+  let adminRole = "staff_admin";
+  let adminName = "AutoAudit Administrator";
+  try {
+    if (isMongoConnected()) {
+      const user = await AdminUserModel.findById(decoded.sub);
+      if (user) {
+        user.twoFactorEnabled = true;
+        user.twoFactorSecret = decoded.pendingSecret;
+        user.twoFactorPendingSecret = void 0;
+        await user.save();
+        adminRole = user.role || "staff_admin";
+        adminName = user.name || "AutoAudit Staff";
+      }
+    } else {
+      updateInMemoryRoot2FA(true, decoded.pendingSecret);
+      const root = getInMemoryRootUser();
+      if (root) {
+        adminRole = "superadmin";
+        adminName = root.name;
+      }
+    }
+  } catch (err) {
+    console.error("[2FA Activation Error]:", err);
+  }
+  const token = signAdminToken(
+    {
+      id: decoded.sub,
+      email: decoded.email,
+      name: adminName,
+      role: adminRole
+    },
+    "8h"
+  );
+  console.log(`[Security Alert] 2FA successfully configured and verified for administrator ${decoded.email}.`);
+  res.json({
+    success: true,
+    message: "Authenticator successfully linked! Two-factor protection is now active.",
+    token,
+    tokenType: "Bearer",
+    expiresIn: "8h",
+    user: {
+      id: decoded.sub,
+      email: decoded.email,
+      name: adminName,
+      role: adminRole,
+      twoFactorEnabled: true,
+      loginTime: (/* @__PURE__ */ new Date()).toISOString()
+    }
+  });
+});
+authRouter.post("/2fa/verify-login", async (req, res) => {
+  const clientIp = req.ip || req.socket.remoteAddress || "unknown-client";
+  const rateLimitCheck = checkLoginRateLimit(clientIp);
+  if (!rateLimitCheck.allowed) {
+    res.status(429).json({
+      success: false,
+      code: "RATE_LIMITED",
+      error: `Too many failed verification attempts. Access temporarily locked for ${rateLimitCheck.waitSeconds}s.`
+    });
+    return;
+  }
+  const { preAuthToken, code } = req.body || {};
+  if (!preAuthToken || !code) {
+    res.status(400).json({
+      success: false,
+      code: "MISSING_DATA",
+      error: "Both pre-authentication token and 6-digit code are required."
+    });
+    return;
+  }
+  const decoded = verify2FAPreAuthToken(preAuthToken);
+  if (!decoded || decoded.purpose !== "2fa_login") {
+    res.status(401).json({
+      success: false,
+      code: "INVALID_PREAUTH_TOKEN",
+      error: "Pre-authentication session expired or invalid. Please sign in with your password again."
+    });
+    return;
+  }
+  let userSecret;
+  let backupCodes = [];
+  let adminRole = "staff_admin";
+  let adminName = "AutoAudit Staff";
+  let mongoUser = null;
+  if (isMongoConnected()) {
+    try {
+      mongoUser = await AdminUserModel.findById(decoded.sub);
+      if (mongoUser) {
+        userSecret = mongoUser.twoFactorSecret;
+        backupCodes = mongoUser.backupCodes || [];
+        adminRole = mongoUser.role || "staff_admin";
+        adminName = mongoUser.name || "AutoAudit Staff";
+      }
+    } catch (err) {
+      console.warn("[2FA Verify] Database query warning:", err?.message);
+    }
+  } else {
+    const root = getInMemoryRootUser();
+    if (root && root.email === decoded.email) {
+      userSecret = root.twoFactorSecret;
+      backupCodes = root.backupCodes || [];
+      adminRole = "superadmin";
+      adminName = root.name;
+    }
+  }
+  if (!userSecret) {
+    res.status(400).json({
+      success: false,
+      code: "2FA_NOT_CONFIGURED",
+      error: "Two-factor authentication is not configured for this account."
+    });
+    return;
+  }
+  const cleanCode = String(code).trim().toUpperCase();
+  let isBackupMatch = false;
+  if (backupCodes.includes(cleanCode)) {
+    isBackupMatch = true;
+    if (mongoUser) {
+      mongoUser.backupCodes = backupCodes.filter((c) => c !== cleanCode);
+      await mongoUser.save().catch(() => {
+      });
+    }
+  }
+  const isTotpValid = isBackupMatch || verifyTotp(cleanCode, userSecret, { window: 1 });
+  if (!isTotpValid) {
+    recordFailedLoginAttempt(clientIp);
+    res.status(401).json({
+      success: false,
+      code: "INVALID_2FA_CODE",
+      error: "Invalid 6-digit authenticator code. Please check your authenticator app and try again."
+    });
+    return;
+  }
+  resetLoginAttempts(clientIp);
+  const token = signAdminToken(
+    {
+      id: decoded.sub,
+      email: decoded.email,
+      name: adminName,
+      role: adminRole
+    },
+    "8h"
+  );
+  res.json({
+    success: true,
+    message: isBackupMatch ? "Authentication successful via emergency backup code." : "Two-factor verification successful.",
+    token,
+    tokenType: "Bearer",
+    expiresIn: "8h",
+    user: {
+      id: decoded.sub,
+      email: decoded.email,
+      name: adminName,
+      role: adminRole,
+      twoFactorEnabled: true,
+      loginTime: (/* @__PURE__ */ new Date()).toISOString()
+    }
+  });
+});
+authRouter.post("/2fa/reset-request", requireAdminAuth, async (req, res) => {
+  const admin = req.adminUser;
+  if (!admin) {
+    res.status(401).json({ success: false, error: "Unauthorized" });
+    return;
+  }
+  const newSecret = generateTotpSecret(20);
+  const otpauthUrl = generateOtpAuthUrl({
+    secret: newSecret,
+    email: admin.email,
+    issuer: "AutoAudit"
+  });
+  const backupCodes = generateBackupCodes(8);
+  const preAuthToken = sign2FAPreAuthToken(
+    {
+      sub: admin.sub,
+      email: admin.email,
+      purpose: "2fa_setup",
+      pendingSecret: newSecret
+    },
+    "15m"
+  );
+  res.json({
+    success: true,
+    preAuthToken,
+    secret: newSecret,
+    otpauthUrl,
+    backupCodes,
+    message: "Scan the new QR code in your authenticator app and enter the 6-digit code to confirm re-linking."
+  });
+});
+authRouter.get("/verify", (req, res) => {
+  let token = null;
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    token = authHeader.slice(7).trim();
+  } else if (req.headers["x-admin-token"]) {
+    const xToken = req.headers["x-admin-token"];
+    token = Array.isArray(xToken) ? xToken[0] : xToken;
+  }
+  if (!token) {
+    res.status(401).json({
+      success: false,
+      authenticated: false,
+      code: "TOKEN_REQUIRED",
+      error: "No authorization token supplied."
+    });
+    return;
+  }
+  const decoded = verifyAdminToken(token);
+  if (!decoded) {
+    res.status(401).json({
+      success: false,
+      authenticated: false,
+      code: "TOKEN_INVALID",
+      error: "Invalid or expired staff session token."
     });
     return;
   }
   res.json({
     success: true,
-    message: "Staff authentication successful.",
-    token: ADMIN_AUTH_TOKEN,
+    authenticated: true,
     user: {
-      email: email || "admin@autoaudit.com",
-      role: "Staff Administrator",
-      loginTime: (/* @__PURE__ */ new Date()).toISOString()
+      id: decoded.sub,
+      email: decoded.email,
+      name: decoded.name,
+      role: decoded.role,
+      expiresAt: decoded.exp ? new Date(decoded.exp * 1e3).toISOString() : void 0
     }
   });
 });
-authRouter.get("/verify", (req, res) => {
-  const token = req.headers["x-admin-token"] || (req.headers.authorization && req.headers.authorization.startsWith("Bearer ") ? req.headers.authorization.slice(7) : null);
-  if (token === ADMIN_AUTH_TOKEN || token === process.env.ADMIN_SECRET_KEY) {
-    res.json({ success: true, authenticated: true, role: "Staff Administrator" });
-  } else {
-    res.status(401).json({ success: false, authenticated: false });
+authRouter.post("/refresh", requireAdminAuth, (req, res) => {
+  const current = req.adminUser;
+  if (!current) {
+    res.status(401).json({ success: false, error: "Unauthorized" });
+    return;
   }
+  const newToken = signAdminToken({
+    id: current.sub,
+    email: current.email,
+    name: current.name,
+    role: current.role
+  }, "8h");
+  res.json({
+    success: true,
+    token: newToken,
+    expiresIn: "8h"
+  });
 });
 
 // server/routes/analytics.ts
@@ -4121,9 +5195,12 @@ videoRouter.get("/samples", (_req, res) => {
   });
 });
 
+// server/routes/admin.ts
+import { Router as Router14 } from "express";
+
 // server/routes/adminMongodb.ts
 import { Router as Router13 } from "express";
-import mongoose10 from "mongoose";
+import mongoose11 from "mongoose";
 
 // server/mongodb/migration.ts
 import fs from "fs";
@@ -4493,7 +5570,7 @@ adminMongodbRouter.post("/test-connection", async (req, res) => {
   }
   const masked = maskMongoUri(targetUri);
   try {
-    const testConn = await mongoose10.createConnection(targetUri, {
+    const testConn = await mongoose11.createConnection(targetUri, {
       serverSelectionTimeoutMS: 4e3,
       connectTimeoutMS: 5e3
     }).asPromise();
@@ -4520,18 +5597,123 @@ adminMongodbRouter.post("/test-connection", async (req, res) => {
   }
 });
 
+// server/routes/admin.ts
+var adminRouter = Router14();
+adminRouter.use(requireAdminAuth);
+adminRouter.get("/me", (req, res) => {
+  res.json({
+    success: true,
+    user: req.adminUser,
+    role: req.adminUser?.role || "staff_admin",
+    authenticatedAt: (/* @__PURE__ */ new Date()).toISOString()
+  });
+});
+adminRouter.get("/verify", (req, res) => {
+  res.json({
+    success: true,
+    authenticated: true,
+    user: req.adminUser
+  });
+});
+adminRouter.get("/users", async (req, res) => {
+  try {
+    if (isMongoConnected()) {
+      const users = await AdminUserModel.find({}, "-passwordHash").sort({ createdAt: -1 });
+      res.json({
+        success: true,
+        data: users
+      });
+      return;
+    }
+    res.json({
+      success: true,
+      data: [
+        {
+          id: "admin_sys_root",
+          email: req.adminUser?.email || "admin@autoaudit.com",
+          name: req.adminUser?.name || "AutoAudit Administrator",
+          role: req.adminUser?.role || "superadmin",
+          isActive: true
+        }
+      ]
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err?.message || "Could not list admin users." });
+  }
+});
+adminRouter.post("/users", async (req, res) => {
+  if (req.adminUser?.role !== "superadmin") {
+    res.status(403).json({
+      success: false,
+      error: "Forbidden: Only superadmin accounts can provision new administrator accounts."
+    });
+    return;
+  }
+  const { email, password, name, role = "staff_admin" } = req.body;
+  if (!email || !password) {
+    res.status(400).json({ success: false, error: "Email and password are required." });
+    return;
+  }
+  if (password.length < 8) {
+    res.status(400).json({ success: false, error: "Password must be at least 8 characters long." });
+    return;
+  }
+  try {
+    if (!isMongoConnected()) {
+      res.status(503).json({ success: false, error: "Database must be connected to persist new admin users." });
+      return;
+    }
+    const existing = await AdminUserModel.findOne({ email: email.toLowerCase().trim() });
+    if (existing) {
+      res.status(409).json({ success: false, error: "An administrator with this email already exists." });
+      return;
+    }
+    const passwordHash = await hashPassword(password);
+    const newUser = await AdminUserModel.create({
+      email: email.toLowerCase().trim(),
+      passwordHash,
+      name: name || "Staff Administrator",
+      role: ["superadmin", "staff_admin", "fulfillment_specialist"].includes(role) ? role : "staff_admin",
+      isActive: true
+    });
+    res.status(201).json({
+      success: true,
+      message: "New administrator user created successfully.",
+      data: {
+        id: newUser._id,
+        email: newUser.email,
+        name: newUser.name,
+        role: newUser.role,
+        createdAt: newUser.createdAt
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err?.message || "Error provisioning admin user." });
+  }
+});
+adminRouter.use("/mongodb", adminMongodbRouter);
+adminRouter.use("/stats", statsRouter);
+adminRouter.use("/orders", ordersRouter);
+adminRouter.use("/emails", emailsRouter);
+adminRouter.use("/intake", intakeRouter);
+adminRouter.use("/analytics", analyticsRouter);
+adminRouter.use("/coupons", couponsRouter);
+adminRouter.use("/services", servicesRouter);
+
 // server.ts
 var __filename2 = fileURLToPath2(import.meta.url);
 var __dirname2 = path2.dirname(__filename2);
 async function startServer() {
+  validateSecurityOnStartup();
   const app = express();
+  app.set("trust proxy", 1);
   const PORT = Number(process.env.PORT) || 3e3;
   const isProduction = process.env.NODE_ENV === "production";
   app.use(express.json());
   app.use((req, res, next) => {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
-    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization, x-admin-token");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization, x-admin-token, x-admin-setup-secret");
     if (req.method === "OPTIONS") {
       res.sendStatus(204);
       return;
@@ -4542,6 +5724,7 @@ async function startServer() {
     const mongoConnected = await connectToMongoDB();
     if (mongoConnected) {
       await db.hydrateFromMongoDB();
+      await ensureDefaultAdminAccount();
     }
   } catch (err) {
     console.warn("[MongoDB Atlas] Initialization notice:", err?.message || "Will use local fallback mode");
@@ -4567,6 +5750,7 @@ async function startServer() {
   app.get("/health", healthCheckHandler);
   app.get("/api/health", healthCheckHandler);
   app.use("/api/auth", authRouter);
+  app.use("/api/admin", adminRouter);
   app.use("/api/vin", vinRouter);
   app.use("/api/orders", ordersRouter);
   app.use("/api/services", servicesRouter);
@@ -4578,7 +5762,6 @@ async function startServer() {
   app.use("/api/intake", intakeRouter);
   app.use("/api/gemini", geminiRouter);
   app.use("/api/video", videoRouter);
-  app.use("/api/admin/mongodb", adminMongodbRouter);
   app.post("/api/generate-video", handleGenerateVideo);
   app.post("/api/video-status", handleVideoStatus);
   app.get("/api/video-download", handleVideoDownload);

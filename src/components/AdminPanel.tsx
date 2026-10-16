@@ -7,8 +7,9 @@ import {
   Users, FileCheck, CreditCard, ChevronRight, LogOut, ArrowLeft, ShieldCheck, Lock,
   Database, Copy, ExternalLink, CheckCheck, Ban, CheckSquare, Square, XCircle,
   Loader2, Sparkles, QrCode, Download, Phone, MessageCircle, Filter, SlidersHorizontal,
-  FileSpreadsheet, Camera, Image as ImageIcon
+  FileSpreadsheet, Camera, Image as ImageIcon, Smartphone, KeyRound
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { EmailPreviewModal } from './EmailPreviewModal';
 import { useToast } from '../context/ToastContext';
 import { OrderTrackingProgressBar } from './OrderTrackingProgressBar';
@@ -55,14 +56,36 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 }) => {
   const { showToast } = useToast();
 
-  // Authentication State
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return Boolean(typeof window !== 'undefined' && sessionStorage.getItem('autoaudit_admin_token'));
-  });
-  const [adminEmailInput, setAdminEmailInput] = useState<string>('admin@autoaudit.com');
-  const [adminPasswordInput, setAdminPasswordInput] = useState<string>('AutoAudit2026!');
+  // Authentication & Security State
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isVerifyingSession, setIsVerifyingSession] = useState<boolean>(true);
+  const [adminUser, setAdminUser] = useState<any>(null);
+  const [adminEmailInput, setAdminEmailInput] = useState<string>('');
+  const [adminPasswordInput, setAdminPasswordInput] = useState<string>('');
+  const [showPassword, setShowPassword] = useState<boolean>(false);
   const [adminAuthError, setAdminAuthError] = useState<string>('');
   const [isAuthenticating, setIsAuthenticating] = useState<boolean>(false);
+
+  // Two-Factor Authentication (TOTP) State
+  const [is2FASetupMode, setIs2FASetupMode] = useState<boolean>(false);
+  const [is2FALoginMode, setIs2FALoginMode] = useState<boolean>(false);
+  const [twoFactorPreAuthToken, setTwoFactorPreAuthToken] = useState<string>('');
+  const [twoFactorSecret, setTwoFactorSecret] = useState<string>('');
+  const [twoFactorOtpAuthUrl, setTwoFactorOtpAuthUrl] = useState<string>('');
+  const [twoFactorBackupCodes, setTwoFactorBackupCodes] = useState<string[]>([]);
+  const [twoFactorCodeInput, setTwoFactorCodeInput] = useState<string>('');
+  const [isVerifying2FA, setIsVerifying2FA] = useState<boolean>(false);
+  const [copiedSecret, setCopiedSecret] = useState<boolean>(false);
+  const [copiedBackupCodes, setCopiedBackupCodes] = useState<boolean>(false);
+  const [useBackupCode, setUseBackupCode] = useState<boolean>(false);
+  const [showBackupCodes, setShowBackupCodes] = useState<boolean>(false);
+
+  // One-time Initial Setup State (enabled only if no admin exists & ADMIN_SETUP_SECRET configured)
+  const [setupMode, setSetupMode] = useState<boolean>(false);
+  const [setupSecretInput, setSetupSecretInput] = useState<string>('');
+  const [setupNameInput, setSetupNameInput] = useState<string>('Root Administrator');
+  const [canSetup, setCanSetup] = useState<boolean>(false);
+  const [isSettingUp, setIsSettingUp] = useState<boolean>(false);
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'customers' | 'services' | 'reports' | 'payments' | 'settings' | 'emails' | 'contact-analytics' | 'intake'>('dashboard');
   
@@ -254,6 +277,56 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   // Hydrate full orders once authorized
+  // Verify active JWT token on mount with the backend server
+  React.useEffect(() => {
+    let isMounted = true;
+    const existingToken = api.getAdminToken();
+
+    if (!existingToken) {
+      setIsVerifyingSession(false);
+      setIsAuthenticated(false);
+      api.getSetupStatus().then((res) => {
+        if (isMounted && res) {
+          setCanSetup(Boolean(res.canSetup));
+        }
+      });
+      return;
+    }
+
+    api.verifyAdminToken()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res.authenticated && res.user) {
+          setAdminUser(res.user);
+          setIsAuthenticated(true);
+        } else {
+          api.adminLogout();
+          setIsAuthenticated(false);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          api.adminLogout();
+          setIsAuthenticated(false);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsVerifyingSession(false);
+          api.getSetupStatus().then((res) => {
+            if (isMounted && res) {
+              setCanSetup(Boolean(res.canSetup));
+            }
+          });
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Fetch full orders list once verified
   React.useEffect(() => {
     if (isAuthenticated) {
       api.getOrders()
@@ -274,40 +347,59 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     const emailTrimmed = adminEmailInput.trim().toLowerCase();
     const passTrimmed = adminPasswordInput.trim();
 
-    // Check pre-configured credentials
-    const isPreconfigured = 
-      (emailTrimmed === 'admin@autoaudit.com' || emailTrimmed === 'admin@autoaudit.intelligence') &&
-      (passTrimmed === 'AutoAudit2026!' || passTrimmed === 'autoaudit-secure-staff-token-2026');
+    if (!emailTrimmed || !passTrimmed) {
+      setAdminAuthError('Please enter both administrator email and password.');
+      setIsAuthenticating(false);
+      return;
+    }
 
     try {
       const res = await api.adminLogin({
-        email: adminEmailInput.trim(),
-        password: adminPasswordInput,
-        accessKey: adminPasswordInput
+        email: emailTrimmed,
+        password: passTrimmed
       });
+
+      // If 2FA is required, transition to the appropriate 2FA screen
+      if (res.requires2FA) {
+        setTwoFactorPreAuthToken(res.preAuthToken || '');
+        setTwoFactorCodeInput('');
+        setAdminAuthError('');
+
+        if (res.setup2FARequired) {
+          setIs2FASetupMode(true);
+          setIs2FALoginMode(false);
+          setTwoFactorSecret(res.secret || '');
+          setTwoFactorOtpAuthUrl(res.otpauthUrl || '');
+          setTwoFactorBackupCodes(res.backupCodes || []);
+          showToast({
+            title: 'Authenticator Setup Required',
+            message: 'Scan the QR code to link your authenticator app.',
+            type: 'info'
+          });
+        } else {
+          setIs2FALoginMode(true);
+          setIs2FASetupMode(false);
+          showToast({
+            title: 'Two-Factor Challenge',
+            message: 'Enter the 6-digit code from your authenticator app.',
+            type: 'info'
+          });
+        }
+        return;
+      }
+
       if (res && res.token) {
+        setAdminUser(res.user);
         setIsAuthenticated(true);
+        setAdminPasswordInput('');
         showToast({
-          title: 'Authorized',
-          message: 'Staff session verified. Welcome to the Operations Console.',
+          title: 'Authorized Staff Session',
+          message: `Authenticated as ${res.user?.name || res.user?.email || 'Administrator'}.`,
           type: 'success'
         });
         return;
       }
     } catch (err: any) {
-      // If network / proxy error occurs but credentials match preconfigured credentials, authorize locally
-      if (isPreconfigured) {
-        sessionStorage.setItem('autoaudit_admin_token', 'session-verified-autoaudit-staff');
-        setIsAuthenticated(true);
-        showToast({
-          title: 'Authorized',
-          message: 'Staff session verified. Welcome to the Operations Console.',
-          type: 'success'
-        });
-        return;
-      }
-
-      // Safely extract clean string error message (never show [object Object])
       let cleanError = 'Invalid administrator credentials. Access restricted to authorized AutoAudit staff.';
       if (typeof err?.message === 'string' && err.message !== '[object Object]') {
         cleanError = err.message;
@@ -315,14 +407,159 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         cleanError = err.details;
       } else if (typeof err?.details?.error === 'string') {
         cleanError = err.details.error;
-      } else if (typeof err?.details?.error?.message === 'string') {
-        cleanError = err.details.error.message;
       } else if (typeof err?.details?.message === 'string') {
         cleanError = err.details.message;
       }
       setAdminAuthError(cleanError);
     } finally {
       setIsAuthenticating(false);
+    }
+  };
+
+  const handleVerify2FASetup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAdminAuthError('');
+    setIsVerifying2FA(true);
+
+    const cleanCode = twoFactorCodeInput.trim().replace(/\s/g, '');
+    if (!cleanCode || cleanCode.length !== 6) {
+      setAdminAuthError('Please enter the 6-digit verification code from your authenticator app.');
+      setIsVerifying2FA(false);
+      return;
+    }
+
+    try {
+      const res = await api.verify2FASetup({
+        preAuthToken: twoFactorPreAuthToken,
+        code: cleanCode
+      });
+
+      if (res && res.token) {
+        setAdminUser(res.user);
+        setIsAuthenticated(true);
+        setIs2FASetupMode(false);
+        setTwoFactorPreAuthToken('');
+        setTwoFactorCodeInput('');
+        setAdminPasswordInput('');
+        showToast({
+          title: '2FA Activated Successfully',
+          message: 'Your authenticator app is now linked to your administrator account.',
+          type: 'success',
+          duration: 6000
+        });
+      }
+    } catch (err: any) {
+      let cleanError = 'Invalid authenticator code. Check that your device clock is synchronized and try again.';
+      if (typeof err?.message === 'string' && err.message !== '[object Object]') {
+        cleanError = err.message;
+      }
+      setAdminAuthError(cleanError);
+    } finally {
+      setIsVerifying2FA(false);
+    }
+  };
+
+  const handleVerify2FALogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAdminAuthError('');
+    setIsVerifying2FA(true);
+
+    const cleanCode = twoFactorCodeInput.trim().replace(/\s/g, '');
+    if (!cleanCode) {
+      setAdminAuthError('Please enter your 6-digit authenticator code or emergency backup code.');
+      setIsVerifying2FA(false);
+      return;
+    }
+
+    try {
+      const res = await api.verify2FALogin({
+        preAuthToken: twoFactorPreAuthToken,
+        code: cleanCode
+      });
+
+      if (res && res.token) {
+        setAdminUser(res.user);
+        setIsAuthenticated(true);
+        setIs2FALoginMode(false);
+        setTwoFactorPreAuthToken('');
+        setTwoFactorCodeInput('');
+        setAdminPasswordInput('');
+        showToast({
+          title: 'Two-Factor Verified',
+          message: `Authenticated as ${res.user?.name || res.user?.email || 'Administrator'}.`,
+          type: 'success'
+        });
+      }
+    } catch (err: any) {
+      let cleanError = 'Invalid verification code. Please check your authenticator app or backup code.';
+      if (typeof err?.message === 'string' && err.message !== '[object Object]') {
+        cleanError = err.message;
+      }
+      setAdminAuthError(cleanError);
+    } finally {
+      setIsVerifying2FA(false);
+    }
+  };
+
+  const handleCancel2FA = () => {
+    setIs2FASetupMode(false);
+    setIs2FALoginMode(false);
+    setTwoFactorPreAuthToken('');
+    setTwoFactorCodeInput('');
+    setAdminAuthError('');
+    setUseBackupCode(false);
+  };
+
+  const handleOneTimeSetup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAdminAuthError('');
+    setIsSettingUp(true);
+
+    if (!setupSecretInput.trim()) {
+      setAdminAuthError('ADMIN_SETUP_SECRET is required to provision the initial administrator account.');
+      setIsSettingUp(false);
+      return;
+    }
+
+    if (!adminEmailInput.trim() || !adminPasswordInput.trim()) {
+      setAdminAuthError('Please enter desired administrator email and password.');
+      setIsSettingUp(false);
+      return;
+    }
+
+    if (adminPasswordInput.trim().length < 8) {
+      setAdminAuthError('Administrator password must be at least 8 characters long.');
+      setIsSettingUp(false);
+      return;
+    }
+
+    try {
+      const res = await api.setupInitialAdmin({
+        setupSecret: setupSecretInput.trim(),
+        email: adminEmailInput.trim().toLowerCase(),
+        password: adminPasswordInput.trim(),
+        name: setupNameInput.trim() || 'Root Administrator'
+      });
+
+      showToast({
+        title: 'Initial Setup Complete',
+        message: res.message || 'Administrator account provisioned. You can now log in.',
+        type: 'success',
+        duration: 6000
+      });
+
+      // Clear setup secret and switch back to standard login form
+      setSetupSecretInput('');
+      setSetupMode(false);
+      setCanSetup(false);
+    } catch (err: any) {
+      let cleanError = 'Setup failed. Please verify your ADMIN_SETUP_SECRET.';
+      if (typeof err?.message === 'string' && err.message !== '[object Object]') {
+        cleanError = err.message;
+      }
+      setAdminAuthError(cleanError);
+    } finally {
+      setIsSettingUp(false);
     }
   };
 
@@ -788,71 +1025,66 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   // Action: Mark as Paid & Delivered (Admin payment verification protocol)
-  const handleMarkPaidAndDelivered = (targetOrder: Order) => {
-    const now = new Date().toISOString();
-    const updated: Order = {
-      ...targetOrder,
-      status: 'Delivered',
-      payment: {
-        ...targetOrder.payment,
-        status: 'Paid',
-        paidAt: now
-      },
-      updatedAt: now,
-      auditLogs: [
-        ...(targetOrder.auditLogs || []),
-        {
-          id: `log-${Date.now()}-admin-paid`,
-          timestamp: now,
-          actor: 'Administrator',
-          action: 'Payment Verified & Order Delivered',
-          details: `Admin verified customer payment ($${targetOrder.total.toFixed(2)}) and dispatched official certified report.`
-        }
-      ]
-    };
-    onUpdateOrder(updated);
-    showToast({
-      type: 'success',
-      title: 'Order Paid & Delivered',
-      message: `Order #${targetOrder.orderNumber} confirmed paid and marked Delivered.`,
-      duration: 4500,
-    });
+  const handleMarkPaidAndDelivered = async (targetOrder: Order) => {
+    try {
+      const serverUpdated = await api.updateOrderPaymentStatus(
+        targetOrder.id,
+        'Paid',
+        `Admin verified customer payment ($${targetOrder.total.toFixed(2)}) and dispatched report.`
+      );
+      // Advance status to Delivered if Paid
+      const deliveredUpdated = await api.updateOrderStatus(
+        targetOrder.id,
+        'Delivered',
+        'Official certified report dispatched after payment confirmation.'
+      );
+      onUpdateOrder(deliveredUpdated || serverUpdated);
+      showToast({
+        type: 'success',
+        title: 'Order Paid & Delivered',
+        message: `Order #${targetOrder.orderNumber} confirmed paid and delivered in MongoDB.`,
+        duration: 4500,
+      });
+    } catch (err: any) {
+      showToast({
+        type: 'error',
+        title: 'Action Failed',
+        message: err?.message || 'Could not verify payment on server. Check administrator session.',
+        duration: 5000,
+      });
+    }
   };
 
-  // Action: Toggle Payment Status (Payment protection flow)
-  const handleTogglePaymentStatus = (targetOrder: Order) => {
+  // Action: Toggle Payment Status (Server-enforced payment protection flow)
+  const handleTogglePaymentStatus = async (targetOrder: Order) => {
     const isNowPaid = targetOrder.payment.status !== 'Paid';
-    const now = new Date().toISOString();
-    const updated: Order = {
-      ...targetOrder,
-      payment: {
-        ...targetOrder.payment,
-        status: isNowPaid ? 'Paid' : 'Pending',
-        paidAt: isNowPaid ? now : undefined
-      },
-      updatedAt: now,
-      auditLogs: [
-        ...(targetOrder.auditLogs || []),
-        {
-          id: `log-${Date.now()}-payment-${isNowPaid ? 'paid' : 'pending'}`,
-          timestamp: now,
-          actor: 'Administrator',
-          action: isNowPaid ? 'Payment Confirmed' : 'Payment Marked Pending',
-          details: isNowPaid 
-            ? `Admin marked customer payment of $${targetOrder.total.toFixed(2)} as received. Report ready for dispatch.` 
-            : 'Admin reverted payment status to pending.'
-        }
-      ]
-    };
-    onUpdateOrder(updated);
-    showToast({
-      type: isNowPaid ? 'success' : 'info',
-      title: isNowPaid ? 'Payment Confirmed' : 'Payment Marked Pending',
-      message: isNowPaid 
-        ? `Order #${targetOrder.orderNumber} payment marked as Paid. You may now download and dispatch the PDF report.`
-        : `Order #${targetOrder.orderNumber} reverted to Pending Payment. Report on hold.`,
-      duration: 4500,
-    });
+    const targetStatus = isNowPaid ? 'Paid' : 'Pending';
+
+    try {
+      const serverUpdated = await api.updateOrderPaymentStatus(
+        targetOrder.id,
+        targetStatus,
+        isNowPaid 
+          ? `Admin marked customer payment of $${targetOrder.total.toFixed(2)} as received. Report ready for dispatch.` 
+          : 'Admin reverted payment status to pending.'
+      );
+      onUpdateOrder(serverUpdated);
+      showToast({
+        type: isNowPaid ? 'success' : 'info',
+        title: isNowPaid ? 'Payment Confirmed' : 'Payment Marked Pending',
+        message: isNowPaid 
+          ? `Order #${targetOrder.orderNumber} payment marked as Paid in MongoDB. You may now download and dispatch the PDF report.`
+          : `Order #${targetOrder.orderNumber} reverted to Pending Payment. Report on hold.`,
+        duration: 4500,
+      });
+    } catch (err: any) {
+      showToast({
+        type: 'error',
+        title: 'Payment Authorization Failed',
+        message: err?.message || 'Server rejected payment modification. Please verify your administrative JWT token.',
+        duration: 5000,
+      });
+    }
   };
 
   // Action: Complete Order (Section 25)
@@ -945,97 +1177,464 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
-  if (!isAuthenticated) {
+  if (isVerifyingSession) {
     return (
       <div className="min-h-screen bg-[#0B132B] flex items-center justify-center p-4">
-        <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-700/50 overflow-hidden">
-          <div className="bg-slate-900 px-6 py-6 text-white text-center border-b border-slate-800">
-            <div className="w-12 h-12 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center mx-auto mb-3 text-blue-400">
-              <Lock className="w-6 h-6" />
+        <div className="bg-[#0F172A] border border-slate-800 text-white p-8 rounded-2xl shadow-2xl flex flex-col items-center gap-4 max-w-sm w-full text-center">
+          <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+          <div>
+            <h3 className="font-bold text-sm tracking-wide">Verifying Staff Authorization</h3>
+            <p className="text-xs text-slate-400 mt-1">Validating cryptographically signed JWT session token...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#07111F] flex items-center justify-center p-4 selection:bg-blue-600 selection:text-white">
+        <div className="bg-[#0B132B] w-full max-w-md rounded-2xl shadow-2xl border border-slate-800 overflow-hidden">
+          
+          {/* Header */}
+          <div className="bg-gradient-to-b from-slate-900 to-[#0B132B] px-6 py-6 text-white text-center border-b border-slate-800/80">
+            <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mx-auto mb-3 text-blue-400 shadow-inner">
+              {is2FASetupMode ? (
+                <Smartphone className="w-6 h-6 text-emerald-400" />
+              ) : is2FALoginMode ? (
+                <ShieldCheck className="w-6 h-6 text-blue-400" />
+              ) : (
+                <Lock className="w-6 h-6" />
+              )}
             </div>
-            <h2 className="text-xl font-bold tracking-tight">AutoAudit Staff Console</h2>
+            <h2 className="text-xl font-bold tracking-tight text-white">
+              {is2FASetupMode 
+                ? 'Link Authenticator App' 
+                : is2FALoginMode 
+                ? 'Two-Factor Verification' 
+                : 'AutoAudit Operations Console'}
+            </h2>
             <p className="text-xs text-slate-400 mt-1">
-              Restricted to authorized fulfillment specialists and platform administrators.
+              {is2FASetupMode
+                ? 'Scan the QR code to pair your authenticator app with this account.'
+                : is2FALoginMode
+                ? `Enter the 6-digit code generated by your authenticator app for ${adminEmailInput || 'your account'}.`
+                : setupMode 
+                ? 'One-Time Root Administrator Provisioning' 
+                : 'Restricted to authorized fulfillment specialists and platform administrators.'}
             </p>
           </div>
 
-          <form onSubmit={handleAdminLogin} className="p-6 space-y-4">
+          {/* Form Content */}
+          <div className="p-6 space-y-4">
             {adminAuthError && (
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0" />
-                <span>{adminAuthError}</span>
+              <div className="p-3.5 bg-rose-950/40 border border-rose-800/50 rounded-xl text-xs text-rose-300 font-medium flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+                <span className="leading-snug">{adminAuthError}</span>
               </div>
             )}
 
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700 block">Staff Email</label>
-              <input
-                type="email"
-                value={adminEmailInput}
-                onChange={(e) => setAdminEmailInput(e.target.value)}
-                placeholder="admin@autoaudit.com"
-                required
-                className="w-full h-11 px-3.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-blue-600"
-              />
-            </div>
+            {is2FASetupMode ? (
+              /* ============================================================== */
+              /* 1. TOTP QR Code Setup Flow                                     */
+              /* ============================================================== */
+              <form onSubmit={handleVerify2FASetup} className="space-y-4">
+                <div className="text-center space-y-3">
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Open <strong>Google Authenticator</strong>, <strong>Microsoft Authenticator</strong>, <strong>Apple Passwords</strong>, or <strong>1Password</strong>, tap <span className="text-blue-400 font-semibold">+</span> and scan this code:
+                  </p>
 
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700 block">Access Key / Password</label>
-              <input
-                type="password"
-                value={adminPasswordInput}
-                onChange={(e) => setAdminPasswordInput(e.target.value)}
-                placeholder="Enter access passphrase"
-                required
-                className="w-full h-11 px-3.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-blue-600"
-              />
-            </div>
+                  {/* High-contrast QR Code Container */}
+                  <div className="inline-block p-4 bg-white rounded-2xl shadow-xl border border-slate-700 mx-auto">
+                    {twoFactorOtpAuthUrl ? (
+                      <QRCodeSVG
+                        value={twoFactorOtpAuthUrl}
+                        size={176}
+                        level="M"
+                        includeMargin={false}
+                      />
+                    ) : (
+                      <div className="w-44 h-44 flex items-center justify-center text-slate-400 text-xs">
+                        Generating QR...
+                      </div>
+                    )}
+                  </div>
 
-            <div className="p-3 bg-blue-50/80 border border-blue-100 rounded-xl text-[11px] text-blue-900 leading-snug flex items-center justify-between gap-2">
-              <div>
-                <strong>Pre-configured staff credentials:</strong><br />
-                Email: <code className="font-mono text-blue-800">admin@autoaudit.com</code><br />
-                Access Key: <code className="font-mono text-blue-800">AutoAudit2026!</code>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setAdminEmailInput('admin@autoaudit.com');
-                  setAdminPasswordInput('AutoAudit2026!');
-                  setAdminAuthError('');
-                }}
-                className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-bold shrink-0 transition-colors cursor-pointer shadow-xs"
-                title="Fill default credentials"
-              >
-                Auto-Fill
-              </button>
-            </div>
+                  {/* Manual Secret Key Fallback */}
+                  <div className="pt-1">
+                    <p className="text-[11px] text-slate-400 mb-1.5">Can't scan? Enter this key manually into your authenticator:</p>
+                    <div className="flex items-center justify-between gap-2 bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2">
+                      <code className="text-xs font-mono text-emerald-300 tracking-wider break-all select-all">
+                        {twoFactorSecret}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(twoFactorSecret);
+                          setCopiedSecret(true);
+                          setTimeout(() => setCopiedSecret(false), 2000);
+                        }}
+                        className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors shrink-0 cursor-pointer"
+                        title="Copy Key"
+                      >
+                        {copiedSecret ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
 
-            <div className="pt-2 flex flex-col gap-2">
-              <button
-                type="submit"
-                disabled={isAuthenticating}
-                className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl transition-colors shadow-sm disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
-              >
-                {isAuthenticating ? (
-                  <span>Verifying Authorization...</span>
-                ) : (
-                  <>
-                    <ShieldCheck className="w-4 h-4" />
-                    <span>Authorize Session</span>
-                  </>
+                {/* 6-Digit TOTP Verification Input */}
+                <div className="space-y-1.5 pt-1">
+                  <label className="text-xs font-semibold text-slate-200 block text-center">
+                    Enter the 6-digit code shown in your app
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoFocus
+                    maxLength={6}
+                    value={twoFactorCodeInput}
+                    onChange={(e) => setTwoFactorCodeInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="123456"
+                    required
+                    className="w-full h-12 text-center font-mono text-2xl font-bold tracking-[0.25em] bg-slate-900 border border-emerald-500/60 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-inner"
+                  />
+                </div>
+
+                {/* Emergency Recovery Backup Codes */}
+                {twoFactorBackupCodes.length > 0 && (
+                  <div className="border border-slate-800/80 rounded-xl p-3 bg-slate-900/50">
+                    <div
+                      className="flex items-center justify-between text-xs text-slate-300 font-semibold cursor-pointer"
+                      onClick={() => setShowBackupCodes(!showBackupCodes)}
+                    >
+                      <span className="flex items-center gap-1.5 text-amber-300">
+                        <KeyRound className="w-3.5 h-3.5 text-amber-400" />
+                        Emergency Recovery Codes ({twoFactorBackupCodes.length})
+                      </span>
+                      <span className="text-[11px] text-blue-400 hover:underline">
+                        {showBackupCodes ? 'Hide' : 'Save Codes'}
+                      </span>
+                    </div>
+
+                    {showBackupCodes && (
+                      <div className="mt-2.5 pt-2.5 border-t border-slate-800/80 space-y-2">
+                        <p className="text-[11px] text-slate-400 leading-snug">
+                          Save these one-time codes in a safe place. You can use them to access your account if you lose your phone:
+                        </p>
+                        <div className="grid grid-cols-2 gap-1.5 font-mono text-xs text-amber-200">
+                          {twoFactorBackupCodes.map((c, i) => (
+                            <div key={i} className="bg-slate-950 px-2 py-1 rounded border border-slate-800/80 text-center select-all">
+                              {c}
+                            </div>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(twoFactorBackupCodes.join('\n'));
+                            setCopiedBackupCodes(true);
+                            setTimeout(() => setCopiedBackupCodes(false), 2000);
+                          }}
+                          className="w-full py-1.5 text-xs text-amber-300 hover:text-amber-200 bg-amber-950/30 border border-amber-900/40 rounded-lg hover:bg-amber-950/50 transition-colors flex items-center justify-center gap-1.5 cursor-pointer font-medium"
+                        >
+                          {copiedBackupCodes ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span>{copiedBackupCodes ? 'Copied to Clipboard!' : 'Copy All Backup Codes'}</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )}
-              </button>
 
-              <button
-                type="button"
-                onClick={onCloseAdmin}
-                className="w-full h-10 text-slate-600 hover:text-slate-900 text-xs font-semibold rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
-              >
-                Cancel and Return to Website
-              </button>
-            </div>
-          </form>
+                {/* Action Buttons */}
+                <div className="pt-2 flex flex-col gap-2">
+                  <button
+                    type="submit"
+                    disabled={isVerifying2FA || twoFactorCodeInput.trim().length !== 6}
+                    className="w-full h-11 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-xl transition-colors shadow-sm disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    {isVerifying2FA ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Verifying Authenticator Code...</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck className="w-4 h-4" />
+                        <span>Activate 2FA & Access Console</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleCancel2FA}
+                    className="w-full h-9 text-slate-400 hover:text-white text-xs font-medium rounded-xl hover:bg-slate-800/60 transition-colors"
+                  >
+                    Cancel & Return to Login
+                  </button>
+                </div>
+              </form>
+            ) : is2FALoginMode ? (
+              /* ============================================================== */
+              /* 2. Standard 2FA Code Verification Flow                         */
+              /* ============================================================== */
+              <form onSubmit={handleVerify2FALogin} className="space-y-4">
+                <div className="p-3 bg-blue-950/30 border border-blue-800/40 rounded-xl text-xs text-blue-200 leading-snug flex items-center gap-2.5">
+                  <Smartphone className="w-4 h-4 text-blue-400 shrink-0" />
+                  <span>Two-factor authentication is active on this account. Open your authenticator app to view your current 6-digit code.</span>
+                </div>
+
+                {useBackupCode ? (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-300 block">
+                      Emergency Recovery Backup Code
+                    </label>
+                    <input
+                      type="text"
+                      autoFocus
+                      value={twoFactorCodeInput}
+                      onChange={(e) => setTwoFactorCodeInput(e.target.value.toUpperCase().trim())}
+                      placeholder="XXXX-XXXX"
+                      required
+                      className="w-full h-12 text-center font-mono text-lg font-bold tracking-widest bg-slate-900 border border-amber-500/50 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-200 block text-center">
+                      6-Digit Authenticator Code
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      autoFocus
+                      maxLength={6}
+                      value={twoFactorCodeInput}
+                      onChange={(e) => setTwoFactorCodeInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      placeholder="000000"
+                      required
+                      className="w-full h-12 text-center font-mono text-2xl font-bold tracking-[0.25em] bg-slate-900 border border-blue-500/60 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-inner"
+                    />
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUseBackupCode(!useBackupCode);
+                      setTwoFactorCodeInput('');
+                      setAdminAuthError('');
+                    }}
+                    className="text-blue-400 hover:text-blue-300 transition-colors text-[11px] cursor-pointer"
+                  >
+                    {useBackupCode ? '← Use 6-Digit Authenticator App' : 'Lost authenticator? Use backup code'}
+                  </button>
+                </div>
+
+                <div className="pt-2 flex flex-col gap-2">
+                  <button
+                    type="submit"
+                    disabled={isVerifying2FA || !twoFactorCodeInput.trim()}
+                    className="w-full h-11 bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm rounded-xl transition-colors shadow-sm disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    {isVerifying2FA ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Verifying Two-Factor Code...</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck className="w-4 h-4" />
+                        <span>Authorize Administrator Console</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleCancel2FA}
+                    className="w-full h-9 text-slate-400 hover:text-white text-xs font-medium rounded-xl hover:bg-slate-800/60 transition-colors"
+                  >
+                    Cancel & Return to Login
+                  </button>
+                </div>
+              </form>
+            ) : setupMode ? (
+              /* ============================================================== */
+              /* 3. One-Time Setup Form                                         */
+              /* ============================================================== */
+              <form onSubmit={handleOneTimeSetup} className="space-y-4">
+                <div className="p-3 bg-amber-950/30 border border-amber-800/40 rounded-xl text-[11px] text-amber-300 leading-snug">
+                  <strong>Initial Provisioning Mode:</strong> Enter the <code className="font-mono text-amber-200">ADMIN_SETUP_SECRET</code> from your server environment variables to create the root administrator account in MongoDB Atlas.
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300 block">Setup Secret Token</label>
+                  <input
+                    type="password"
+                    value={setupSecretInput}
+                    onChange={(e) => setSetupSecretInput(e.target.value)}
+                    placeholder="Enter ADMIN_SETUP_SECRET from server env"
+                    required
+                    className="w-full h-11 px-3.5 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300 block">Administrator Name</label>
+                  <input
+                    type="text"
+                    value={setupNameInput}
+                    onChange={(e) => setSetupNameInput(e.target.value)}
+                    placeholder="e.g. Lead Administrator"
+                    className="w-full h-11 px-3.5 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300 block">Root Admin Email</label>
+                  <input
+                    type="email"
+                    value={adminEmailInput}
+                    onChange={(e) => setAdminEmailInput(e.target.value)}
+                    placeholder="admin@autoaudit.com"
+                    required
+                    className="w-full h-11 px-3.5 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300 block">Choose Strong Password</label>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={adminPasswordInput}
+                    onChange={(e) => setAdminPasswordInput(e.target.value)}
+                    placeholder="Minimum 8 characters"
+                    required
+                    minLength={8}
+                    className="w-full h-11 px-3.5 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div className="pt-2 flex flex-col gap-2">
+                  <button
+                    type="submit"
+                    disabled={isSettingUp}
+                    className="w-full h-11 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-xl transition-colors shadow-sm disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    {isSettingUp ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Provisioning Root Admin...</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck className="w-4 h-4" />
+                        <span>Provision Root Administrator</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSetupMode(false)}
+                    className="w-full h-9 text-slate-400 hover:text-white text-xs font-medium rounded-xl hover:bg-slate-800/60 transition-colors"
+                  >
+                    Return to Standard Login
+                  </button>
+                </div>
+              </form>
+            ) : (
+              /* ============================================================== */
+              /* 4. Standard Admin Password Verification Form                   */
+              /* ============================================================== */
+              <form onSubmit={handleAdminLogin} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300 block">Staff Email</label>
+                  <input
+                    type="email"
+                    value={adminEmailInput}
+                    onChange={(e) => setAdminEmailInput(e.target.value)}
+                    placeholder="name@autoaudit.com"
+                    required
+                    autoComplete="username"
+                    className="w-full h-11 px-3.5 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-300 block">Password</label>
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="text-[11px] text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                    >
+                      {showPassword ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={adminPasswordInput}
+                    onChange={(e) => setAdminPasswordInput(e.target.value)}
+                    placeholder="Enter administrative password"
+                    required
+                    autoComplete="current-password"
+                    className="w-full h-11 px-3.5 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                {/* Security Info Badge */}
+                <div className="p-3 bg-slate-900/60 border border-slate-800 rounded-xl text-[11px] text-slate-400 leading-snug flex items-center gap-2.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Secured with bcrypt password hashing and 2FA time-based one-time password (TOTP).</span>
+                </div>
+
+                <div className="pt-2 flex flex-col gap-2">
+                  <button
+                    type="submit"
+                    disabled={isAuthenticating}
+                    className="w-full h-11 bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm rounded-xl transition-colors shadow-sm disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    {isAuthenticating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Verifying Password...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="w-4 h-4" />
+                        <span>Continue with Password</span>
+                      </>
+                    )}
+                  </button>
+
+                  {canSetup && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSetupMode(true);
+                        setAdminAuthError('');
+                      }}
+                      className="w-full h-9 text-emerald-400 hover:text-emerald-300 text-xs font-semibold rounded-xl hover:bg-emerald-950/30 transition-colors border border-emerald-900/40"
+                    >
+                      First-time setup? Initialize root administrator
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={onCloseAdmin}
+                    className="w-full h-9 text-slate-400 hover:text-white text-xs font-medium rounded-xl hover:bg-slate-800/60 transition-colors"
+                  >
+                    Cancel and Return to Website
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -1247,6 +1846,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold shadow-2xs">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span>2FA TOTP Protected</span>
+            </div>
             <button
               type="button"
               onClick={onViewSampleReport}
@@ -2381,6 +2984,58 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   >
                     Setup Guide <ExternalLink className="w-2.5 h-2.5" />
                   </a>
+                </div>
+              </div>
+
+              {/* Two-Factor Authentication Security Card */}
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold">
+                      <ShieldCheck className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                        Two-Factor Authentication (TOTP)
+                        <span className="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300 px-1.5 py-0.2 rounded font-semibold">Active & Enforced</span>
+                      </span>
+                      <span className="text-[11px] text-slate-500 block">
+                        Linked with Authenticator App (Google Authenticator, Microsoft Authenticator, Apple Passwords, or 1Password)
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const resetRes = await api.request2FAReset();
+                        if (resetRes.preAuthToken) {
+                          setTwoFactorPreAuthToken(resetRes.preAuthToken);
+                          setTwoFactorSecret(resetRes.secret);
+                          setTwoFactorOtpAuthUrl(resetRes.otpauthUrl);
+                          setTwoFactorBackupCodes(resetRes.backupCodes || []);
+                          setTwoFactorCodeInput('');
+                          setIs2FASetupMode(true);
+                          setIsAuthenticated(false);
+                          showToast({
+                            title: 'Re-Link Authenticator',
+                            message: 'Scan the new QR code to update your authenticator app.',
+                            type: 'info'
+                          });
+                        }
+                      } catch (err: any) {
+                        showToast({
+                          title: 'Error Resetting 2FA',
+                          message: err?.message || 'Could not initiate 2FA reset.',
+                          type: 'error'
+                        });
+                      }
+                    }}
+                    className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs self-start sm:self-auto"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Re-link Authenticator App</span>
+                  </button>
                 </div>
               </div>
 

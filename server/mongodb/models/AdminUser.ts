@@ -9,6 +9,10 @@ export interface IAdminUser extends Document {
   lastLogin?: Date;
   loginAttempts: number;
   lockUntil?: Date;
+  twoFactorEnabled?: boolean;
+  twoFactorSecret?: string;
+  twoFactorPendingSecret?: string;
+  backupCodes?: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -39,6 +43,20 @@ const AdminUserSchema = new Schema<IAdminUser>(
     isActive: {
       type: Boolean,
       default: true
+    },
+    twoFactorEnabled: {
+      type: Boolean,
+      default: false
+    },
+    twoFactorSecret: {
+      type: String
+    },
+    twoFactorPendingSecret: {
+      type: String
+    },
+    backupCodes: {
+      type: [String],
+      default: []
     },
     lastLogin: {
       type: Date

@@ -2,7 +2,8 @@ import { Router, Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
 import { db } from '../db';
-import { requireAdminAuth } from '../middleware/auth';
+import { requireAdminAuth, AuthenticatedRequest } from '../middleware/auth';
+import { verifyAdminToken } from '../utils/jwt';
 import { Order, AuditLog } from '../../src/types';
 import { triggerAutomatedEmailSequence, sendMockEmail } from '../services/smtp';
 import { handleNewOrderCreation, processOrderReport } from '../services/mockReportGenerator';
@@ -70,10 +71,16 @@ ordersRouter.get('/', async (req: Request, res: Response) => {
     search: typeof search === 'string' ? search : undefined
   });
 
+  // Strip internal notes and sensitive audit information for customer lookup
+  const sanitizedOrders = customerOrders.map(order => {
+    const { internalNotes, ...safeOrder } = order as any;
+    return safeOrder;
+  });
+
   res.json({
     success: true,
-    count: customerOrders.length,
-    data: customerOrders
+    count: sanitizedOrders.length,
+    data: sanitizedOrders
   });
 });
 
@@ -87,9 +94,28 @@ ordersRouter.get('/:id', async (req: Request, res: Response) => {
     return;
   }
 
+  // Check if caller is authenticated staff
+  let isStaff = false;
+  const authHeader = req.headers.authorization;
+  const xToken = req.headers['x-admin-token'];
+  const rawToken = authHeader?.startsWith('Bearer ')
+    ? authHeader.slice(7).trim()
+    : Array.isArray(xToken) ? xToken[0] : xToken;
+
+  if (rawToken && verifyAdminToken(rawToken)) {
+    isStaff = true;
+  }
+
+  // If customer is looking up order, strip internal staff notes and internal audit logs
+  let sanitizedOrder = order;
+  if (!isStaff) {
+    const { internalNotes, ...safeOrder } = order as any;
+    sanitizedOrder = safeOrder;
+  }
+
   res.json({
     success: true,
-    data: order
+    data: sanitizedOrder
   });
 });
 
@@ -230,10 +256,150 @@ ordersRouter.post('/', async (req: Request, res: Response) => {
     console.error('[SMTP] Error starting automated email sequence:', err);
   });
 
+  const { internalNotes, ...safeNewOrder } = newOrder as any;
+
   res.status(201).json({
     success: true,
     message: 'Order created successfully. Processing has begun.',
-    data: newOrder
+    data: safeNewOrder
+  });
+});
+
+// PATCH /api/orders/:id/payment (strictly requires administrator authorization)
+ordersRouter.patch('/:id/payment', requireAdminAuth, async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { status, notes } = req.body;
+  const authReq = req as AuthenticatedRequest;
+
+  // Enforce server-side administrator role verification
+  if (!authReq.adminUser?.role || !['superadmin', 'staff_admin'].includes(authReq.adminUser.role)) {
+    res.status(403).json({
+      success: false,
+      code: 'FORBIDDEN_ROLE',
+      error: 'Forbidden: Only administrators (superadmin or staff_admin) are authorized to modify payment status.'
+    });
+    return;
+  }
+
+  const adminActor = authReq.adminUser?.email || authReq.adminUser?.name || 'Staff Administrator';
+
+  if (!status || !['Paid', 'Pending', 'Failed', 'Refunded'].includes(status)) {
+    res.status(400).json({
+      success: false,
+      error: 'Valid payment status is required: Paid, Pending, Failed, or Refunded.'
+    });
+    return;
+  }
+
+  const updated = await db.updateOrderPaymentStatusAsync(
+    id,
+    status as 'Paid' | 'Pending' | 'Failed' | 'Refunded',
+    adminActor,
+    notes ? sanitizeText(notes) : undefined
+  );
+
+  if (!updated) {
+    res.status(404).json({ success: false, error: `Order with identifier "${id}" not found.` });
+    return;
+  }
+
+  // If approved and marked as Paid, trigger report auto-generation and email sequence
+  if (status === 'Paid') {
+    handleNewOrderCreation(updated);
+    triggerAutomatedEmailSequence(updated, {
+      stageDelaySeconds: { stage2: 4, stage3: 8 },
+      autoAdvanceOrderStatus: true
+    }).catch(err => {
+      console.error('[SMTP] Error starting automated email sequence on payment approval:', err);
+    });
+  }
+
+  res.json({
+    success: true,
+    message: `Payment status for order ${updated.orderNumber} successfully set to "${status}" by ${adminActor}.`,
+    data: updated
+  });
+});
+
+// POST /api/orders/:id/approve-payment (convenience endpoint for manual QR payment approval)
+ordersRouter.post('/:id/approve-payment', requireAdminAuth, async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { notes } = req.body || {};
+  const authReq = req as AuthenticatedRequest;
+
+  // Enforce server-side administrator role verification
+  if (!authReq.adminUser?.role || !['superadmin', 'staff_admin'].includes(authReq.adminUser.role)) {
+    res.status(403).json({
+      success: false,
+      code: 'FORBIDDEN_ROLE',
+      error: 'Forbidden: Only administrators (superadmin or staff_admin) are authorized to approve payments.'
+    });
+    return;
+  }
+
+  const adminActor = authReq.adminUser?.email || authReq.adminUser?.name || 'Staff Administrator';
+
+  const updated = await db.updateOrderPaymentStatusAsync(
+    id,
+    'Paid',
+    adminActor,
+    notes ? sanitizeText(notes) : 'Manual QR payment verified and confirmed by administrator.'
+  );
+
+  if (!updated) {
+    res.status(404).json({ success: false, error: `Order with identifier "${id}" not found.` });
+    return;
+  }
+
+  handleNewOrderCreation(updated);
+  triggerAutomatedEmailSequence(updated, {
+    stageDelaySeconds: { stage2: 4, stage3: 8 },
+    autoAdvanceOrderStatus: true
+  }).catch(err => {
+    console.error('[SMTP] Error on payment approval:', err);
+  });
+
+  res.json({
+    success: true,
+    message: `Payment confirmed for order ${updated.orderNumber}. Processing initiated.`,
+    data: updated
+  });
+});
+
+// POST /api/orders/:id/reject-payment (convenience endpoint for manual QR payment rejection)
+ordersRouter.post('/:id/reject-payment', requireAdminAuth, async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { reason } = req.body || {};
+  const authReq = req as AuthenticatedRequest;
+
+  // Enforce server-side administrator role verification
+  if (!authReq.adminUser?.role || !['superadmin', 'staff_admin'].includes(authReq.adminUser.role)) {
+    res.status(403).json({
+      success: false,
+      code: 'FORBIDDEN_ROLE',
+      error: 'Forbidden: Only administrators (superadmin or staff_admin) are authorized to reject payments.'
+    });
+    return;
+  }
+
+  const adminActor = authReq.adminUser?.email || authReq.adminUser?.name || 'Staff Administrator';
+
+  const updated = await db.updateOrderPaymentStatusAsync(
+    id,
+    'Failed',
+    adminActor,
+    reason ? sanitizeText(reason) : 'Payment receipt could not be verified by administrator.'
+  );
+
+  if (!updated) {
+    res.status(404).json({ success: false, error: `Order with identifier "${id}" not found.` });
+    return;
+  }
+
+  res.json({
+    success: true,
+    message: `Payment rejected for order ${updated.orderNumber}.`,
+    data: updated
   });
 });
 

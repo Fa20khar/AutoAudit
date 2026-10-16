@@ -11,6 +11,7 @@
     "build": "npm run build:client && npm run build:server",
     "migrate:mongodb": "tsx server/mongodb/migration.ts",
     "migrate:mongodb:dry": "tsx server/mongodb/migration.ts --dry-run",
+    "test:security": "tsx server/scripts/test-security.ts",
     "lint": "tsc --noEmit",
     "preview": "vite preview"
   },

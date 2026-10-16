@@ -608,6 +608,85 @@ class Database {
     return order;
   }
 
+  updateOrderPaymentStatus(
+    orderId: string,
+    paymentStatus: 'Paid' | 'Pending' | 'Failed' | 'Refunded',
+    adminActor = 'Staff Administrator',
+    notes?: string
+  ): Order | null {
+    const order = this.getOrderById(orderId);
+    if (!order) return null;
+
+    const now = new Date().toISOString();
+    order.payment = {
+      ...order.payment,
+      status: paymentStatus,
+      paidAt: paymentStatus === 'Paid' ? now : undefined
+    };
+    if (paymentStatus === 'Paid' && order.status === 'Pending') {
+      order.status = 'Paid / New';
+    }
+    order.updatedAt = now;
+    if (notes) {
+      order.internalNotes = order.internalNotes ? `${order.internalNotes}\n${notes}` : notes;
+    }
+
+    const logEntry = {
+      id: `log-${Date.now()}-payment`,
+      timestamp: now,
+      actor: adminActor,
+      action: paymentStatus === 'Paid' ? 'Payment Verified & Approved' : `Payment Status Changed to ${paymentStatus}`,
+      details: notes || `Admin ${adminActor} updated payment status to ${paymentStatus} for $${order.total.toFixed(2)}.`
+    };
+    order.auditLogs.unshift(logEntry);
+
+    if (isMongoConnected()) {
+      OrderModel.updateOne(
+        { $or: [{ id: orderId }, { orderNumber: orderId }] },
+        {
+          $set: {
+            'payment.status': paymentStatus,
+            'payment.paidAt': order.payment.paidAt,
+            status: order.status,
+            updatedAt: order.updatedAt,
+            internalNotes: order.internalNotes
+          },
+          $push: { auditLogs: { $each: [logEntry], $position: 0 } }
+        }
+      ).catch(err => console.error('[Database] MongoDB payment status sync error:', err.message));
+    }
+
+    return order;
+  }
+
+  async updateOrderPaymentStatusAsync(
+    orderId: string,
+    paymentStatus: 'Paid' | 'Pending' | 'Failed' | 'Refunded',
+    adminActor = 'Staff Administrator',
+    notes?: string
+  ): Promise<Order | null> {
+    const order = this.updateOrderPaymentStatus(orderId, paymentStatus, adminActor, notes);
+    if (order && isMongoConnected()) {
+      try {
+        await OrderModel.updateOne(
+          { $or: [{ id: orderId }, { orderNumber: orderId }] },
+          {
+            $set: {
+              'payment.status': paymentStatus,
+              'payment.paidAt': order.payment.paidAt,
+              status: order.status,
+              updatedAt: order.updatedAt,
+              internalNotes: order.internalNotes
+            }
+          }
+        );
+      } catch (err: any) {
+        console.error('[Database] MongoDB async payment sync error:', err.message);
+      }
+    }
+    return order;
+  }
+
   updateOrderNotes(orderId: string, notes: string): Order | null {
     const order = this.getOrderById(orderId);
     if (!order) return null;
