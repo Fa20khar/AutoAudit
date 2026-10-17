@@ -1,5 +1,6 @@
 export type OrderStatus =
   | 'Pending Payment'
+  | 'Payment Submitted'
   | 'Paid / New'
   | 'Processing'
   | 'NMVTIS Check'

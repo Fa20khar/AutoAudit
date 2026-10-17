@@ -31,12 +31,6 @@ import { CustomerIntakeSubmission } from '../types';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { IntakeProgressBar, IntakeProgressStats } from './IntakeProgressBar';
-import { 
-  GOOGLE_FORMS_CONFIG, 
-  GOOGLE_FORMS_EMBED_URL, 
-  GOOGLE_FORMS_RESPONSES_URL,
-  GOOGLE_FORMS_EDITOR_URL 
-} from '../config/googleFormsConfig';
 
 interface CustomerIntakeModalProps {
   isOpen: boolean;
@@ -154,9 +148,6 @@ export const CustomerIntakeModal: React.FC<CustomerIntakeModalProps> = ({
     reportDownloadUrl?: string;
     orderNumber?: string;
   } | null>(null);
-
-  // Form mode: Direct AutoAudit Intake or Embedded Google Form
-  const [formMode, setFormMode] = useState<'direct' | 'google'>('direct');
 
   // Sync initial VIN when modal opens
   React.useEffect(() => {
@@ -462,36 +453,6 @@ export const CustomerIntakeModal: React.FC<CustomerIntakeModalProps> = ({
           </button>
         </div>
 
-        {/* Quick Link to Official Google Form Page & Toggle */}
-        <div className="bg-[#0F1B2D] border-b border-slate-800 px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-300">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" />
-            <span className="font-medium text-slate-200">Google Form & Google Sheet Integration Active</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setFormMode(formMode === 'google' ? 'direct' : 'google')}
-              className="text-[#10B981] hover:text-emerald-300 font-bold hover:underline cursor-pointer flex items-center gap-1"
-            >
-              <span>{formMode === 'google' ? 'Switch to Multi-Step Form' : 'Switch to Google Form View'}</span>
-            </button>
-            <span className="text-slate-600 hidden sm:inline">•</span>
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                window.history.pushState(null, '', '/request-report');
-                window.dispatchEvent(new PopStateEvent('popstate'));
-              }}
-              className="text-slate-400 hover:text-white hover:underline cursor-pointer hidden sm:flex items-center gap-1"
-            >
-              <span>Full Page Form</span>
-              <span>→</span>
-            </button>
-          </div>
-        </div>
-
         {/* Modal Body */}
         <div className="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1 bg-slate-50/50">
 
@@ -633,62 +594,6 @@ export const CustomerIntakeModal: React.FC<CustomerIntakeModalProps> = ({
                   </p>
                 </div>
               </div>
-          ) : formMode === 'google' ? (
-            /* GOOGLE FORMS VIEW INSIDE MODAL */
-            <div className="space-y-4 animate-in fade-in duration-150">
-              {/* Google Form Location & Google Sheets Responses Banner */}
-              <div className="bg-emerald-950/40 border border-emerald-900/60 rounded-xl p-4 text-xs text-emerald-200 space-y-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 font-bold text-white">
-                    <CheckCircle2 className="w-4 h-4 text-[#10B981]" />
-                    <span>Official Google Form Embedded</span>
-                  </div>
-                  <a
-                    href={GOOGLE_FORMS_RESPONSES_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-emerald-400 hover:text-emerald-300 font-semibold underline text-[11px] flex items-center gap-1.5"
-                  >
-                    <FileSpreadsheet className="w-3.5 h-3.5 text-[#10B981]" />
-                    <span>View Connected Google Sheet Responses</span>
-                  </a>
-                </div>
-                <p className="text-slate-300 text-[11px] leading-relaxed">
-                  <strong>Where is Google Form & Google Sheet?</strong> This Google Form collects your request directly below, and responses automatically sync into the private Google Sheet response spreadsheet for administrative verification.
-                </p>
-              </div>
-
-              {/* Responsive Google Form Container */}
-              <div className="w-full bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden relative min-h-[560px]">
-                <iframe
-                  src={GOOGLE_FORMS_EMBED_URL}
-                  width="100%"
-                  height="600"
-                  title="AutoAudit Google Form Vehicle Report Request"
-                  className="w-full h-[600px] border-0 bg-white"
-                >
-                  Loading Google Form...
-                </iframe>
-              </div>
-
-              <div className="flex items-center justify-between gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setFormMode('direct')}
-                  className="text-xs text-blue-600 hover:underline font-semibold flex items-center gap-1 cursor-pointer"
-                >
-                  <span>← Return to Step-by-Step AutoAudit Form</span>
-                </button>
-                <a
-                  href={GOOGLE_FORMS_EDITOR_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-slate-500 hover:text-slate-700 underline"
-                >
-                  Edit Form in Google Forms
-                </a>
-              </div>
-            </div>
           ) : (
             /* ACTIVE FORM STATE */
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -698,8 +603,6 @@ export const CustomerIntakeModal: React.FC<CustomerIntakeModalProps> = ({
                 stats={progressStats}
                 currentStep={activeTab}
                 onSelectStep={(step) => setActiveTab(step)}
-                isGoogleFormMode={false}
-                onToggleFormMode={(mode) => setFormMode(mode)}
               />
 
               {/* Form Overview Banner */}
@@ -1200,7 +1103,7 @@ export const CustomerIntakeModal: React.FC<CustomerIntakeModalProps> = ({
                             Click to select vehicle photos or drag & drop here
                           </div>
                           <p className="text-[10px] text-slate-400">
-                            JPEG, PNG or WebP • Max 10 MB per photo • Stored safely with Google Forms/Sheets integration
+                            JPEG, PNG or WebP • Max 10 MB per photo • Stored safely and encrypted in AutoAudit cloud database
                           </p>
                         </label>
                       </div>

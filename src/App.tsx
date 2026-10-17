@@ -305,9 +305,21 @@ function AppContent() {
   };
 
   const handleUpdateOrder = (updatedOrder: Order) => {
-    setOrders((prev) => prev.map((o) => (o.id === updatedOrder.id ? updatedOrder : o)));
-    // Sync status change to backend
+    setOrders((prev) => {
+      const exists = prev.some((o) => o.id === updatedOrder.id || o.orderNumber === updatedOrder.orderNumber);
+      if (exists) {
+        return prev.map((o) => (o.id === updatedOrder.id || o.orderNumber === updatedOrder.orderNumber ? updatedOrder : o));
+      }
+      return [updatedOrder, ...prev];
+    });
+    // Sync status change to backend if not already done
     api.updateOrderStatus(updatedOrder.id, updatedOrder.status, updatedOrder.internalNotes).catch(console.warn);
+  };
+
+  const handleSyncOrders = (serverOrders: Order[]) => {
+    if (Array.isArray(serverOrders) && serverOrders.length > 0) {
+      setOrders(serverOrders);
+    }
   };
 
   const handleBatchUpdateOrders = (updatedOrders: Order[]) => {
@@ -350,6 +362,7 @@ function AppContent() {
           emails={emails}
           onUpdateOrder={handleUpdateOrder}
           onBatchUpdateOrders={handleBatchUpdateOrders}
+          onSyncOrders={handleSyncOrders}
           onUpdateServices={setServices}
           onUpdateCoupons={setCoupons}
           onSendEmail={handleSendEmail}
@@ -358,7 +371,7 @@ function AppContent() {
           onDownloadReport={handleDownloadReport}
         />
       ) : currentView === 'request-report' ? (
-        /* 2. Dedicated AutoAudit Branded Report-Request Page (/request-report) with Google Forms */
+        /* 2. Dedicated AutoAudit Branded Report-Request Page (/request-report) */
         <>
           <Navbar
             onOpenOrder={handleOpenRequestReport}
@@ -382,6 +395,10 @@ function AppContent() {
                 handleBackToHome();
                 setTimeout(() => handleScrollTo('services'), 100);
               }}
+              onOrderCompleted={handleOrderCompleted}
+              services={services.filter((s) => s.active)}
+              coupons={coupons}
+              onOpenTrack={() => setIsTrackModalOpen(true)}
             />
           </main>
 

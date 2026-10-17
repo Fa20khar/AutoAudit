@@ -324,6 +324,139 @@ export const api = {
     return res.data;
   },
 
+  async submitPaymentProof(id: string, proofRef: string, note?: string, timeoutMs = 10000): Promise<Order> {
+    const res = await request<{ success: boolean; message: string; data: Order }>(
+      `/api/orders/${encodeURIComponent(id)}/payment-proof`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ proofRef, note })
+      },
+      timeoutMs
+    );
+    return res.data;
+  },
+
+  /**
+   * Check payment status for an order (single probe)
+   */
+  async checkPaymentStatus(
+    id: string,
+    timeoutMs = 6000
+  ): Promise<{
+    isPaid: boolean;
+    paymentStatus: string;
+    orderStatus: string;
+    paidAt?: string;
+    transactionId?: string;
+    order?: Order;
+  }> {
+    const res = await request<{
+      success: boolean;
+      orderId: string;
+      orderNumber: string;
+      isPaid: boolean;
+      paymentStatus: string;
+      orderStatus: string;
+      paidAt?: string;
+      transactionId?: string;
+      paymentMethod?: string;
+      order?: Order;
+    }>(`/api/orders/${encodeURIComponent(id)}/payment-status`, { method: 'GET' }, timeoutMs);
+    return res;
+  },
+
+  /**
+   * Complete payment authorization through gateway
+   */
+  async processOrderPayment(
+    id: string,
+    paymentDetails?: { paymentMethod?: string; gatewayRef?: string },
+    timeoutMs = 12000
+  ): Promise<Order> {
+    const res = await request<{ success: boolean; message: string; data: Order }>(
+      `/api/orders/${encodeURIComponent(id)}/process-payment`,
+      {
+        method: 'POST',
+        body: JSON.stringify(paymentDetails || {})
+      },
+      timeoutMs
+    );
+    return res.data;
+  },
+
+  /**
+   * Polling mechanism to detect payment completion from payment provider or webhook
+   */
+  async pollPaymentStatus(
+    orderId: string,
+    options: {
+      intervalMs?: number;
+      maxAttempts?: number;
+      timeoutMs?: number;
+      onPoll?: (attempt: number) => void;
+    } = {}
+  ): Promise<Order> {
+    const { intervalMs = 2000, maxAttempts = 15 } = options;
+    let attempts = 0;
+
+    return new Promise((resolve, reject) => {
+      const check = async () => {
+        attempts++;
+        if (options.onPoll) {
+          options.onPoll(attempts);
+        }
+
+        try {
+          const statusResult = await this.checkPaymentStatus(orderId, 5000);
+          if (statusResult.isPaid && statusResult.order) {
+            resolve(statusResult.order);
+            return;
+          }
+
+          if (attempts >= maxAttempts) {
+            const finalOrder = await this.getOrderById(orderId);
+            resolve(finalOrder);
+            return;
+          }
+
+          setTimeout(check, intervalMs);
+        } catch (err) {
+          if (attempts >= maxAttempts) {
+            reject(err);
+          } else {
+            setTimeout(check, intervalMs);
+          }
+        }
+      };
+
+      check();
+    });
+  },
+
+  /**
+   * Trigger payment provider webhook simulation for an order
+   */
+  async simulatePaymentWebhook(
+    orderIdentifier: string,
+    payload: { paymentMethod?: string; delayMs?: number } = {},
+    timeoutMs = 8000
+  ): Promise<any> {
+    const res = await request<any>(
+      '/api/webhooks/simulate-payment',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          orderId: orderIdentifier,
+          orderNumber: orderIdentifier,
+          ...payload
+        })
+      },
+      timeoutMs
+    );
+    return res;
+  },
+
+
   /**
    * Mock Report Generator API Methods
    */

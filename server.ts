@@ -16,6 +16,7 @@ import { geminiRouter } from './server/routes/gemini';
 import { videoRouter, handleGenerateVideo, handleVideoStatus, handleVideoDownload } from './server/routes/video';
 import { adminRouter } from './server/routes/admin';
 import { adminMongodbRouter } from './server/routes/adminMongodb';
+import { webhooksRouter } from './server/routes/webhooks';
 import { connectToMongoDB, disconnectMongoDB, getMongoStatus } from './server/mongodb/connection';
 import { ensureDefaultAdminAccount } from './server/middleware/auth';
 import { validateSecurityOnStartup } from './server/utils/jwt';
@@ -96,6 +97,7 @@ async function startServer() {
   app.use('/api/intake', intakeRouter);
   app.use('/api/gemini', geminiRouter);
   app.use('/api/video', videoRouter);
+  app.use('/api/webhooks', webhooksRouter);
 
   // Standard Veo 3 Video Generation Endpoints (SKILL.md pattern)
   app.post('/api/generate-video', handleGenerateVideo);

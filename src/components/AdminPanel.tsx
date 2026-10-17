@@ -32,6 +32,7 @@ interface AdminPanelProps {
   emails: EmailNotification[];
   onUpdateOrder: (updatedOrder: Order) => void;
   onBatchUpdateOrders?: (updatedOrders: Order[]) => void;
+  onSyncOrders?: (allOrders: Order[]) => void;
   onUpdateServices: (updatedServices: ServicePlan[]) => void;
   onUpdateCoupons: (updatedCoupons: Coupon[]) => void;
   onSendEmail: (email: EmailNotification) => void;
@@ -47,6 +48,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   emails,
   onUpdateOrder,
   onBatchUpdateOrders,
+  onSyncOrders,
   onUpdateServices,
   onUpdateCoupons,
   onSendEmail,
@@ -86,6 +88,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [setupNameInput, setSetupNameInput] = useState<string>('Root Administrator');
   const [canSetup, setCanSetup] = useState<boolean>(false);
   const [isSettingUp, setIsSettingUp] = useState<boolean>(false);
+  const [newOrderAlert, setNewOrderAlert] = useState<Order | null>(null);
+  const previousOrdersCountRef = React.useRef<number>(orders.length);
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'customers' | 'services' | 'reports' | 'payments' | 'settings' | 'emails' | 'contact-analytics' | 'intake'>('dashboard');
   
@@ -95,6 +99,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchField, setSearchField] = useState<'all' | 'vin' | 'customer' | 'orderNumber'>('all');
   const [orderSortBy, setOrderSortBy] = useState<'newest' | 'oldest' | 'amount-high' | 'amount-low'>('newest');
+  const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'pending'>('all');
+  const [paymentSearch, setPaymentSearch] = useState<string>('');
 
   // Customer Intake Submissions State (Google Forms Specification Queue)
   const [intakeSubmissions, setIntakeSubmissions] = useState<CustomerIntakeSubmission[]>([]);
@@ -326,18 +332,41 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     };
   }, []);
 
-  // Fetch full orders list once verified
+  // Fetch and live-poll full orders list once verified (12-second live sync)
   React.useEffect(() => {
-    if (isAuthenticated) {
+    if (!isAuthenticated) return;
+
+    const fetchLatestOrders = () => {
       api.getOrders()
         .then((data) => {
-          if (data && data.length > 0) {
-            data.forEach((o) => onUpdateOrder(o));
+          if (Array.isArray(data) && data.length > 0) {
+            // Check if brand new orders arrived while viewing admin console
+            if (data.length > previousOrdersCountRef.current && previousOrdersCountRef.current > 0) {
+              const newest = data[0];
+              setNewOrderAlert(newest);
+              showToast({
+                title: '🔔 New Order / Payment Received!',
+                message: `Order #${newest.orderNumber} placed by ${newest.customer.fullName} ($${newest.total.toFixed(2)}) - Payment: ${newest.payment.status}`,
+                type: 'success',
+                duration: 9000
+              });
+            }
+            previousOrdersCountRef.current = data.length;
+
+            if (onSyncOrders) {
+              onSyncOrders(data);
+            } else {
+              data.forEach((o) => onUpdateOrder(o));
+            }
           }
         })
         .catch(() => {});
-    }
-  }, [isAuthenticated]);
+    };
+
+    fetchLatestOrders();
+    const pollInterval = setInterval(fetchLatestOrders, 12000);
+    return () => clearInterval(pollInterval);
+  }, [isAuthenticated, onSyncOrders]);
 
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1869,6 +1898,53 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
         <div className="p-6 space-y-6 flex-1">
           
+          {/* Live Payment & New Order Alert Banner */}
+          {(newOrderAlert || orders.some(o => o.status === 'Payment Submitted' || (o.payment.status === 'Pending' && o.payment.gatewayRef && o.payment.gatewayRef !== 'Awaiting Payment Proof'))) && (
+            <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-blue-600 text-white p-4 rounded-2xl shadow-lg flex flex-col sm:flex-row items-center justify-between gap-3 animate-fadeIn">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0">
+                  <Sparkles className="w-5 h-5 text-yellow-300 animate-pulse" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-black text-sm tracking-tight">
+                      {newOrderAlert ? `🔔 NEW ORDER RECEIVED: #${newOrderAlert.orderNumber}` : '⚡ CUSTOMER PAYMENT PROOF AWAITING VERIFICATION'}
+                    </span>
+                    <span className="bg-white text-emerald-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase">
+                      Action Required
+                    </span>
+                  </div>
+                  <p className="text-xs text-emerald-100 mt-0.5">
+                    {newOrderAlert
+                      ? `${newOrderAlert.customer.fullName} placed an order for ${newOrderAlert.vehicle.year} ${newOrderAlert.vehicle.make} ${newOrderAlert.vehicle.model} (Total: $${newOrderAlert.total.toFixed(2)} USD). Payment: ${newOrderAlert.payment.status}`
+                      : 'One or more customers have submitted payment transaction references via QR Code / Bank Transfer.'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('payments');
+                    setNewOrderAlert(null);
+                  }}
+                  className="px-4 py-2 bg-white text-slate-900 font-bold text-xs rounded-xl hover:bg-slate-100 transition-colors cursor-pointer shadow-xs"
+                >
+                  View Payments Console
+                </button>
+                {newOrderAlert && (
+                  <button
+                    type="button"
+                    onClick={() => setNewOrderAlert(null)}
+                    className="text-white/80 hover:text-white p-2 rounded-lg cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* TAB 1: DASHBOARD (Section 25 Cards: Total Orders, Paid Orders, Processing, Ready, Completed Revenue) */}
           {activeTab === 'dashboard' && (
             <div className="space-y-6">
@@ -2844,23 +2920,319 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           )}
 
-          {/* TAB 5: PAYMENTS */}
+          {/* TAB 5: PAYMENTS OPERATIONS & VERIFICATION CONSOLE */}
           {activeTab === 'payments' && (
-            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 shadow-xs space-y-4">
-              <h3 className="text-base font-bold text-slate-900">Payment Transactions</h3>
-              <div className="divide-y divide-slate-100 text-xs">
-                {orders.map((o) => (
-                  <div key={o.id} className="py-3 flex items-center justify-between">
-                    <div>
-                      <span className="font-bold text-slate-900 block font-mono">{o.payment.gatewayRef || `TXN-${o.orderNumber}`}</span>
-                      <span className="text-slate-500">{o.customer.fullName} · {o.payment.method || 'Card'}</span>
+            <div className="space-y-6">
+              
+              {/* Header Card */}
+              <div className="bg-white p-6 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2.5">
+                      <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                        <CreditCard className="w-5 h-5 text-emerald-600" />
+                        <span>Payment Verification & Settlement Console</span>
+                      </h3>
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        ● Live Gateway Sync
+                      </span>
                     </div>
-                    <span className="font-mono font-bold text-[#059669] text-sm">
-                      +${o.total.toFixed(2)} USD
+                    <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
+                      Verify customer payments received via Direct Card checkout, AutoAudit Payment QR Code (+92 342 0617217), and Bank Transfers. Approving an order immediately releases the official vehicle intelligence report.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      api.getOrders().then(data => {
+                        if (Array.isArray(data) && onSyncOrders) onSyncOrders(data);
+                        showToast({ title: 'Payments Refreshed', message: 'Loaded latest transaction data.', type: 'info' });
+                      }).catch(() => {});
+                    }}
+                    className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer self-start"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Refresh Transactions</span>
+                  </button>
+                </div>
+
+                {/* 4 Financial Metric Tiles */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-slate-100 text-xs">
+                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                    <span className="text-[10px] uppercase font-bold text-slate-500 block">Total Verified Revenue</span>
+                    <span className="font-mono font-black text-xl text-emerald-600 mt-0.5 block">
+                      ${orders.filter(o => o.payment.status === 'Paid').reduce((sum, o) => sum + o.total, 0).toFixed(2)} USD
+                    </span>
+                    <span className="text-[10px] text-slate-400">
+                      {orders.filter(o => o.payment.status === 'Paid').length} verified transactions
                     </span>
                   </div>
-                ))}
+
+                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                    <span className="text-[10px] uppercase font-bold text-amber-600 block">Awaiting Verification</span>
+                    <span className="font-mono font-black text-xl text-amber-600 mt-0.5 block">
+                      ${orders.filter(o => o.payment.status !== 'Paid').reduce((sum, o) => sum + o.total, 0).toFixed(2)} USD
+                    </span>
+                    <span className="text-[10px] text-amber-700 font-semibold">
+                      {orders.filter(o => o.payment.status !== 'Paid').length} orders pending review
+                    </span>
+                  </div>
+
+                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                    <span className="text-[10px] uppercase font-bold text-blue-600 block">Card Checkouts</span>
+                    <span className="font-mono font-bold text-slate-800 text-sm mt-0.5 block">
+                      {orders.filter(o => o.payment.method?.toLowerCase().includes('card')).length} Transactions
+                    </span>
+                    <span className="text-[10px] text-slate-400">Direct SSL gateway</span>
+                  </div>
+
+                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                    <span className="text-[10px] uppercase font-bold text-emerald-700 block">QR Code / WhatsApp Pay</span>
+                    <span className="font-mono font-bold text-slate-800 text-sm mt-0.5 block">
+                      {orders.filter(o => o.payment.method?.toLowerCase().includes('qr') || o.payment.method?.toLowerCase().includes('whatsapp') || o.payment.method?.toLowerCase().includes('transfer')).length} Transactions
+                    </span>
+                    <span className="text-[10px] text-slate-400">03420617217 channel</span>
+                  </div>
+                </div>
               </div>
+
+              {/* Filters & Search Toolbar */}
+              <div className="bg-white p-4 rounded-xl border border-[#E2E8F0] flex flex-col sm:flex-row gap-3 items-center justify-between shadow-xs">
+                <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentFilter('all')}
+                    className={`px-3 py-1.5 rounded-lg font-semibold cursor-pointer transition-colors ${
+                      paymentFilter === 'all'
+                        ? 'bg-[#0B132B] text-white'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    All Transactions ({orders.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentFilter('pending')}
+                    className={`px-3 py-1.5 rounded-lg font-semibold cursor-pointer transition-colors ${
+                      paymentFilter === 'pending'
+                        ? 'bg-amber-600 text-white'
+                        : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'
+                    }`}
+                  >
+                    ⚡ Pending Review ({orders.filter(o => o.payment.status !== 'Paid').length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentFilter('paid')}
+                    className={`px-3 py-1.5 rounded-lg font-semibold cursor-pointer transition-colors ${
+                      paymentFilter === 'paid'
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
+                    }`}
+                  >
+                    ✓ Verified Paid ({orders.filter(o => o.payment.status === 'Paid').length})
+                  </button>
+                </div>
+
+                <div className="relative w-full sm:w-80">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={paymentSearch}
+                    onChange={(e) => setPaymentSearch(e.target.value)}
+                    placeholder="Search by order #, customer, or transaction ID..."
+                    className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:border-[#2563EB]"
+                  />
+                </div>
+              </div>
+
+              {/* Transactions Table */}
+              <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-xs overflow-hidden">
+                {(() => {
+                  const filteredOrders = orders.filter(o => {
+                    if (paymentFilter === 'paid' && o.payment.status !== 'Paid') return false;
+                    if (paymentFilter === 'pending' && o.payment.status === 'Paid') return false;
+                    if (paymentSearch.trim()) {
+                      const q = paymentSearch.trim().toLowerCase();
+                      const matchOrder = o.orderNumber.toLowerCase().includes(q);
+                      const matchCust = o.customer.fullName.toLowerCase().includes(q) || o.customer.email.toLowerCase().includes(q) || (o.customer.phone && o.customer.phone.toLowerCase().includes(q));
+                      const matchRef = o.payment.gatewayRef && o.payment.gatewayRef.toLowerCase().includes(q);
+                      const matchVin = o.vehicle.vinOrReg.toLowerCase().includes(q);
+                      return matchOrder || matchCust || matchRef || matchVin;
+                    }
+                    return true;
+                  });
+
+                  if (filteredOrders.length === 0) {
+                    return (
+                      <div className="p-8 text-center text-xs text-slate-400">
+                        No transactions match the selected filters.
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-[#F8FAFC] text-slate-500 font-semibold border-b border-[#E2E8F0]">
+                          <tr>
+                            <th className="py-3 px-4">Order / Date</th>
+                            <th className="py-3 px-4">Customer & Contact</th>
+                            <th className="py-3 px-4">Vehicle & VIN</th>
+                            <th className="py-3 px-4">Method & Transaction Ref</th>
+                            <th className="py-3 px-4">Amount</th>
+                            <th className="py-3 px-4">Status</th>
+                            <th className="py-3 px-4 text-right">Verification Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {filteredOrders.map((o) => {
+                            const isPaid = o.payment.status === 'Paid';
+                            const hasProof = o.status === 'Payment Submitted' || (o.payment.gatewayRef && !o.payment.gatewayRef.startsWith('Awaiting'));
+
+                            return (
+                              <tr key={o.id} className="hover:bg-slate-50 transition-colors">
+                                <td className="py-3 px-4 whitespace-nowrap">
+                                  <span className="font-mono font-bold text-slate-900 block">#{o.orderNumber}</span>
+                                  <span className="text-[10px] text-slate-400">
+                                    {new Date(o.createdAt).toLocaleDateString()} {new Date(o.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                </td>
+
+                                <td className="py-3 px-4">
+                                  <span className="font-bold text-slate-900 block">{o.customer.fullName}</span>
+                                  <span className="text-[11px] text-slate-500 font-mono block">{o.customer.email}</span>
+                                  {o.customer.phone && (
+                                    <a
+                                      href={`https://wa.me/${o.customer.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hi ${o.customer.fullName}, regarding your AutoAudit order #${o.orderNumber} for ${o.vehicle.year} ${o.vehicle.make} ${o.vehicle.model}...`)}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-[11px] text-emerald-600 hover:underline flex items-center gap-1 mt-0.5"
+                                    >
+                                      <MessageCircle className="w-3 h-3 text-emerald-500" />
+                                      <span>{o.customer.phone}</span>
+                                    </a>
+                                  )}
+                                </td>
+
+                                <td className="py-3 px-4">
+                                  <span className="font-semibold text-slate-800 block">
+                                    {o.vehicle.year} {o.vehicle.make} {o.vehicle.model}
+                                  </span>
+                                  <span className="font-mono text-[11px] text-blue-700 block">
+                                    {o.vehicle.vinOrReg}
+                                  </span>
+                                </td>
+
+                                <td className="py-3 px-4">
+                                  <span className="font-medium text-slate-800 block">{o.payment.method || 'Card'}</span>
+                                  <div className="flex items-center gap-1.5 mt-0.5">
+                                    <span className="font-mono text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded truncate max-w-[140px]">
+                                      {o.payment.gatewayRef || 'None'}
+                                    </span>
+                                    {o.payment.gatewayRef && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(o.payment.gatewayRef || '');
+                                          showToast({ title: 'Copied Ref', message: o.payment.gatewayRef, type: 'info', duration: 2000 });
+                                        }}
+                                        className="text-slate-400 hover:text-slate-600"
+                                        title="Copy Ref"
+                                      >
+                                        <Copy className="w-3 h-3" />
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+
+                                <td className="py-3 px-4 whitespace-nowrap">
+                                  <span className="font-mono font-black text-slate-900 text-sm block">
+                                    ${o.total.toFixed(2)}
+                                  </span>
+                                  <span className="text-[10px] text-slate-400">USD</span>
+                                </td>
+
+                                <td className="py-3 px-4 whitespace-nowrap">
+                                  {isPaid ? (
+                                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 inline-flex items-center gap-1">
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                      <span>VERIFIED PAID</span>
+                                    </span>
+                                  ) : hasProof ? (
+                                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 inline-flex items-center gap-1 animate-pulse">
+                                      <Sparkles className="w-3 h-3 text-amber-600" />
+                                      <span>PROOF SUBMITTED</span>
+                                    </span>
+                                  ) : (
+                                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-300 inline-flex items-center gap-1">
+                                      <Clock className="w-3 h-3 text-slate-500" />
+                                      <span>AWAITING PAYMENT</span>
+                                    </span>
+                                  )}
+                                </td>
+
+                                <td className="py-3 px-4 text-right whitespace-nowrap">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    {!isPaid ? (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleTogglePaymentStatus(o)}
+                                          className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs transition-colors cursor-pointer shadow-xs inline-flex items-center gap-1"
+                                          title="Verify payment and release report"
+                                        >
+                                          <Check className="w-3 h-3" />
+                                          <span>Approve Payment</span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setSelectedOrderId(o.id);
+                                            setActiveTab('orders');
+                                          }}
+                                          className="px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs transition-colors cursor-pointer"
+                                          title="View Order Details"
+                                        >
+                                          Details
+                                        </button>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setSelectedOrderId(o.id);
+                                            setActiveTab('orders');
+                                          }}
+                                          className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-lg text-xs transition-colors cursor-pointer inline-flex items-center gap-1"
+                                        >
+                                          <Eye className="w-3 h-3" />
+                                          <span>Manage Order</span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleTogglePaymentStatus(o)}
+                                          className="px-2 py-1.5 text-slate-400 hover:text-slate-600 text-[11px]"
+                                          title="Revert to Pending"
+                                        >
+                                          Revert
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
+              </div>
+
             </div>
           )}
 

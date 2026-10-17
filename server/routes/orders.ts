@@ -5,7 +5,7 @@ import { db } from '../db';
 import { requireAdminAuth, AuthenticatedRequest } from '../middleware/auth';
 import { verifyAdminToken } from '../utils/jwt';
 import { Order, AuditLog } from '../../src/types';
-import { triggerAutomatedEmailSequence, sendMockEmail } from '../services/smtp';
+import { triggerAutomatedEmailSequence, sendMockEmail, sendAdminNewOrderAlert, sendAdminPaymentProofAlert } from '../services/smtp';
 import { handleNewOrderCreation, processOrderReport } from '../services/mockReportGenerator';
 
 export const ordersRouter = Router();
@@ -203,12 +203,16 @@ ordersRouter.post('/', async (req: Request, res: Response) => {
     }
   ];
 
+  const requestedPaymentStatus = body.payment?.status === 'Pending' ? 'Pending' : 'Paid';
+  const isPaid = requestedPaymentStatus === 'Paid';
+  const orderStatus: Order['status'] = isPaid ? 'Paid / New' : 'Pending Payment';
+
   const newOrder: Order = {
     id: `ord-${Date.now()}`,
     orderNumber: newOrderNum,
     serviceId: body.serviceId,
     serviceName: service ? service.name : (body.serviceName || 'Vehicle History Report'),
-    status: 'Paid / New',
+    status: orderStatus,
     subtotal,
     discountAmount,
     total,
@@ -231,12 +235,14 @@ ordersRouter.post('/', async (req: Request, res: Response) => {
       customerNotes: body.vehicle.customerNotes ? sanitizeText(body.vehicle.customerNotes) : ''
     },
     payment: {
-      status: 'Paid',
-      gatewayRef: `ch_${Math.random().toString(36).substring(2, 15)}`,
-      paidAt: now,
-      method: body.payment?.method || 'Visa ending in 4242'
+      status: requestedPaymentStatus,
+      gatewayRef: body.payment?.gatewayRef || (isPaid ? `ch_${Math.random().toString(36).substring(2, 15)}` : 'Awaiting Payment Proof'),
+      paidAt: isPaid ? now : undefined,
+      method: body.payment?.method || (isPaid ? 'Card Payment' : 'QR Code / Direct Transfer')
     },
-    internalNotes: 'Order received. Automated NMVTIS and title check initialized.',
+    internalNotes: isPaid
+      ? 'Order received. Automated NMVTIS and title check initialized.'
+      : `Order created. Customer pending payment via ${body.payment?.method || 'QR Code / Bank Transfer'}.`,
     createdAt: now,
     updatedAt: now,
     auditLogs
@@ -245,25 +251,195 @@ ordersRouter.post('/', async (req: Request, res: Response) => {
   // Explicit write completion guarantee before returning HTTP 201 response
   await db.createOrderAsync(newOrder);
 
-  // Trigger Mock Report Generator Service (triggers when order is Paid)
-  handleNewOrderCreation(newOrder);
-
-  // Trigger automated mock SMTP email sequence (Confirmation -> In-Progress -> Ready)
-  triggerAutomatedEmailSequence(newOrder, {
-    stageDelaySeconds: { stage2: 4, stage3: 8 },
-    autoAdvanceOrderStatus: true
-  }).catch(err => {
-    console.error('[SMTP] Error starting automated email sequence:', err);
+  // Instantly notify AutoAudit Administration via Email & System Dispatcher
+  sendAdminNewOrderAlert(newOrder).catch(err => {
+    console.error('[SMTP] Error sending admin order notification:', err);
   });
+
+  // Only trigger mock report generator and customer delivery sequence if order is Paid
+  if (isPaid) {
+    handleNewOrderCreation(newOrder);
+    triggerAutomatedEmailSequence(newOrder, {
+      stageDelaySeconds: { stage2: 4, stage3: 8 },
+      autoAdvanceOrderStatus: true
+    }).catch(err => {
+      console.error('[SMTP] Error starting automated email sequence:', err);
+    });
+  }
 
   const { internalNotes, ...safeNewOrder } = newOrder as any;
 
   res.status(201).json({
     success: true,
-    message: 'Order created successfully. Processing has begun.',
+    message: isPaid
+      ? 'Order created successfully. Processing has begun.'
+      : 'Order registered. Proceed to submit payment or upload transaction proof.',
     data: safeNewOrder
   });
 });
+
+/**
+ * POST /api/orders/:id/payment-proof
+ * Public customer endpoint to submit transaction ID / payment reference for QR code or direct transfer payments.
+ * Immediately alerts Admin Operations Console and queues order for verification.
+ */
+ordersRouter.post('/:id/payment-proof', async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { proofRef, note } = req.body;
+
+  const cleanProof = sanitizeText(proofRef);
+  if (!cleanProof) {
+    res.status(400).json({ success: false, error: 'Payment reference or transaction ID is required.' });
+    return;
+  }
+
+  const order = await db.getOrderByIdAsync(id);
+  if (!order) {
+    res.status(404).json({ success: false, error: `Order "${id}" not found.` });
+    return;
+  }
+
+  const now = new Date().toISOString();
+  order.payment.gatewayRef = cleanProof;
+  order.payment.paidAt = now;
+  order.status = 'Payment Submitted';
+  order.updatedAt = now;
+
+  const proofLog: AuditLog = {
+    id: `log-${Date.now()}-proof`,
+    timestamp: now,
+    actor: 'Customer (Payment Proof)',
+    action: 'Payment Proof Submitted',
+    details: `Customer submitted transaction ref: ${cleanProof}. Note: ${note ? sanitizeText(note) : 'None'}`
+  };
+  order.auditLogs.unshift(proofLog);
+
+  if (order.internalNotes) {
+    order.internalNotes += `\n[${now}] Customer submitted payment reference: ${cleanProof}`;
+  } else {
+    order.internalNotes = `Customer submitted payment reference: ${cleanProof}`;
+  }
+
+  // Update in database
+  db.updateOrderStatus(order.id, 'Payment Submitted', `Customer submitted payment reference: ${cleanProof}`);
+
+  // Dispatch high-priority instant Admin Notification
+  sendAdminPaymentProofAlert(order, cleanProof, note ? sanitizeText(note) : undefined).catch(err => {
+    console.error('[SMTP] Error sending admin payment proof alert:', err);
+  });
+
+  const { internalNotes, ...safeOrder } = order as any;
+  res.json({
+    success: true,
+    message: 'Payment reference submitted successfully. Our team will verify and dispatch your report.',
+    data: safeOrder
+  });
+});
+
+/**
+ * GET /api/orders/:id/payment-status
+ * Polling endpoint for frontend checkout modals to detect payment completion from payment provider or webhooks
+ */
+ordersRouter.get('/:id/payment-status', async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const cleanId = String(id).trim();
+
+  const orders = await db.getOrdersAsync();
+  const order = orders.find(
+    o => o.id === cleanId || 
+         o.orderNumber.toLowerCase() === cleanId.toLowerCase()
+  );
+
+  if (!order) {
+    res.status(404).json({ success: false, error: `Order "${id}" not found.` });
+    return;
+  }
+
+  const isPaid = order.payment?.status === 'Paid';
+  const { internalNotes, ...safeOrder } = order as any;
+
+  res.json({
+    success: true,
+    orderId: order.id,
+    orderNumber: order.orderNumber,
+    isPaid,
+    paymentStatus: order.payment?.status || 'Pending',
+    orderStatus: order.status,
+    paidAt: order.payment?.paidAt,
+    transactionId: order.payment?.gatewayRef,
+    paymentMethod: order.payment?.method,
+    order: safeOrder
+  });
+});
+
+/**
+ * POST /api/orders/:id/process-payment
+ * Complete online payment for an order via payment provider gateway
+ */
+ordersRouter.post('/:id/process-payment', async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { paymentMethod, gatewayRef } = req.body;
+  const cleanId = String(id).trim();
+
+  const orders = await db.getOrdersAsync();
+  const order = orders.find(
+    o => o.id === cleanId || 
+         o.orderNumber.toLowerCase() === cleanId.toLowerCase()
+  );
+
+  if (!order) {
+    res.status(404).json({ success: false, error: `Order "${id}" not found.` });
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const txRef = gatewayRef || `PAY-TXN-${Math.floor(10000000 + Math.random() * 90000000)}`;
+  const methodTitle = paymentMethod || 'Online Gateway Payment';
+
+  order.payment.status = 'Paid';
+  order.payment.paidAt = now;
+  order.payment.gatewayRef = txRef;
+  order.payment.method = methodTitle;
+  order.status = 'Paid / New';
+  order.updatedAt = now;
+
+  const paymentLog: AuditLog = {
+    id: `log-${Date.now()}-pay`,
+    timestamp: now,
+    actor: 'Customer Checkout Gateway',
+    action: 'Payment Authorized & Confirmed',
+    details: `Authorized $${order.total.toFixed(2)} USD via ${methodTitle}. TXN: ${txRef}`
+  };
+  order.auditLogs = [paymentLog, ...(order.auditLogs || [])];
+
+  const payNote = `[${now}] Payment confirmed via ${methodTitle} (${txRef})`;
+  order.internalNotes = order.internalNotes ? `${order.internalNotes}\n${payNote}` : payNote;
+
+  await db.updateOrderStatus(order.id, 'Paid / New', payNote);
+  await db.updateOrderPaymentStatus(order.id, 'Paid', payNote);
+
+  // Instantly send admin alert
+  sendAdminPaymentProofAlert(order, txRef, `Payment processed via ${methodTitle}`).catch(err => {
+    console.error('[Orders] Error sending admin alert for payment:', err);
+  });
+
+  // Handle report generation and customer email sequence
+  handleNewOrderCreation(order);
+  triggerAutomatedEmailSequence(order, {
+    stageDelaySeconds: { stage2: 3, stage3: 7 },
+    autoAdvanceOrderStatus: true
+  }).catch(err => {
+    console.error('[Orders] Error triggering email sequence:', err);
+  });
+
+  const { internalNotes, ...safeOrder } = order as any;
+  res.json({
+    success: true,
+    message: 'Payment confirmed and processing initiated.',
+    data: safeOrder
+  });
+});
+
 
 // PATCH /api/orders/:id/payment (strictly requires administrator authorization)
 ordersRouter.patch('/:id/payment', requireAdminAuth, async (req: Request, res: Response) => {

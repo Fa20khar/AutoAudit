@@ -365,3 +365,137 @@ export function getSmtpStatus() {
     totalDispatched: db.getEmails().length
   };
 }
+
+/**
+ * Dispatches high-priority Admin Notification when a customer places an order or completes payment
+ */
+export async function sendAdminNewOrderAlert(order: Order): Promise<{ success: boolean; messageId: string; email: EmailNotification }> {
+  const adminEmail = process.env.ADMIN_ALERT_EMAIL || 'admin@autoaudit.com';
+  const vehicleName = `${order.vehicle.year} ${order.vehicle.make} ${order.vehicle.model}`;
+  const vin = order.vehicle.vinOrReg;
+  const isPaid = order.payment.status === 'Paid';
+  const paymentBadge = isPaid ? `PAID ($${order.total.toFixed(2)})` : `PENDING PAYMENT ($${order.total.toFixed(2)})`;
+
+  const subject = `[${isPaid ? 'NEW PAID ORDER' : 'NEW ORDER RECEIVED'}] #${order.orderNumber} - ${order.customer.fullName} - ${vehicleName}`;
+  const text = `NEW ORDER ALERT\n\nOrder Number: #${order.orderNumber}\nStatus: ${order.status}\nPayment: ${paymentBadge} via ${order.payment.method || 'Card'}\n\nCUSTOMER DETAILS:\nName: ${order.customer.fullName}\nEmail: ${order.customer.email}\nPhone: ${order.customer.phone || 'N/A'}\n\nVEHICLE DETAILS:\nVehicle: ${vehicleName}\nVIN / Plate: ${vin}\nRegion: ${order.vehicle.countryOrState || 'N/A'}\nNotes: ${order.vehicle.customerNotes || 'None'}\n\nOpen AutoAudit Admin Console (/admin) to review and fulfill this order.`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #07111f; color: #f8fafc; margin: 0; padding: 24px; }
+    .container { max-width: 600px; margin: 0 auto; background: #0b132b; border-radius: 12px; border: 1px solid #1e293b; overflow: hidden; }
+    .header { background: #07111f; padding: 24px 32px; border-bottom: 1px solid #1e293b; }
+    .header h1 { margin: 0; font-size: 20px; font-weight: 800; color: #10b981; }
+    .badge { display: inline-block; background: ${isPaid ? '#065f46' : '#78350f'}; color: #ffffff; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; text-transform: uppercase; margin-top: 8px; }
+    .body { padding: 28px 32px; }
+    .card { background: #0f1b2d; border: 1px solid #1e293b; border-radius: 8px; padding: 16px; margin: 16px 0; font-size: 13px; line-height: 1.6; }
+    .row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+    .label { color: #94a3b8; }
+    .val { font-weight: 600; color: #ffffff; }
+    .footer { padding: 16px 32px; background: #07111f; font-size: 11px; color: #64748b; text-align: center; border-top: 1px solid #1e293b; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>AutoAudit Admin Notification</h1>
+      <span class="badge">${paymentBadge}</span>
+    </div>
+    <div class="body">
+      <h2 style="font-size: 16px; margin-top: 0; color: #ffffff;">Order #${order.orderNumber} Placed</h2>
+      <div class="card">
+        <div class="row"><span class="label">Customer Name:</span><span class="val">${order.customer.fullName}</span></div>
+        <div class="row"><span class="label">Customer Email:</span><span class="val">${order.customer.email}</span></div>
+        <div class="row"><span class="label">Customer Phone:</span><span class="val">${order.customer.phone || 'N/A'}</span></div>
+        <div class="row"><span class="label">Vehicle:</span><span class="val">${vehicleName}</span></div>
+        <div class="row"><span class="label">VIN / Chassis:</span><span class="val" style="font-family: monospace; color: #60a5fa;">${vin}</span></div>
+        <div class="row"><span class="label">Report Plan:</span><span class="val">${order.serviceName}</span></div>
+        <div class="row"><span class="label">Total Amount:</span><span class="val" style="color: #10b981; font-weight: 800;">$${order.total.toFixed(2)} USD</span></div>
+        <div class="row"><span class="label">Payment Method:</span><span class="val">${order.payment.method || 'Card'}</span></div>
+        <div class="row"><span class="label">Payment Status:</span><span class="val">${order.payment.status}</span></div>
+        <div class="row"><span class="label">Gateway / Ref:</span><span class="val" style="font-family: monospace;">${order.payment.gatewayRef || 'Pending Ref'}</span></div>
+      </div>
+      <p style="font-size: 12px; color: #94a3b8;">
+        Log into the AutoAudit Admin Console (/admin) to view customer records, verify payment, and compile the official vehicle history report.
+      </p>
+    </div>
+    <div class="footer">
+      AutoAudit Operations Notification Dispatcher · Live Server Alert
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const mailOptions: any = {
+    from: SYSTEM_FROM_EMAIL,
+    to: adminEmail,
+    subject,
+    text,
+    html
+  };
+
+  const info = await transporter.sendMail(mailOptions);
+  const messageId = info.messageId || `admin_msg_${Date.now()}`;
+
+  const notification: EmailNotification = {
+    id: `em-admin-${Date.now()}`,
+    orderId: order.id,
+    orderNumber: order.orderNumber,
+    recipientEmail: adminEmail,
+    recipientType: 'admin',
+    subject,
+    type: 'new_order_admin',
+    body: text,
+    htmlBody: html,
+    messageId,
+    smtpTransport: isRealSmtp ? 'Live SMTP' : 'Nodemailer Mock SMTP (JSON Transporter)',
+    sentAt: new Date().toISOString(),
+    read: false
+  };
+
+  db.addEmail(notification);
+  console.log(`[SMTP] Dispatched Admin Alert for Order #${order.orderNumber} to ${adminEmail}`);
+  return { success: true, messageId, email: notification };
+}
+
+/**
+ * Dispatches high-priority Admin Notification when a customer submits QR code / bank transfer payment proof
+ */
+export async function sendAdminPaymentProofAlert(order: Order, proofRef: string, proofNote?: string): Promise<{ success: boolean; messageId: string; email: EmailNotification }> {
+  const adminEmail = process.env.ADMIN_ALERT_EMAIL || 'admin@autoaudit.com';
+  const vehicleName = `${order.vehicle.year} ${order.vehicle.make} ${order.vehicle.model}`;
+
+  const subject = `[ACTION REQUIRED: PAYMENT PROOF SUBMITTED] #${order.orderNumber} - ${order.customer.fullName} ($${order.total.toFixed(2)})`;
+  const text = `PAYMENT PROOF SUBMITTED BY CUSTOMER\n\nOrder: #${order.orderNumber}\nCustomer: ${order.customer.fullName} (${order.customer.phone || order.customer.email})\nAmount: $${order.total.toFixed(2)} USD\nVehicle: ${vehicleName} (VIN: ${order.vehicle.vinOrReg})\n\nPAYMENT REFERENCE / PROOF:\n${proofRef}\nNote: ${proofNote || 'None'}\n\nPlease verify your bank account / wallet and click 'Approve Payment' in the AutoAudit Admin Panel to release the report.`;
+
+  const mailOptions: any = {
+    from: SYSTEM_FROM_EMAIL,
+    to: adminEmail,
+    subject,
+    text
+  };
+
+  const info = await transporter.sendMail(mailOptions);
+  const messageId = info.messageId || `admin_proof_${Date.now()}`;
+
+  const notification: EmailNotification = {
+    id: `em-admin-proof-${Date.now()}`,
+    orderId: order.id,
+    orderNumber: order.orderNumber,
+    recipientEmail: adminEmail,
+    recipientType: 'admin',
+    subject,
+    type: 'payment_received',
+    body: text,
+    messageId,
+    smtpTransport: isRealSmtp ? 'Live SMTP' : 'Nodemailer Mock SMTP (JSON Transporter)',
+    sentAt: new Date().toISOString(),
+    read: false
+  };
+
+  db.addEmail(notification);
+  return { success: true, messageId, email: notification };
+}

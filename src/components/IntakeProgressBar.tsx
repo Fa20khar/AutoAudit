@@ -15,16 +15,12 @@ interface IntakeProgressBarProps {
   currentStep: number;
   totalSteps?: number;
   onSelectStep?: (step: number) => void;
-  isGoogleFormMode?: boolean;
-  onToggleFormMode?: (mode: 'direct' | 'google') => void;
 }
 
 export const IntakeProgressBar: React.FC<IntakeProgressBarProps> = ({
   stats,
   currentStep,
-  onSelectStep,
-  isGoogleFormMode = false,
-  onToggleFormMode
+  onSelectStep
 }) => {
   const { percentage, contactFilled, vehicleFilled, scopeFilled, consentFilled, currentStepMessage } = stats;
 
@@ -48,34 +44,6 @@ export const IntakeProgressBar: React.FC<IntakeProgressBarProps> = ({
             </p>
           </div>
         </div>
-
-        {/* Mode Toggle if provided */}
-        {onToggleFormMode && (
-          <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-[11px]">
-            <button
-              type="button"
-              onClick={() => onToggleFormMode('direct')}
-              className={`px-2 py-1 rounded font-medium transition-all cursor-pointer ${
-                !isGoogleFormMode
-                  ? 'bg-white text-slate-900 shadow-xs font-bold'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Intake Form
-            </button>
-            <button
-              type="button"
-              onClick={() => onToggleFormMode('google')}
-              className={`px-2 py-1 rounded font-medium transition-all cursor-pointer flex items-center gap-1 ${
-                isGoogleFormMode
-                  ? 'bg-[#059669] text-white shadow-xs font-bold'
-                  : 'text-slate-600 hover:text-[#059669]'
-              }`}
-            >
-              <span>Google Form</span>
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Progress Track & Fill */}
