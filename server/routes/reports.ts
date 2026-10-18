@@ -53,6 +53,14 @@ reportsRouter.get('/download/:id', (req: Request, res: Response) => {
       } as any;
     }
 
+    if (order.payment?.status !== 'Paid') {
+      res.status(403).json({
+        success: false,
+        error: `Access denied: Order #${order.orderNumber} is pending payment verification. Report will be released upon payment confirmation.`
+      });
+      return;
+    }
+
     const report = getReportPdfForOrder(order.id) || {
       buffer: generateDummyPdfBuffer(order),
       fileName: `AutoAudit_Report_${(order.vehicle.vinOrReg || 'RECORD').replace(/[^a-zA-Z0-9]/g, '_')}_${order.orderNumber}.pdf`
@@ -93,6 +101,14 @@ reportsRouter.post('/generate/:id', async (req: Request, res: Response) => {
     res.status(404).json({
       success: false,
       error: `Order with identifier "${id}" not found.`
+    });
+    return;
+  }
+
+  if (order.payment?.status !== 'Paid') {
+    res.status(400).json({
+      success: false,
+      error: `Cannot generate report: Order #${order.orderNumber} payment is pending. Reports can only be generated for paid orders.`
     });
     return;
   }

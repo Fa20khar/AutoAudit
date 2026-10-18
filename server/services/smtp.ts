@@ -499,3 +499,44 @@ export async function sendAdminPaymentProofAlert(order: Order, proofRef: string,
   db.addEmail(notification);
   return { success: true, messageId, email: notification };
 }
+
+/**
+ * Dispatches high-priority Admin Notification when a payment is confirmed via payment provider or webhook
+ */
+export async function sendAdminPaymentSubmittedAlert(order: Order, transactionId?: string): Promise<{ success: boolean; messageId: string; email: EmailNotification }> {
+  const adminEmail = process.env.ADMIN_ALERT_EMAIL || 'admin@autoaudit.com';
+  const vehicleName = `${order.vehicle.year} ${order.vehicle.make} ${order.vehicle.model}`;
+  const txRef = transactionId || order.payment.gatewayRef || 'Confirmed via Gateway';
+
+  const subject = `[PAYMENT CONFIRMED] #${order.orderNumber} - ${order.customer.fullName} ($${order.total.toFixed(2)})`;
+  const text = `PAYMENT CONFIRMED FOR ORDER #${order.orderNumber}\n\nCustomer: ${order.customer.fullName} (${order.customer.email})\nAmount: $${order.total.toFixed(2)} USD\nMethod: ${order.payment.method || 'Online Payment'}\nTransaction ID: ${txRef}\nVehicle: ${vehicleName} (VIN: ${order.vehicle.vinOrReg})\n\nOfficial vehicle history report generation has been queued automatically.`;
+
+  const mailOptions: any = {
+    from: SYSTEM_FROM_EMAIL,
+    to: adminEmail,
+    subject,
+    text
+  };
+
+  const info = await transporter.sendMail(mailOptions);
+  const messageId = info.messageId || `admin_pay_${Date.now()}`;
+
+  const notification: EmailNotification = {
+    id: `em-admin-pay-${Date.now()}`,
+    orderId: order.id,
+    orderNumber: order.orderNumber,
+    recipientEmail: adminEmail,
+    recipientType: 'admin',
+    subject,
+    type: 'payment_received',
+    body: text,
+    messageId,
+    smtpTransport: isRealSmtp ? 'Live SMTP' : 'Nodemailer Mock SMTP (JSON Transporter)',
+    sentAt: new Date().toISOString(),
+    read: false
+  };
+
+  db.addEmail(notification);
+  return { success: true, messageId, email: notification };
+}
+

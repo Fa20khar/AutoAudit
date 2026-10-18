@@ -510,7 +510,6 @@ export const VehicleReportForm: React.FC<VehicleReportFormProps> = ({
               </div>
             </div>
           </div>
-        </div>
 
         {/* NATIVE AUTOAUDIT VEHICLE FORM & PAYMENT CHECKOUT */}
         <div className="bg-[#0F1B2D] border border-[rgba(148,163,184,0.20)] rounded-[16px] shadow-2xl p-6 sm:p-8 space-y-6">

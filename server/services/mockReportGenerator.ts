@@ -15,6 +15,12 @@ interface CachedReport {
 const pdfCache = new Map<string, CachedReport>();
 
 /**
+ * Demo Mode Flag: permanently enabled until a real vehicle records data provider is approved.
+ */
+export const ENABLE_DEMO_MODE = true;
+export const DEMO_DISCLAIMER_TEXT = 'SAMPLE / DEMO DATA - not a real vehicle record';
+
+/**
  * Generates an authentic, valid PDF-1.4 binary buffer containing
  * official AutoAudit vehicle history findings, NMVTIS database checks,
  * odometer progression, and cryptographic verification seals.
@@ -55,12 +61,12 @@ export function generateDummyPdfBuffer(order: Order): Buffer {
     `(${esc('AUTOAUDIT VEHICLE INTELLIGENCE REPORT')}) Tj`,
     'ET',
 
-    // Subtitle
+    // Subtitle / Demo Disclaimer
     'BT',
     '/F2 9 Tf',
     '0.7 0.75 0.85 rg',
     '40 732 Td',
-    `(${esc('Certified NMVTIS National Clearinghouse & 50-State DMV Verification Record')}) Tj`,
+    `(${esc(`[DEMO MODE] ${DEMO_DISCLAIMER_TEXT}`)}) Tj`,
     'ET',
 
     // Order number badge on right
@@ -71,12 +77,26 @@ export function generateDummyPdfBuffer(order: Order): Buffer {
     `(${esc(`REF: ${orderNum}`)}) Tj`,
     'ET',
 
+    // Prominent Red Demo Ribbon Bar below header
+    '0.99 0.94 0.94 rg', // soft red bg
+    '0.88 0.25 0.25 RG', // red border
+    '1 w',
+    '40 682 532 20 re',
+    'B',
+
+    'BT',
+    '/F1 9 Tf',
+    '0.75 0.1 0.1 rg', // deep red
+    '48 688 Td',
+    `(${esc(`NOTICE: ${DEMO_DISCLAIMER_TEXT}`)}) Tj`,
+    'ET',
+
     // Watermark behind content (using standard PDF 1.4 text transformation matrix)
     'BT',
-    '/F1 32 Tf',
-    '0.93 0.94 0.96 rg', // Very faint grey
-    '0.866 0.5 -0.5 0.866 110 440 Tm',
-    `(${esc('OFFICIAL AUTOAUDIT REPORT')}) Tj`,
+    '/F1 22 Tf',
+    '0.92 0.93 0.95 rg', // Faint watermark
+    '0.866 0.5 -0.5 0.866 60 410 Tm',
+    `(${esc(DEMO_DISCLAIMER_TEXT)}) Tj`,
     'ET',
 
     // Clean Title Verified Ribbon
@@ -402,6 +422,11 @@ export async function processOrderReport(
   fileUrl: string;
   emailMessageId?: string;
 }> {
+  // Security Guard: Reports and PDFs must only be generated if order payment is confirmed
+  if (order.payment?.status !== 'Paid') {
+    throw new Error(`Cannot compile or release vehicle report: Order #${order.orderNumber} payment status is "${order.payment?.status || 'Pending'}", not "Paid". Payment must be approved by an administrator or confirmed via a verified webhook.`);
+  }
+
   const now = new Date().toISOString();
   const sanitizedVin = (order.vehicle.vinOrReg || 'RECORD').replace(/[^a-zA-Z0-9]/g, '_');
   const fileName = `AutoAudit_Report_${sanitizedVin}_${order.orderNumber}.pdf`;

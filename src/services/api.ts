@@ -366,7 +366,32 @@ export const api = {
   },
 
   /**
-   * Complete payment authorization through gateway
+   * Retrieve dynamic server-side payment transfer instructions
+   */
+  async getPaymentInstructions(): Promise<{
+    instructions: string;
+    bankName: string;
+    accountTitle: string;
+    accountNumber: string;
+    routingOrIban: string;
+    supportEmail: string;
+  }> {
+    const res = await request<{
+      success: boolean;
+      data: {
+        instructions: string;
+        bankName: string;
+        accountTitle: string;
+        accountNumber: string;
+        routingOrIban: string;
+        supportEmail: string;
+      };
+    }>('/api/orders/payment-instructions', { method: 'GET' });
+    return res.data;
+  },
+
+  /**
+   * Complete payment authorization through gateway (Disabled client-side)
    */
   async processOrderPayment(
     id: string,

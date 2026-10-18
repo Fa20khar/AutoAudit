@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import crypto from 'crypto';
 import { db } from '../db';
 import { Order, AuditLog } from '../../src/types';
 import { 
@@ -121,11 +122,53 @@ async function processPaymentCompletion(params: {
  * Universal webhook endpoint accepting events from Stripe, PayPal, Razorpay, Square, or custom gateways
  */
 webhooksRouter.post('/payment', async (req: Request, res: Response) => {
+  const webhookSecret = process.env.PAYMENT_WEBHOOK_SECRET || process.env.WEBHOOK_SECRET;
+
+  // 1. If no secret is configured in the environment, reject all requests with HTTP 503
+  if (!webhookSecret) {
+    console.warn('[Webhook Listener] 503 Service Unavailable: PAYMENT_WEBHOOK_SECRET is not configured on server.');
+    res.status(503).json({
+      success: false,
+      code: 'WEBHOOK_SECRET_NOT_CONFIGURED',
+      error: 'Payment webhook handler is currently unavailable: PAYMENT_WEBHOOK_SECRET is not configured on the server.'
+    });
+    return;
+  }
+
+  // 2. Only support shared-secret header for now.
+  // Note: Real provider webhook signature verification (e.g. Stripe, PayPal, Razorpay HMAC) requires verifying against the unparsed raw request body buffer before JSON parsing.
+  const providedSecret = 
+    (req.headers['x-webhook-secret'] as string) || 
+    (req.headers['x-api-key'] as string);
+
+  if (!providedSecret) {
+    console.warn('[Webhook Listener] 401 Unauthorized: Missing shared secret in request headers.');
+    res.status(401).json({
+      success: false,
+      error: 'Unauthorized: Missing required shared-secret header (x-webhook-secret).'
+    });
+    return;
+  }
+
+  // Compare secrets with timingSafeEqual on equal-length SHA-256 hashes so a wrong-length value returns 401, never a 500
+  const expectedHash = crypto.createHash('sha256').update(String(webhookSecret)).digest();
+  const providedHash = crypto.createHash('sha256').update(String(providedSecret)).digest();
+  const isValid = crypto.timingSafeEqual(expectedHash, providedHash);
+
+  if (!isValid) {
+    console.warn('[Webhook Listener] 401 Unauthorized: Shared secret mismatch.');
+    res.status(401).json({
+      success: false,
+      error: 'Unauthorized: Invalid webhook shared secret.'
+    });
+    return;
+  }
+
   const payload = req.body || {};
   const eventType = payload.type || payload.event || payload.action || 'payment.succeeded';
   const provider = req.headers['x-payment-provider'] as string || payload.provider || 'PaymentProvider';
 
-  console.log(`[Webhook Listener] Received incoming webhook: [${provider}] event="${eventType}"`);
+  console.log(`[Webhook Listener] Received authenticated webhook: [${provider}] event="${eventType}"`);
 
   // Detect order identifier from multiple standard payment webhook formats
   const orderIdentifier = 

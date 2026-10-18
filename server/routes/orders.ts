@@ -203,9 +203,9 @@ ordersRouter.post('/', async (req: Request, res: Response) => {
     }
   ];
 
-  const requestedPaymentStatus = body.payment?.status === 'Pending' ? 'Pending' : 'Paid';
-  const isPaid = requestedPaymentStatus === 'Paid';
-  const orderStatus: Order['status'] = isPaid ? 'Paid / New' : 'Pending Payment';
+  // SECURITY: Always ignore client-supplied payment status. All new orders start as Pending Payment.
+  const orderStatus: Order['status'] = 'Pending Payment';
+  const paymentStatus: Order['payment']['status'] = 'Pending';
 
   const newOrder: Order = {
     id: `ord-${Date.now()}`,
@@ -235,14 +235,12 @@ ordersRouter.post('/', async (req: Request, res: Response) => {
       customerNotes: body.vehicle.customerNotes ? sanitizeText(body.vehicle.customerNotes) : ''
     },
     payment: {
-      status: requestedPaymentStatus,
-      gatewayRef: body.payment?.gatewayRef || (isPaid ? `ch_${Math.random().toString(36).substring(2, 15)}` : 'Awaiting Payment Proof'),
-      paidAt: isPaid ? now : undefined,
-      method: body.payment?.method || (isPaid ? 'Card Payment' : 'QR Code / Direct Transfer')
+      status: paymentStatus,
+      gatewayRef: 'Awaiting Payment Proof',
+      paidAt: undefined,
+      method: body.payment?.method || 'Direct Bank Transfer / Wire'
     },
-    internalNotes: isPaid
-      ? 'Order received. Automated NMVTIS and title check initialized.'
-      : `Order created. Customer pending payment via ${body.payment?.method || 'QR Code / Bank Transfer'}.`,
+    internalNotes: `Order created. Customer pending payment verification via ${body.payment?.method || 'Direct Bank Transfer'}.`,
     createdAt: now,
     updatedAt: now,
     auditLogs
@@ -256,24 +254,11 @@ ordersRouter.post('/', async (req: Request, res: Response) => {
     console.error('[SMTP] Error sending admin order notification:', err);
   });
 
-  // Only trigger mock report generator and customer delivery sequence if order is Paid
-  if (isPaid) {
-    handleNewOrderCreation(newOrder);
-    triggerAutomatedEmailSequence(newOrder, {
-      stageDelaySeconds: { stage2: 4, stage3: 8 },
-      autoAdvanceOrderStatus: true
-    }).catch(err => {
-      console.error('[SMTP] Error starting automated email sequence:', err);
-    });
-  }
-
   const { internalNotes, ...safeNewOrder } = newOrder as any;
 
   res.status(201).json({
     success: true,
-    message: isPaid
-      ? 'Order created successfully. Processing has begun.'
-      : 'Order registered. Proceed to submit payment or upload transaction proof.',
+    message: 'Order registered. Proceed to submit transfer reference or payment proof for verification.',
     data: safeNewOrder
   });
 });
@@ -373,70 +358,32 @@ ordersRouter.get('/:id/payment-status', async (req: Request, res: Response) => {
 });
 
 /**
- * POST /api/orders/:id/process-payment
- * Complete online payment for an order via payment provider gateway
+ * GET /api/orders/payment-instructions
+ * Dynamic payment transfer instructions from server-side/env configuration (no hardcoded credentials)
  */
-ordersRouter.post('/:id/process-payment', async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { paymentMethod, gatewayRef } = req.body;
-  const cleanId = String(id).trim();
-
-  const orders = await db.getOrdersAsync();
-  const order = orders.find(
-    o => o.id === cleanId || 
-         o.orderNumber.toLowerCase() === cleanId.toLowerCase()
-  );
-
-  if (!order) {
-    res.status(404).json({ success: false, error: `Order "${id}" not found.` });
-    return;
-  }
-
-  const now = new Date().toISOString();
-  const txRef = gatewayRef || `PAY-TXN-${Math.floor(10000000 + Math.random() * 90000000)}`;
-  const methodTitle = paymentMethod || 'Online Gateway Payment';
-
-  order.payment.status = 'Paid';
-  order.payment.paidAt = now;
-  order.payment.gatewayRef = txRef;
-  order.payment.method = methodTitle;
-  order.status = 'Paid / New';
-  order.updatedAt = now;
-
-  const paymentLog: AuditLog = {
-    id: `log-${Date.now()}-pay`,
-    timestamp: now,
-    actor: 'Customer Checkout Gateway',
-    action: 'Payment Authorized & Confirmed',
-    details: `Authorized $${order.total.toFixed(2)} USD via ${methodTitle}. TXN: ${txRef}`
-  };
-  order.auditLogs = [paymentLog, ...(order.auditLogs || [])];
-
-  const payNote = `[${now}] Payment confirmed via ${methodTitle} (${txRef})`;
-  order.internalNotes = order.internalNotes ? `${order.internalNotes}\n${payNote}` : payNote;
-
-  await db.updateOrderStatus(order.id, 'Paid / New', payNote);
-  await db.updateOrderPaymentStatus(order.id, 'Paid', payNote);
-
-  // Instantly send admin alert
-  sendAdminPaymentProofAlert(order, txRef, `Payment processed via ${methodTitle}`).catch(err => {
-    console.error('[Orders] Error sending admin alert for payment:', err);
-  });
-
-  // Handle report generation and customer email sequence
-  handleNewOrderCreation(order);
-  triggerAutomatedEmailSequence(order, {
-    stageDelaySeconds: { stage2: 3, stage3: 7 },
-    autoAdvanceOrderStatus: true
-  }).catch(err => {
-    console.error('[Orders] Error triggering email sequence:', err);
-  });
-
-  const { internalNotes, ...safeOrder } = order as any;
+ordersRouter.get('/payment-instructions', (_req: Request, res: Response) => {
   res.json({
     success: true,
-    message: 'Payment confirmed and processing initiated.',
-    data: safeOrder
+    data: {
+      instructions: process.env.PAYMENT_INSTRUCTIONS || 'Please complete your bank transfer using your Order Number as reference. Once submitted, our audit team will verify receipt and dispatch your official vehicle report.',
+      bankName: process.env.PAYMENT_BANK_NAME || 'AutoAudit Settlement Services',
+      accountTitle: process.env.PAYMENT_ACCOUNT_TITLE || 'AutoAudit Vehicle Intelligence Services',
+      accountNumber: process.env.PAYMENT_ACCOUNT_NUMBER || 'Configured via PAYMENT_ACCOUNT_NUMBER env variable',
+      routingOrIban: process.env.PAYMENT_ROUTING_IBAN || 'Configured via PAYMENT_ROUTING_IBAN env variable',
+      supportEmail: process.env.SUPPORT_EMAIL || 'support@autoaudit.com'
+    }
+  });
+});
+
+/**
+ * POST /api/orders/:id/process-payment
+ * Disabled: Client calls must not directly set an order to Paid.
+ */
+ordersRouter.post('/:id/process-payment', async (_req: Request, res: Response) => {
+  res.status(501).json({
+    success: false,
+    code: 'GATEWAY_DISABLED',
+    error: 'Direct client-side payment completion is disabled. Payment must be approved by an administrator or confirmed via a cryptographically signed webhook.'
   });
 });
 
@@ -479,9 +426,11 @@ ordersRouter.patch('/:id/payment', requireAdminAuth, async (req: Request, res: R
     return;
   }
 
-  // If approved and marked as Paid, trigger report auto-generation and email sequence
+  // If approved and marked as Paid, trigger report auto-generation and email sequence with full error handling
   if (status === 'Paid') {
-    handleNewOrderCreation(updated);
+    processOrderReport(updated, { autoNotifyUser: true, targetStatus: 'Ready' }).catch(err => {
+      console.error(`[MockReportGenerator] Error auto-generating report on payment approval for ${updated.orderNumber}:`, err);
+    });
     triggerAutomatedEmailSequence(updated, {
       stageDelaySeconds: { stage2: 4, stage3: 8 },
       autoAdvanceOrderStatus: true
@@ -527,12 +476,15 @@ ordersRouter.post('/:id/approve-payment', requireAdminAuth, async (req: Request,
     return;
   }
 
-  handleNewOrderCreation(updated);
+  // Set order status to Paid / New and trigger report generation + email sequence with explicit error handling
+  processOrderReport(updated, { autoNotifyUser: true, targetStatus: 'Ready' }).catch(err => {
+    console.error(`[MockReportGenerator] Error generating report on payment approval for ${updated.orderNumber}:`, err);
+  });
   triggerAutomatedEmailSequence(updated, {
     stageDelaySeconds: { stage2: 4, stage3: 8 },
     autoAdvanceOrderStatus: true
   }).catch(err => {
-    console.error('[SMTP] Error on payment approval:', err);
+    console.error('[SMTP] Error on payment approval email sequence:', err);
   });
 
   res.json({

@@ -19,11 +19,6 @@ import { ContactAnalyticsTab } from './ContactAnalyticsTab';
 import { WhatsAppIcon } from './WhatsAppWidget';
 import { AdminOrderAnalyticsDashboard } from './AdminOrderAnalyticsDashboard';
 import { downloadReportPdfBlob, viewReportPdfBlob } from '../utils/pdfGenerator';
-import { 
-  GOOGLE_FORMS_CONFIG, 
-  GOOGLE_FORMS_EDITOR_URL, 
-  GOOGLE_FORMS_RESPONSES_URL 
-} from '../config/googleFormsConfig';
 
 interface AdminPanelProps {
   orders: Order[];
@@ -332,7 +327,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     };
   }, []);
 
-  // Fetch and live-poll full orders list once verified (12-second live sync)
+  // Fetch and live-poll full orders list once verified (4-second high-responsiveness sync + real-time event listener)
   React.useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -364,8 +359,34 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     };
 
     fetchLatestOrders();
-    const pollInterval = setInterval(fetchLatestOrders, 12000);
-    return () => clearInterval(pollInterval);
+    const pollInterval = setInterval(fetchLatestOrders, 4000);
+
+    // Listen for instant client-side payment confirmation events
+    const handlePaymentConfirmed = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const order = customEvent.detail?.order;
+      if (order) {
+        setNewOrderAlert(order);
+        showToast({
+          title: '🔔 Real-Time Payment Confirmed!',
+          message: `Payment received for Order #${order.orderNumber} ($${order.total ? order.total.toFixed(2) : ''}) - ${order.customer?.fullName || 'Customer'}.`,
+          type: 'success',
+          duration: 9000
+        });
+        fetchLatestOrders();
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('autoaudit:payment-confirmed', handlePaymentConfirmed);
+    }
+
+    return () => {
+      clearInterval(pollInterval);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('autoaudit:payment-confirmed', handlePaymentConfirmed);
+      }
+    };
   }, [isAuthenticated, onSyncOrders]);
 
   const handleAdminLogin = async (e: React.FormEvent) => {
@@ -3606,50 +3627,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <div className="flex items-center gap-2.5">
                       <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                         <FileText className="w-5 h-5 text-amber-500" />
-                        <span>Customer Intake Queue (Google Forms Specification)</span>
+                        <span>Customer Intake Queue (AutoAudit Direct Submissions)</span>
                       </h3>
                       <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
                         <Sparkles className="w-2.5 h-2.5" /> Auto-Generate Active
                       </span>
                     </div>
                     <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
-                      Customer vehicle history requests received via the AutoAudit website intake layer or connected Google Forms. Includes complete 5-section data, certified customer consents, and automated report generation.
+                      Customer vehicle history requests received natively via the AutoAudit website intake layer and payment checkout pipeline. Includes complete 5-section data, certified customer consents, and automated report generation.
                     </p>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 self-start">
                     <a
-                      href={GOOGLE_FORMS_RESPONSES_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
-                      title="Open linked Google Sheets responses"
-                    >
-                      <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                      <span>Open Google Sheet Responses</span>
-                      <ExternalLink className="w-3 h-3 text-emerald-500" />
-                    </a>
-
-                    <a
                       href="/request-report"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
-                      title="View public Google Form page"
+                      title="View public vehicle report request page"
                     >
                       <ExternalLink className="w-3.5 h-3.5 text-blue-600" />
                       <span>View Form on Website</span>
-                    </a>
-
-                    <a
-                      href={GOOGLE_FORMS_EDITOR_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
-                      title="Edit Google Form structure in Google Forms"
-                    >
-                      <Settings className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Form Editor</span>
                     </a>
 
                     <button
@@ -3904,19 +3902,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 )}
               </div>
 
-              {/* Google Forms / Sheets Integration Guide Box */}
+              {/* Native AutoAudit Intake Webhook Pipeline */}
               <div className="bg-gradient-to-r from-blue-50 via-slate-50 to-indigo-50 p-5 rounded-2xl border border-blue-200 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs">
-                      GF
+                      AA
                     </div>
                     <div>
                       <h4 className="text-xs font-bold text-slate-900">
-                        Google Forms & Google Sheets Live Integration
+                        AutoAudit Native Vehicle Intake Pipeline
                       </h4>
                       <p className="text-[11px] text-slate-500">
-                        Hook Google Forms directly to this queue via webhook or Google Apps Script.
+                        Direct REST API ingestion and automated report generation engine.
                       </p>
                     </div>
                   </div>
@@ -3926,7 +3924,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
                 <div className="text-[11px] text-slate-600 leading-relaxed space-y-1">
                   <p>
-                    <strong>Automatic Intake Webhook:</strong> Send JSON from Google Forms triggers directly to <code className="bg-white px-1.5 py-0.5 rounded border border-slate-200 font-mono text-blue-700">POST /api/intake</code> with <code className="bg-white px-1 py-0.5 rounded border border-slate-200 font-mono text-slate-800">autoGenerateReport: true</code>. AutoAudit automatically generates the official PDF-1.4 report, creates order records, and dispatches customer notification emails via mock SMTP transporter!
+                    <strong>Automatic Intake Webhook:</strong> Send JSON vehicle requests directly to <code className="bg-white px-1.5 py-0.5 rounded border border-slate-200 font-mono text-blue-700">POST /api/intake</code> with <code className="bg-white px-1 py-0.5 rounded border border-slate-200 font-mono text-slate-800">autoGenerateReport: true</code>. AutoAudit automatically generates the official PDF-1.4 report, persists order records to MongoDB Atlas, and dispatches customer notification emails via SMTP transporter!
                   </p>
                 </div>
               </div>

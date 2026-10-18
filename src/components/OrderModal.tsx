@@ -84,15 +84,17 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const [agreedToTerms, setAgreedToTerms] = useState<boolean>(true);
 
   // Payment State
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'bank_transfer' | 'digital_wallet'>('card');
-  const [cardNumber, setCardNumber] = useState<string>('•••• •••• •••• 4242');
-  const [cardExpiry, setCardExpiry] = useState<string>('08/28');
-  const [cardCvc, setCardCvc] = useState<string>('•••');
+  const [paymentMethod, setPaymentMethod] = useState<'bank_transfer' | 'digital_wallet'>('bank_transfer');
+  const [paymentProofRef, setPaymentProofRef] = useState<string>('');
+  const [paymentInstructions, setPaymentInstructions] = useState<{
+    instructions: string;
+    bankName: string;
+    accountTitle: string;
+    accountNumber: string;
+    routingOrIban: string;
+    supportEmail: string;
+  } | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState<boolean>(false);
-  const [paymentStepStatus, setPaymentStepStatus] = useState<'idle' | 'initiating' | 'authorizing' | 'webhook_verification' | 'completed'>('idle');
-  const [paymentProgressPercentage, setPaymentProgressPercentage] = useState<number>(0);
-  const [paymentAttempt, setPaymentAttempt] = useState<number>(1);
-  const [paymentStatusMessage, setPaymentStatusMessage] = useState<string>('');
   const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
   const [confirmationEmail, setConfirmationEmail] = useState<EmailNotification | null>(null);
   const [showEmailDetails, setShowEmailDetails] = useState<boolean>(false);
@@ -120,10 +122,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
     setCouponCode('');
     setAppliedCoupon(null);
     setCouponError('');
-    setPaymentMethod('card');
-    setCardNumber('•••• •••• •••• 4242');
-    setCardExpiry('08/28');
-    setCardCvc('•••');
+    setPaymentMethod('bank_transfer');
+    setPaymentProofRef('');
     setStep(1);
   };
 
@@ -247,6 +247,14 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   }, [selectedServiceId]);
 
   useEffect(() => {
+    if (isOpen) {
+      api.getPaymentInstructions()
+        .then(setPaymentInstructions)
+        .catch(err => console.warn('Could not load payment instructions:', err));
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
     if (initialVin) {
       setVinOrReg(initialVin);
       setIsVin(initialIsVin);
@@ -357,15 +365,13 @@ export const OrderModal: React.FC<OrderModalProps> = ({
     }
 
     setIsProcessingPayment(true);
-    setPaymentStepStatus('initiating');
-    setPaymentProgressPercentage(25);
-    setPaymentStatusMessage('Establishing 256-bit encrypted gateway session...');
 
     try {
       const cleanVin = vinOrReg.trim().toUpperCase() || '1HGCM82633A004352';
       const customerEmail = email.trim().toLowerCase() || 'customer@example.com';
       const customerName = fullName.trim() || 'Verified Customer';
 
+      // Create Order payload: Payment status starts as Pending
       const orderPayload: Partial<Order> = {
         serviceId: currentPlan.id,
         serviceName: currentPlan.name,
@@ -391,18 +397,15 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           customerNotes: customerNotes.trim() || undefined
         },
         payment: {
-          status: 'Paid',
-          gatewayRef: `PAY-TXN-${Math.floor(10000000 + Math.random() * 90000000)}`,
-          paidAt: new Date().toISOString(),
-          method: paymentMethod === 'card' ? 'Secure Card Payment' : paymentMethod === 'bank_transfer' ? 'Direct Bank Transfer' : 'Digital Wallet'
+          status: 'Pending',
+          gatewayRef: paymentProofRef.trim() || 'Awaiting Payment Proof',
+          method: paymentMethod === 'bank_transfer' ? 'Direct Bank Transfer' : 'Digital Wallet / Wire'
         }
       };
 
       // Step 1: Save order to database
-      setPaymentProgressPercentage(50);
-      setPaymentStatusMessage('Registering vehicle records order in database...');
       const serverOrder = await api.createOrder(orderPayload);
-      setCreatedOrder(serverOrder);
+      let finalOrder = serverOrder;
 
       // Save customer email for instant dashboard retrieval
       if (serverOrder.customer?.email) {
@@ -413,85 +416,30 @@ export const OrderModal: React.FC<OrderModalProps> = ({
         }
       }
 
-      // Step 2: Authorize payment with provider gateway
-      setPaymentStepStatus('authorizing');
-      setPaymentProgressPercentage(75);
-      setPaymentStatusMessage('Authorizing transaction with payment provider...');
-
-      let finalOrder = serverOrder;
-      try {
-        const processed = await api.processOrderPayment(serverOrder.id, {
-          paymentMethod: orderPayload.payment?.method,
-          gatewayRef: orderPayload.payment?.gatewayRef
-        });
-        if (processed) {
-          finalOrder = processed;
-        }
-      } catch (procErr) {
-        console.warn('Gateway process notice:', procErr);
-      }
-
-      // Step 3: Webhook polling verification to detect payment completion
-      setPaymentStepStatus('webhook_verification');
-      setPaymentProgressPercentage(90);
-      setPaymentStatusMessage('Awaiting payment provider webhook clearance confirmation...');
-
-      try {
-        const verified = await api.pollPaymentStatus(serverOrder.id, {
-          intervalMs: 1200,
-          maxAttempts: 4,
-          onPoll: (attempt) => {
-            setPaymentAttempt(attempt);
-            setPaymentStatusMessage(`Polling payment provider webhook (Verification ${attempt}/4)...`);
+      // Step 2: If customer provided payment reference/proof, submit it to trigger admin verification alert
+      if (paymentProofRef.trim()) {
+        try {
+          const proofOrder = await api.submitPaymentProof(serverOrder.id, paymentProofRef.trim(), 'Customer submitted transfer reference during checkout.');
+          if (proofOrder) {
+            finalOrder = proofOrder;
           }
-        });
-        if (verified) {
-          finalOrder = verified;
+        } catch (proofErr) {
+          console.warn('Payment proof registration warning:', proofErr);
         }
-      } catch (pollErr) {
-        console.warn('Webhook polling notice:', pollErr);
       }
 
-      setPaymentStepStatus('completed');
-      setPaymentProgressPercentage(100);
-      setPaymentStatusMessage('Payment confirmed! Preparing official records...');
       setCreatedOrder(finalOrder);
 
-      // Query the dispatched confirmation email from Mock SMTP service
-      try {
-        const emails = await api.getEmails({ orderNumber: finalOrder.orderNumber });
-        const conf = emails.find(e => e.type === 'order_confirmation');
-        if (conf) {
-          setConfirmationEmail(conf);
-        } else {
-          setConfirmationEmail({
-            id: `em-${Date.now()}-mock`,
-            orderId: finalOrder.id,
-            orderNumber: finalOrder.orderNumber,
-            recipientEmail: customerEmail,
-            recipientType: 'customer',
-            subject: `Order Confirmed: AutoAudit Report for ${cleanVin} (${finalOrder.orderNumber})`,
-            type: 'order_confirmation',
-            body: `Hello ${customerName},\n\nThank you for choosing AutoAudit! Your order #${finalOrder.orderNumber} for ${finalOrder.vehicle.year} ${finalOrder.vehicle.make} ${finalOrder.vehicle.model} (VIN: ${cleanVin}) has been confirmed and payment has been processed successfully ($${finalOrder.total.toFixed(2)} USD).\n\nOur automated systems are now querying the NMVTIS federal title clearinghouse, 50-state DMV registries, and salvage auto auctions.`,
-            smtpTransport: 'Nodemailer Mock SMTP (JSON Transporter)',
-            sentAt: new Date().toISOString(),
-            read: false
-          });
-        }
-      } catch {
-        // Fallback email object
-      }
-
       showToast({
-        title: 'Order Confirmed & Email Dispatched',
-        message: `Order confirmation email sent to ${customerEmail} via AutoAudit Mock SMTP service.`,
-        type: 'success',
+        title: 'Order Registered - Awaiting Verification',
+        message: `Order #${finalOrder.orderNumber} placed. Our audit team will verify payment receipt and release your report.`,
+        type: 'info',
         duration: 5000
       });
 
-      // Trigger real-time notification to the admin dashboard!
+      // Dispatch alert to admin console
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('autoaudit:payment-confirmed', {
+        window.dispatchEvent(new CustomEvent('autoaudit:new-order', {
           detail: {
             order: finalOrder,
             orderNumber: finalOrder.orderNumber,
@@ -519,10 +467,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
       }
 
       onOrderCompleted(finalOrder);
-      setTimeout(() => {
-        setIsProcessingPayment(false);
-        setStep(5); // Advance to Step 5: Confirmation screen
-      }, 700);
+      setIsProcessingPayment(false);
+      setStep(5); // Advance to Step 5: Order Received / Awaiting Payment Verification
     } catch (err: any) {
       console.warn('Backend order processing fallback:', err);
       // Client-side fallback if server is temporarily unreachable
@@ -533,7 +479,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
         orderNumber: fallbackOrderNum,
         serviceId: currentPlan.id,
         serviceName: currentPlan.name,
-        status: 'Processing',
+        status: 'Pending Payment',
         subtotal: Number(subtotal.toFixed(2)),
         discountAmount: Number(discountAmount.toFixed(2)),
         total: Number(total.toFixed(2)),
@@ -556,12 +502,11 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           customerNotes: customerNotes.trim() || undefined
         },
         payment: {
-          status: 'Paid',
-          gatewayRef: `PAY-TXN-${Math.floor(10000000 + Math.random() * 90000000)}`,
-          paidAt: now,
-          method: paymentMethod === 'card' ? 'Secure Card Payment' : paymentMethod === 'bank_transfer' ? 'Direct Bank Transfer' : 'Digital Wallet'
+          status: 'Pending',
+          gatewayRef: paymentProofRef.trim() || 'Awaiting Payment Proof',
+          method: paymentMethod === 'bank_transfer' ? 'Direct Bank Transfer' : 'Digital Wallet / Wire'
         },
-        internalNotes: 'Order received via online checkout. Processing report compilation.',
+        internalNotes: 'Order received via online checkout. Awaiting payment verification.',
         createdAt: now,
         updatedAt: now,
         auditLogs: [
@@ -570,14 +515,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             timestamp: now,
             actor: `Customer (${fullName || 'Guest'})`,
             action: 'Order Placed',
-            details: `Service: ${currentPlan.name}, Total: $${total.toFixed(2)}`
-          },
-          {
-            id: `log-${Date.now()}-2`,
-            timestamp: now,
-            actor: 'Payment Gateway',
-            action: 'Payment Confirmed',
-            details: `Verified $${total.toFixed(2)} USD via encrypted checkout.`
+            details: `Service: ${currentPlan.name}, Total: $${total.toFixed(2)} (Awaiting payment verification)`
           }
         ]
       };
@@ -1178,102 +1116,106 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             </div>
           )}
 
-          {/* STEP 4: Checkout & Fintech Payment (Section 14) */}
+          {/* STEP 4: Checkout & Settlement Details */}
           {step === 4 && (
+            isProcessingPayment ? (
+              <div className="py-16 text-center space-y-4 max-w-md mx-auto">
+                <div className="w-12 h-12 mx-auto rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600">
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-base font-bold text-slate-900">Registering Vehicle Report Order...</h4>
+                  <p className="text-xs text-slate-500">Creating order record and queuing verification for AutoAudit administration.</p>
+                </div>
+              </div>
+            ) : (
             <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 sm:gap-6 text-xs">
               
               {/* Left Column: Payment Form (7 Cols) */}
               <div className="md:col-span-7 space-y-3 sm:space-y-4">
                 <div className="flex items-center justify-between pb-1.5 sm:pb-2 border-b border-slate-200">
-                  <h4 className="text-xs sm:text-sm font-bold text-slate-900">Payment Information</h4>
-                  <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-[#059669]">
-                    <Lock className="w-3.5 h-3.5" />
-                    <span>256-Bit SSL Encrypted</span>
+                  <h4 className="text-xs sm:text-sm font-bold text-slate-900">Payment & Settlement Method</h4>
+                  <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-slate-500">
+                    <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Admin Verified Settlement</span>
                   </div>
                 </div>
 
-                {/* Generic Payment Method Tabs (8px radius) */}
-                <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('card')}
-                    className={`p-1.5 sm:p-2.5 rounded-[8px] border text-center cursor-pointer flex flex-col items-center justify-center gap-0.5 sm:gap-1 min-h-[44px] ${
-                      paymentMethod === 'card'
-                        ? 'border-[#FB2C36] bg-red-50/25 text-[#FB2C36] font-bold shadow-[0_1px_2px_rgba(0,0,0,0.05)]'
-                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    <CreditCard className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    <span className="text-[10px] sm:text-[11px] leading-tight">Card</span>
-                  </button>
-
+                {/* Payment Method Tabs */}
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('bank_transfer')}
-                    className={`p-1.5 sm:p-2.5 rounded-[8px] border text-center cursor-pointer flex flex-col items-center justify-center gap-0.5 sm:gap-1 min-h-[44px] ${
+                    className={`p-2 sm:p-2.5 rounded-[8px] border text-center cursor-pointer flex flex-col items-center justify-center gap-1 min-h-[44px] ${
                       paymentMethod === 'bank_transfer'
-                        ? 'border-[#FB2C36] bg-red-50/25 text-[#FB2C36] font-bold shadow-[0_1px_2px_rgba(0,0,0,0.05)]'
+                        ? 'border-[#2563EB] bg-blue-50/40 text-[#2563EB] font-bold shadow-[0_1px_2px_rgba(0,0,0,0.05)]'
                         : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                     }`}
                   >
-                    <Building className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    <span className="text-[10px] sm:text-[11px] leading-tight">Bank Transfer</span>
+                    <Building className="w-4 h-4" />
+                    <span className="text-xs leading-tight">Direct Bank Transfer</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('digital_wallet')}
-                    className={`p-1.5 sm:p-2.5 rounded-[8px] border text-center cursor-pointer flex flex-col items-center justify-center gap-0.5 sm:gap-1 min-h-[44px] ${
+                    className={`p-2 sm:p-2.5 rounded-[8px] border text-center cursor-pointer flex flex-col items-center justify-center gap-1 min-h-[44px] ${
                       paymentMethod === 'digital_wallet'
-                        ? 'border-[#FB2C36] bg-red-50/25 text-[#FB2C36] font-bold shadow-[0_1px_2px_rgba(0,0,0,0.05)]'
+                        ? 'border-[#2563EB] bg-blue-50/40 text-[#2563EB] font-bold shadow-[0_1px_2px_rgba(0,0,0,0.05)]'
                         : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                     }`}
                   >
-                    <Wallet className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    <span className="text-[10px] sm:text-[11px] leading-tight">Wallet</span>
+                    <Wallet className="w-4 h-4" />
+                    <span className="text-xs leading-tight">Digital Wallet / Wire</span>
                   </button>
                 </div>
 
-                {/* Generic Card Form */}
-                {paymentMethod === 'card' && (
-                  <div className="p-3 sm:p-4 bg-slate-50 rounded-[8px] border border-slate-200 space-y-2.5 sm:space-y-3">
-                    <div className="space-y-1">
-                      <label className="text-[11px] sm:text-xs font-bold text-slate-700">Card Number</label>
-                      <input
-                        type="text"
-                        value={cardNumber}
-                        onChange={(e) => setCardNumber(e.target.value)}
-                        placeholder="•••• •••• •••• 4242"
-                        className="w-full px-2.5 py-1.5 sm:px-3 sm:py-2 bg-white border border-slate-300 rounded-[8px] font-mono text-xs sm:text-sm focus:outline-none focus:border-[#FB2C36]"
-                      />
+                {/* Payment Instructions & Transfer Details Card */}
+                <div className="p-3 sm:p-3.5 bg-slate-50 rounded-[8px] border border-slate-200 space-y-2.5">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5 font-bold text-slate-800 text-xs">
+                      <Building className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Settlement & Payment Instructions</span>
                     </div>
-
-                    <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                      <div className="space-y-1">
-                        <label className="text-[11px] sm:text-xs font-bold text-slate-700">Expiry (MM/YY)</label>
-                        <input
-                          type="text"
-                          value={cardExpiry}
-                          onChange={(e) => setCardExpiry(e.target.value)}
-                          placeholder="08/28"
-                          className="w-full px-2.5 py-1.5 sm:px-3 sm:py-2 bg-white border border-slate-300 rounded-[8px] font-mono text-xs sm:text-sm focus:outline-none focus:border-[#FB2C36]"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[11px] sm:text-xs font-bold text-slate-700">Security CVC</label>
-                        <input
-                          type="text"
-                          value={cardCvc}
-                          onChange={(e) => setCardCvc(e.target.value)}
-                          placeholder="•••"
-                          maxLength={4}
-                          className="w-full px-2.5 py-1.5 sm:px-3 sm:py-2 bg-white border border-slate-300 rounded-[8px] font-mono text-xs sm:text-sm focus:outline-none focus:border-[#FB2C36]"
-                        />
-                      </div>
-                    </div>
+                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                      {paymentInstructions?.instructions || 'Please complete your bank transfer using your Order Number as the payment reference. Once submitted, our audit team will verify receipt and dispatch your official vehicle report.'}
+                    </p>
                   </div>
-                )}
+
+                  {paymentInstructions && (
+                    <div className="bg-white p-2.5 rounded border border-slate-200 text-[11px] font-mono space-y-1 text-slate-700">
+                      <div className="flex justify-between">
+                        <span className="text-slate-500 font-sans">Bank:</span>
+                        <span className="font-bold text-slate-900">{paymentInstructions.bankName}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500 font-sans">Beneficiary:</span>
+                        <span>{paymentInstructions.accountTitle}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500 font-sans">Account / Routing:</span>
+                        <span className="text-slate-800">{paymentInstructions.routingOrIban}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Transfer Reference Input */}
+                  <div className="space-y-1 pt-1">
+                    <label className="text-[11px] font-bold text-slate-700 block">
+                      Transfer Transaction / Wire Reference (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={paymentProofRef}
+                      onChange={(e) => setPaymentProofRef(e.target.value)}
+                      placeholder="e.g. TXN-98471203 or Bank Wire Reference"
+                      className="w-full px-2.5 py-1.5 sm:px-3 sm:py-2 bg-white border border-slate-300 rounded-[8px] font-mono text-xs focus:outline-none focus:border-[#2563EB]"
+                    />
+                    <p className="text-[10px] text-slate-500">
+                      You may enter your transfer receipt reference now or after placing the order.
+                    </p>
+                  </div>
+                </div>
 
                 {/* Terms Agreement */}
                 <div className="p-2.5 sm:p-3 bg-slate-50 rounded-[8px] border border-slate-200">
@@ -1282,7 +1224,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       type="checkbox"
                       checked={agreedToTerms}
                       onChange={(e) => setAgreedToTerms(e.target.checked)}
-                      className="mt-0.5 rounded text-[#FB2C36] focus:ring-red-500 shrink-0"
+                      className="mt-0.5 rounded text-[#2563EB] focus:ring-blue-500 shrink-0"
                     />
                     <span>
                       I acknowledge AutoAudit terms and verify that I am ordering an official online vehicle records compilation.
@@ -1466,163 +1408,144 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               </div>
 
             </div>
+            )
           )}
 
-          {/* STEP 5: Payment Success / Order Confirmed (Section 15) */}
+          {/* STEP 5: Order Received - Awaiting Payment Verification */}
           {step === 5 && createdOrder && (
-            <div className="text-center space-y-3.5 sm:space-y-4 py-2 sm:py-3 max-w-lg mx-auto report-ready-transition report-ready-glow">
+            <div className="text-center space-y-4 py-2 sm:py-3 max-w-lg mx-auto">
               
-              {/* Celebration Pill with Sparkles & Replay */}
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-bold tracking-wide shadow-xs report-stagger-1 mx-auto">
-                <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                <span>🎉 Order Placed Successfully!</span>
-                <button
-                  type="button"
-                  onClick={triggerCelebration}
-                  className="ml-1 text-[11px] text-emerald-700 hover:text-emerald-950 underline font-bold cursor-pointer"
-                  title="Replay Celebration Confetti"
-                >
-                  Replay
-                </button>
+              {/* Header Badge */}
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-50 border border-amber-300 text-amber-900 text-xs font-bold tracking-wide shadow-xs mx-auto">
+                <Clock className="w-3.5 h-3.5 text-amber-600" />
+                <span>Order Received - Awaiting Payment Verification</span>
               </div>
 
-              {/* Large Celebratory Emerald Check Icon with Pulsing Halo */}
-              <div className="relative w-14 h-14 sm:w-16 sm:h-16 mx-auto flex items-center justify-center my-0.5">
-                <div className="absolute inset-0 rounded-full bg-emerald-400/30 animate-ping opacity-60 pointer-events-none" style={{ animationDuration: '2.5s' }} />
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-tr from-emerald-600 via-emerald-500 to-teal-400 text-white flex items-center justify-center shadow-lg report-checkmark-pop">
-                  <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10 stroke-[2.4]" />
-                </div>
+              {/* Status Graphic */}
+              <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto rounded-full bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center shadow-xs">
+                <FileCheck className="w-8 h-8 stroke-[2.2]" />
               </div>
 
-              <div className="space-y-0.5 sm:space-y-1">
-                <h3 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
-                  Order Confirmed
+              <div className="space-y-1">
+                <h3 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                  Order Received - Awaiting Payment Verification
                 </h3>
-                <p className="text-xs sm:text-sm text-slate-600">
-                  Your vehicle report order has been received and verified.
+                <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto">
+                  Your vehicle report request has been registered. Once our audit administration verifies your payment, your comprehensive report will be released and dispatched to your email.
                 </p>
               </div>
 
               {/* Order Details Box */}
-              <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl sm:rounded-2xl p-3.5 sm:p-5 text-[11px] sm:text-xs text-left space-y-2 sm:space-y-2.5 shadow-xs report-stagger-1">
-                <div className="flex justify-between pb-1.5 sm:pb-2 border-b border-slate-200">
+              <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-4 text-xs text-left space-y-2 shadow-xs">
+                <div className="flex justify-between pb-1.5 border-b border-slate-200">
                   <span className="text-slate-500">Order Number:</span>
-                  <span className="font-mono font-bold text-slate-900 text-xs sm:text-sm">{createdOrder.orderNumber}</span>
+                  <span className="font-mono font-bold text-slate-900 text-sm">{createdOrder.orderNumber}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Vehicle:</span>
+                  <span className="text-slate-500">Vehicle / VIN:</span>
                   <span className="font-mono font-semibold text-slate-900">{createdOrder.vehicle.vinOrReg}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Report:</span>
+                  <span className="text-slate-500">Report Tier:</span>
                   <span className="font-semibold text-slate-900">{createdOrder.serviceName}</span>
                 </div>
                 <div className="flex justify-between items-center">
+                  <span className="text-slate-500">Total Amount:</span>
+                  <span className="font-mono font-bold text-blue-600 text-sm">${createdOrder.total.toFixed(2)} USD</span>
+                </div>
+                <div className="flex justify-between items-center">
                   <span className="text-slate-500">Status:</span>
-                  <span className="inline-flex items-center gap-1 font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
-                    <span>Processing</span>
+                  <span className="inline-flex items-center gap-1 font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 text-[11px]">
+                    <Clock className="w-3 h-3 text-amber-600" />
+                    <span>Pending Payment Verification</span>
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Estimated Delivery:</span>
-                  <span className="font-semibold text-[#059669]">{currentPlan.deliveryTime}</span>
+                  <span className="text-slate-500">Recipient Email:</span>
+                  <span className="font-semibold text-slate-900">{createdOrder.customer.email}</span>
                 </div>
               </div>
 
-              {/* 4-Stage Fulfillment Progress Bar */}
-              <div className="report-stagger-2">
-                <OrderTrackingProgressBar
-                  status="Processing"
-                  orderNumber={createdOrder.orderNumber}
-                  compact={true}
-                />
-              </div>
-
-              {/* Automated Mock SMTP Confirmation Email Dispatch Card */}
-              <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-xl sm:rounded-2xl p-3.5 sm:p-4 text-left space-y-2.5 shadow-xs report-stagger-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                      <Mail className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs sm:text-sm font-bold text-emerald-950">
-                        Confirmation Email Dispatched
-                      </h4>
-                      <p className="text-[11px] text-emerald-800">
-                        Sent to: <strong className="font-semibold">{createdOrder.customer.email}</strong>
-                      </p>
-                    </div>
-                  </div>
-
-                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
-                    MOCK SMTP (JSON)
-                  </span>
+              {/* Payment Instructions Card (Dynamic from Server / Env) */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-left space-y-2.5 text-xs">
+                <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                  <Building className="w-4 h-4 text-blue-600" />
+                  <span>Payment Transfer Instructions</span>
                 </div>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  {paymentInstructions?.instructions || 'Please complete your bank transfer using your Order Number as the payment reference. Once submitted, our audit team will verify receipt and dispatch your official vehicle report.'}
+                </p>
 
-                <div className="text-[11px] text-slate-600 bg-white/80 border border-emerald-100 rounded-lg p-2.5 space-y-1">
-                  <div className="flex justify-between items-center text-[10.5px]">
-                    <span className="text-slate-500 font-medium">Service:</span>
-                    <span className="font-mono text-slate-800">AutoAudit Mock SMTP Integration</span>
-                  </div>
-                  <div className="flex justify-between items-center text-[10.5px]">
-                    <span className="text-slate-500 font-medium">Subject:</span>
-                    <span className="font-semibold text-slate-800 truncate max-w-[240px]">
-                      {confirmationEmail?.subject || `Order Confirmed: AutoAudit Report for ${createdOrder.vehicle.vinOrReg} (${createdOrder.orderNumber})`}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center text-[10.5px]">
-                    <span className="text-slate-500 font-medium">Delivery Status:</span>
-                    <span className="inline-flex items-center gap-1 font-bold text-emerald-700">
-                      <Check className="w-3 h-3 stroke-[3]" />
-                      <span>Instant Zero-Latency Mock Delivery</span>
-                    </span>
-                  </div>
-                </div>
-
-                {/* Email Preview Toggle */}
-                <div className="pt-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setShowEmailDetails(!showEmailDetails)}
-                    className="w-full py-1.5 px-3 rounded-lg bg-emerald-100/70 hover:bg-emerald-200/80 text-emerald-900 text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    {showEmailDetails ? (
-                      <>
-                        <EyeOff className="w-3.5 h-3.5" />
-                        <span>Hide Dispatched Email</span>
-                      </>
-                    ) : (
-                      <>
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>Preview Dispatched Confirmation Email</span>
-                      </>
-                    )}
-                  </button>
-
-                  {/* Expandable Email Content Drawer */}
-                  {showEmailDetails && (
-                    <div className="mt-2.5 p-3.5 bg-slate-900 text-slate-100 rounded-xl border border-slate-800 text-[11px] font-mono space-y-2.5 animate-in fade-in duration-200 shadow-inner">
-                      <div className="border-b border-slate-800 pb-2 space-y-1 text-[10.5px] text-slate-400">
-                        <div><strong className="text-slate-200">From:</strong> AutoAudit Notifications &lt;noreply@autoaudit.intelligence&gt;</div>
-                        <div><strong className="text-slate-200">To:</strong> {createdOrder.customer.email}</div>
-                        <div><strong className="text-slate-200">Subject:</strong> {confirmationEmail?.subject || `Order Confirmed: AutoAudit Report for ${createdOrder.vehicle.vinOrReg}`}</div>
-                        <div><strong className="text-slate-200">Transport:</strong> Nodemailer Mock SMTP JSON Transporter</div>
-                      </div>
-
-                      <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 text-[10.5px] text-slate-300 font-sans leading-relaxed whitespace-pre-line max-h-48 overflow-y-auto">
-                        {confirmationEmail?.body || `Hello ${createdOrder.customer.fullName},
-
-Thank you for choosing AutoAudit! Your order #${createdOrder.orderNumber} for ${createdOrder.vehicle.year} ${createdOrder.vehicle.make} ${createdOrder.vehicle.model} (VIN: ${createdOrder.vehicle.vinOrReg}) has been confirmed and payment has been processed successfully ($${createdOrder.total.toFixed(2)} USD).
-
-Our automated systems are now querying the NMVTIS federal title clearinghouse, 50-state DMV registries, and salvage auto auctions.
-
-We will notify you the moment your report advances to processing.`}
-                      </div>
+                {paymentInstructions && (
+                  <div className="bg-white p-2.5 rounded border border-slate-200 text-[11px] font-mono space-y-1 text-slate-700">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500 font-sans">Payment Reference:</span>
+                      <span className="font-bold text-blue-600">{createdOrder.orderNumber}</span>
                     </div>
-                  )}
-                </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500 font-sans">Bank:</span>
+                      <span className="font-bold">{paymentInstructions.bankName}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500 font-sans">Beneficiary:</span>
+                      <span>{paymentInstructions.accountTitle}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500 font-sans">Account / IBAN:</span>
+                      <span className="text-slate-800">{paymentInstructions.routingOrIban}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Payment Proof Reference Submission Status / Input */}
+                {createdOrder.payment?.gatewayRef && createdOrder.payment.gatewayRef !== 'Awaiting Payment Proof' ? (
+                  <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded text-[11px] text-emerald-800 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Reference Submitted: <strong className="font-mono">{createdOrder.payment.gatewayRef}</strong></span>
+                    </div>
+                    <span className="font-mono font-bold text-[10px] bg-emerald-200/60 px-1.5 py-0.5 rounded text-emerald-900">UNDER REVIEW</span>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 pt-1 border-t border-slate-200">
+                    <label className="text-[11px] font-bold text-slate-700 block">
+                      Submit Your Bank Transfer / Transaction Reference
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={paymentProofRef}
+                        onChange={(e) => setPaymentProofRef(e.target.value)}
+                        placeholder="Enter bank wire or transfer reference"
+                        className="flex-1 px-2.5 py-1.5 bg-white border border-slate-300 rounded font-mono text-xs focus:outline-none focus:border-[#2563EB]"
+                      />
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!paymentProofRef.trim()) return;
+                          try {
+                            const updated = await api.submitPaymentProof(createdOrder.id, paymentProofRef.trim());
+                            setCreatedOrder(updated);
+                            showToast({
+                              title: 'Reference Registered',
+                              message: 'Payment reference submitted to AutoAudit administration.',
+                              type: 'success'
+                            });
+                          } catch (err: any) {
+                            showToast({
+                              title: 'Submission Error',
+                              message: err?.message || 'Failed to submit reference.',
+                              type: 'error'
+                            });
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded font-bold text-xs cursor-pointer transition-colors"
+                      >
+                        Submit Reference
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Refer-a-Friend Post-Order Reward Callout */}
