@@ -5,9 +5,11 @@ import { api } from '../services/api';
 import { ContactIntent, WhatsAppConfig } from '../types';
 import { INITIAL_WHATSAPP_CONFIG } from '../data/initialData';
 
-export const AUTUAUDIT_WHATSAPP_NUMBER = '923420617217'; // 03420617217 (+92 342 0617217)
-export const AUTUAUDIT_WHATSAPP_DISPLAY = '+92 342 0617217';
-export const AUTUAUDIT_WHATSAPP_LOCAL = '03420617217';
+import { WHATSAPP_NUMBER, WHATSAPP_DISPLAY, WHATSAPP_LOCAL } from '../config/contactConfig';
+
+export const AUTUAUDIT_WHATSAPP_NUMBER = WHATSAPP_NUMBER;
+export const AUTUAUDIT_WHATSAPP_DISPLAY = WHATSAPP_DISPLAY;
+export const AUTUAUDIT_WHATSAPP_LOCAL = WHATSAPP_LOCAL;
 
 export function formatWhatsAppNumberForLink(phone: string): string {
   let clean = phone.replace(/[^0-9]/g, '');
@@ -159,13 +161,13 @@ export const WhatsAppWidget: React.FC<WhatsAppWidgetProps> = ({
   };
 
   return (
-    <div ref={widgetRef} className="fixed bottom-6 right-6 z-40 print:hidden font-sans">
+    <div ref={widgetRef} className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 print:hidden font-sans">
       {/* Popover Card */}
       {isOpen && (
         <div
           role="dialog"
           aria-label="WhatsApp QR Code & Live Support"
-          className="mb-3 w-80 sm:w-96 rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200"
+          className="mb-3 w-[calc(100vw-2rem)] max-w-[340px] sm:max-w-sm sm:w-96 rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200"
         >
           {/* Header */}
           <div className="bg-[#0B132B] text-white p-4 flex items-center justify-between border-b border-[#1E293B]">

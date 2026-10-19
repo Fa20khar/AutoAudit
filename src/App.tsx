@@ -20,7 +20,6 @@ import { FAQSection } from './components/FAQSection';
 import { FinalCTA } from './components/FinalCTA';
 import { Footer } from './components/Footer';
 import { VehicleReportForm } from './components/VehicleReportForm';
-import { SocialProofTicker } from './components/SocialProofTicker';
 import { SampleReportModal } from './components/SampleReportModal';
 import { OrderModal } from './components/OrderModal';
 import { MyOrdersModal } from './components/MyOrdersModal';
@@ -433,9 +432,6 @@ function AppContent() {
           />
 
           <main className="flex-1">
-            {/* Real-time Customer Activity Social Proof Ticker */}
-            <SocialProofTicker compact={true} />
-
             {/* Section 6, 7, 8: Hero Section with Search Panel & Floating Report Preview */}
             <Hero
               onStartOrderWithVin={handleStartOrderWithVin}

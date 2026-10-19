@@ -1,6 +1,6 @@
 import React from 'react';
 import { Logo } from './Logo';
-import { WhatsAppButton } from './WhatsAppButton';
+import { WHATSAPP_DISPLAY, WHATSAPP_URL } from '../config/contactConfig';
 
 interface FooterProps {
   onOpenLegal: (tab: 'terms' | 'privacy' | 'refund' | 'compliance' | 'data-sources' | 'licensing') => void;
@@ -41,13 +41,23 @@ export const Footer: React.FC<FooterProps> = ({
             <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
               AutoAudit is an online digital ordering platform compiling vehicle title, salvage, and collision records from authorized registries. We do not provide physical vehicle inspections.
             </p>
-            <div className="pt-2">
-              <WhatsAppButton
-                variant="secondary"
-                label="Scan WhatsApp QR: 03420617217"
-                openQrModal={true}
-                className="bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border-emerald-800 text-xs font-semibold"
-              />
+            <div className="pt-2 text-xs text-slate-400">
+              <span>Customer Support: WhatsApp </span>
+              <a
+                href={WHATSAPP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-400 hover:text-blue-300 font-mono hover:underline"
+              >
+                {WHATSAPP_DISPLAY}
+              </a>
+              <span className="text-slate-600 mx-2">·</span>
+              <a
+                href="mailto:support@autoaudit.com"
+                className="text-slate-400 hover:text-slate-200 hover:underline"
+              >
+                support@autoaudit.com
+              </a>
             </div>
           </div>
 
@@ -202,12 +212,14 @@ export const Footer: React.FC<FooterProps> = ({
                 </button>
               </li>
               <li>
-                <WhatsAppButton
-                  variant="text"
-                  openQrModal={true}
-                  label="WhatsApp QR: 03420617217 (+92 342 0617217)"
-                  className="hover:text-emerald-400 text-slate-400"
-                />
+                <a
+                  href={WHATSAPP_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-white transition-colors"
+                >
+                  WhatsApp Support
+                </a>
               </li>
               <li>
                 <button

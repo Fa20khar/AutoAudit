@@ -22,12 +22,14 @@ export interface Translations {
   navAdminPortal: string;
   navGetReport: string;
   navCustomerPortal: string;
+  navRefer: string;
 
   // Hero Section
   heroBadge: string;
   heroTitle1: string;
   heroTitle2: string;
   heroSubtitle: string;
+  heroInputLabel: string;
   tabVin: string;
   tabPlate: string;
   vinPlaceholder: string;
@@ -128,12 +130,14 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     navAdminPortal: 'Admin Portal',
     navGetReport: 'Get Report',
     navCustomerPortal: 'Customer Order Portal',
+    navRefer: 'Refer & Earn',
 
     // Hero Section
-    heroBadge: 'OFFICIAL VEHICLE REGISTRY AUDITING',
-    heroTitle1: 'Instant Vehicle History Reports',
-    heroTitle2: 'Before You Buy or Sell.',
-    heroSubtitle: 'Protect yourself against hidden salvage titles, flood damage, odometer fraud, and prior collisions with certified NMVTIS record auditing.',
+    heroBadge: 'VEHICLE RECORD AUDITING',
+    heroTitle1: "Uncover Any Vehicle's True History",
+    heroTitle2: 'Before You Buy.',
+    heroSubtitle: 'Check accident records, title brands, odometer progression, and open recalls with comprehensive data compiled across verified registries.',
+    heroInputLabel: 'Enter 17-character VIN or US License Plate',
     tabVin: 'VIN Number (17 Chars)',
     tabPlate: 'US License Plate',
     vinPlaceholder: 'Enter 17-character VIN (e.g. 1HGCR2F83HA029184)...',
@@ -232,12 +236,14 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     navAdminPortal: 'Portal Admin',
     navGetReport: 'Obtener Informe',
     navCustomerPortal: 'Portal de Pedidos de Clientes',
+    navRefer: 'Recomendar y Ganar',
 
     // Hero Section
-    heroBadge: 'AUDITORÍA OFICIAL DEL REGISTRO AUTOMOTRIZ',
-    heroTitle1: 'Informes de Historial del Vehículo',
-    heroTitle2: 'Antes de Comprar o Vender.',
-    heroSubtitle: 'Protéjase contra títulos de salvamento ocultos, daños por inundación, fraude de odómetro y colisiones previas con auditoría certificada de registros NMVTIS.',
+    heroBadge: 'AUDITORÍA DEL REGISTRO AUTOMOTRIZ',
+    heroTitle1: 'Descubra el Historial Real de Cualquier Vehículo',
+    heroTitle2: 'Antes de Comprar.',
+    heroSubtitle: 'Consulte registros de accidentes, marcas de título, progreso de kilometraje y retiros de seguridad recopilados de registros verificados.',
+    heroInputLabel: 'Ingrese VIN de 17 caracteres o placa de EE.UU.',
     tabVin: 'Número VIN (17 Caracteres)',
     tabPlate: 'Placa de EE.UU. y Estado',
     vinPlaceholder: 'Ingrese VIN de 17 caracteres (ej. 1HGCR2F83HA029184)...',

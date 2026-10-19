@@ -1,72 +1,73 @@
-import React, { useState } from 'react';
-import { Search, ShieldCheck, CheckCircle2, ArrowRight, Car, Lock, FileCheck, Check, FileText, Loader2, AlertCircle, Video } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, CheckCircle2, ArrowRight, Car, FileCheck, Loader2, AlertCircle } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from '../context/LanguageContext';
-import { WhatsAppButton } from './WhatsAppButton';
 import { validateVinChecksum } from '../utils/vinValidator';
 
 interface HeroProps {
   onStartOrderWithVin: (vin: string, isVin: boolean) => void;
   onOpenSample: () => void;
   onRequestReport?: () => void;
-  onOpenVideoStudio?: () => void;
+  onOpenVideoStudio?: () => void; // Retained in interface, hidden in UI per design spec
 }
 
 // Standard ISO 3779 VIN: 17 alphanumeric characters, excluding I, O, Q
 const VIN_REGEX = /^[A-HJ-NPR-Z0-9]{17}$/i;
 
-export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, onRequestReport, onOpenVideoStudio }) => {
+// Verified Sample VIN where 10th character ('L') corresponds to 2020 and checksum matches
+const SAMPLE_VERIFIED_VIN = '1HGCV1F33LA000001';
+const SAMPLE_VEHICLE_TITLE = '2020 Honda Accord Touring 2.0T';
+
+export const Hero: React.FC<HeroProps> = ({
+  onStartOrderWithVin,
+  onOpenSample,
+}) => {
   const { showToast } = useToast();
   const { t } = useTranslation();
-  const [vinInput, setVinInput] = useState('');
+  const [vehicleInput, setVehicleInput] = useState('');
   const [inputType, setInputType] = useState<'vin' | 'plate'>('vin');
+  const [selectedState, setSelectedState] = useState('CA');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isShaking, setIsShaking] = useState(false);
-  const [isInputShaking, setIsInputShaking] = useState(false);
   const [validationState, setValidationState] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
   const [validationFeedback, setValidationFeedback] = useState<string | null>(null);
-  const [heroInspectAngle, setHeroInspectAngle] = useState<'paint' | 'profile' | 'engine' | 'headlight'>('paint');
 
-  // Immediate debounced visual validation effect for VIN input
-  React.useEffect(() => {
+  // Debounced real-time visual checksum validation effect for VIN input
+  useEffect(() => {
     if (inputType !== 'vin') {
       setValidationState('idle');
       setValidationFeedback(null);
       return;
     }
 
-    const clean = vinInput.trim().toUpperCase();
+    const clean = vehicleInput.trim().toUpperCase();
     if (!clean) {
       setValidationState('idle');
       setValidationFeedback(null);
       return;
     }
 
-    // If characters I, O, or Q are detected or invalid characters present
+    // Prohibited letters I, O, Q in standard VINs
     if (/[IOQ]/i.test(clean)) {
       setValidationState('invalid');
-      setValidationFeedback('Letters I, O, and Q are prohibited in standard VINs.');
-      setIsInputShaking(true);
-      const timer = setTimeout(() => setIsInputShaking(false), 500);
-      return () => clearTimeout(timer);
-    }
-
-    if (/[^A-HJ-NPR-Z0-9]/i.test(clean)) {
-      setValidationState('invalid');
-      setValidationFeedback('Alphanumeric characters only.');
-      setIsInputShaking(true);
-      const timer = setTimeout(() => setIsInputShaking(false), 500);
-      return () => clearTimeout(timer);
-    }
-
-    // Partial length (less than 17): show progress, clear validated state
-    if (clean.length < 17) {
-      setValidationState('idle');
-      setValidationFeedback(`${clean.length}/17 digits entered`);
+      setValidationFeedback('Letters I, O, and Q are prohibited in standard 17-digit VINs.');
       return;
     }
 
-    // When full 17 characters are entered: show 'Validating...' spinner followed by checksum pass/fail
+    // Invalid symbols/spaces
+    if (/[^A-HJ-NPR-Z0-9]/i.test(clean)) {
+      setValidationState('invalid');
+      setValidationFeedback('Alphanumeric letters and numbers only.');
+      return;
+    }
+
+    // Incomplete length
+    if (clean.length < 17) {
+      setValidationState('idle');
+      setValidationFeedback(`${clean.length}/17 characters entered`);
+      return;
+    }
+
+    // Exactly 17 characters entered: evaluate checksum
     if (clean.length === 17) {
       setValidationState('validating');
       setValidationFeedback('Validating VIN checksum...');
@@ -74,23 +75,17 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
       const validationTimer = setTimeout(() => {
         const result = validateVinChecksum(clean);
         if (result.isValidChecksum || (result.isFormatValid && !result.expectedCheckDigit)) {
-          // Checksum passed or format verified
           setValidationState('valid');
-          setValidationFeedback('Valid VIN verified');
+          setValidationFeedback('Valid VIN structure and checksum verified');
           setErrorMessage(null);
         } else if (result.isFormatValid && result.actualCheckDigit !== result.expectedCheckDigit) {
-          // Checksum mismatch
           setValidationState('invalid');
-          setValidationFeedback(`Checksum mismatch: expected check digit '${result.expectedCheckDigit}' at position 9`);
-          setIsInputShaking(true);
-          setTimeout(() => setIsInputShaking(false), 500);
+          setValidationFeedback(`Checksum mismatch: expected '${result.expectedCheckDigit}' at position 9`);
         } else {
           setValidationState('invalid');
           setValidationFeedback('Invalid VIN structure');
-          setIsInputShaking(true);
-          setTimeout(() => setIsInputShaking(false), 500);
         }
-      }, 420); // Smooth authentic validation response window
+      }, 300);
 
       return () => clearTimeout(validationTimer);
     }
@@ -98,541 +93,331 @@ export const Hero: React.FC<HeroProps> = ({ onStartOrderWithVin, onOpenSample, o
     if (clean.length > 17) {
       setValidationState('invalid');
       setValidationFeedback('VIN cannot exceed 17 characters.');
-      setIsInputShaking(true);
-      const timer = setTimeout(() => setIsInputShaking(false), 500);
-      return () => clearTimeout(timer);
     }
-  }, [vinInput, inputType]);
-
-  const triggerShake = (message: string) => {
-    setErrorMessage(message);
-    setIsShaking(true);
-    setIsInputShaking(true);
-    showToast({
-      type: 'warning',
-      title: 'Invalid Vehicle Identifier',
-      message,
-      duration: 4000,
-    });
-    setTimeout(() => {
-      setIsShaking(false);
-      setIsInputShaking(false);
-    }, 500);
-  };
+  }, [vehicleInput, inputType]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanInput = vinInput.trim().toUpperCase();
+    const clean = vehicleInput.trim().toUpperCase();
 
-    if (!cleanInput) {
-      triggerShake(inputType === 'vin' ? 'Please enter a 17-digit VIN number.' : 'Please enter a license plate number.');
+    if (!clean) {
+      setErrorMessage(
+        inputType === 'vin'
+          ? 'Please enter a 17-character VIN.'
+          : 'Please enter a US license plate number.'
+      );
+      showToast({
+        type: 'warning',
+        title: 'Vehicle Identifier Required',
+        message:
+          inputType === 'vin'
+            ? 'Please enter a 17-character VIN to proceed.'
+            : 'Please enter your license plate number to proceed.',
+        duration: 3500,
+      });
       return;
     }
 
     if (inputType === 'vin') {
-      if (/[IOQ]/i.test(cleanInput)) {
-        triggerShake('Invalid VIN: Letters I, O, and Q are never used in 17-digit VINs (use 1 or 0).');
+      if (/[IOQ]/i.test(clean)) {
+        setErrorMessage('Invalid VIN: Letters I, O, and Q are never used in 17-digit VINs.');
         return;
       }
-
-      if (cleanInput.length !== 17) {
-        triggerShake(`VIN must be exactly 17 characters long (currently ${cleanInput.length}/17).`);
-        return;
-      }
-
-      if (!VIN_REGEX.test(cleanInput)) {
-        triggerShake('Invalid VIN: Standard VINs only contain alphanumeric letters and numbers.');
+      if (clean.length !== 17 || !VIN_REGEX.test(clean)) {
+        setErrorMessage(`VIN must be exactly 17 characters long (currently ${clean.length}/17).`);
         return;
       }
     } else {
-      if (cleanInput.length < 3) {
-        triggerShake('Registration plate must be at least 3 characters long.');
+      if (clean.length < 3) {
+        setErrorMessage('License plate must be at least 3 characters.');
         return;
       }
     }
 
     setErrorMessage(null);
-    onStartOrderWithVin(cleanInput, inputType === 'vin');
+    onStartOrderWithVin(clean, inputType === 'vin');
   };
 
-  const handleInputChange = (value: string) => {
-    setVinInput(value.toUpperCase());
-    if (errorMessage) {
-      setErrorMessage(null);
-    }
-  };
-
-  const handleQuickFill = (sampleVin: string) => {
-    setVinInput(sampleVin);
+  const handleQuickFill = (vin: string) => {
+    setVehicleInput(vin);
     setInputType('vin');
     setErrorMessage(null);
   };
 
   return (
-    <section id="hero" className="relative w-full max-w-full pt-12 pb-20 overflow-hidden bg-[#07111F] text-white">
-      {/* 
-        Clean Premium SaaS Ambient Background (No background video)
-        - Rich dark navy (#07111F to #0B132B)
-        - Subtle emerald radial glow at top-center
-        - High-contrast, lightning-fast rendering without motion distraction
-      */}
-      <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0" aria-hidden="true">
-        {/* Deep navy background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#07111F] via-[#0B132B] to-[#07111F]" />
-
-        {/* Emerald ambient glow */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_75%_50%_at_50%_0%,rgba(16,185,129,0.12),transparent_70%)]" />
-
-        {/* Subtle geometric grid / mesh lines */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.03)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
-
-        {/* Edge gradient fade */}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#07111F]" />
-      </div>
-
-      {/* Hero Content Layer */}
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+    <section id="hero" className="w-full bg-[#0B132B] text-white py-14 sm:py-20 border-b border-[rgba(148,163,184,0.15)]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
           
-          {/* Left Column: Eyebrow, Headline, Copy, CTAs & Search Panel */}
+          {/* Left Column: Headline, Supporting Copy, Main Action Form & Secondary Link */}
           <div className="lg:col-span-7 space-y-6">
             
-            {/* Eyebrow */}
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0F1B2D] border border-[rgba(148,163,184,0.20)] text-xs font-bold text-[#10B981] tracking-wider uppercase shadow-xs">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#10B981]" />
+            {/* Subtle Eyebrow */}
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-[6px] bg-[#0F172A] border border-slate-700/60 text-xs font-semibold text-slate-300 tracking-wider uppercase">
               <span>{t('heroBadge')}</span>
             </div>
 
-            {/* Headline with -1.2px negative letter-spacing */}
-            <h1 className="text-4xl sm:text-5xl lg:text-[54px] font-extrabold tracking-[-1.2px] text-white leading-[1.15] text-balance">
-              {t('heroTitle1')}{' '}
-              <span className="text-[#10B981]">{t('heroTitle2')}</span>
+            {/* Headline */}
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-[1.2] text-balance">
+              {t('heroTitle1')} {t('heroTitle2')}
             </h1>
 
-            {/* Supporting Copy */}
-            <p className="text-base sm:text-lg text-[#CBD5E1] max-w-2xl leading-[1.6]">
+            {/* One short supporting sentence with no unverifiable claims */}
+            <p className="text-base sm:text-lg text-slate-300 max-w-2xl leading-relaxed">
               {t('heroSubtitle')}
             </p>
 
-            {/* CTAs */}
-            <div className="flex flex-wrap items-center gap-3 pt-1">
-              <button
-                type="button"
-                onClick={() => onStartOrderWithVin('1HGCM82633A004352', true)}
-                className="px-6 py-3 rounded-[8px] text-sm font-semibold bg-[#2563EB] hover:bg-[#1D4ED8] text-white shadow-[0_1px_2px_rgba(0,0,0,0.1)] transition-all duration-150 flex items-center gap-2 cursor-pointer active:scale-95 leading-[1.43]"
-              >
-                <span>{t('checkHistoryBtn')}</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-
-              <button
-                type="button"
-                onClick={onOpenSample}
-                className="px-5 py-3 rounded-[8px] text-sm font-medium bg-[#0F1B2D] hover:bg-[#162740] text-[#CBD5E1] border border-[rgba(148,163,184,0.20)] transition-colors flex items-center gap-2 cursor-pointer leading-[1.43]"
-              >
-                <FileCheck className="w-4 h-4 text-[#10B981]" />
-                <span>{t('viewSampleBtn')}</span>
-              </button>
-
-              {onRequestReport && (
-                <button
-                  type="button"
-                  onClick={onRequestReport}
-                  className="px-5 py-3 rounded-[8px] text-sm font-semibold bg-[#059669]/20 hover:bg-[#059669]/30 text-[#10B981] border border-[#059669]/40 transition-colors flex items-center gap-2 cursor-pointer leading-[1.43]"
-                >
-                  <ShieldCheck className="w-4 h-4 text-[#10B981]" />
-                  <span>Request Vehicle Report</span>
-                </button>
-              )}
-
-              <WhatsAppButton
-                variant="secondary"
-                source="hero"
-                intent="vin_check"
-                label={t('needVinHelp')}
-                openQrModal={true}
-                className="px-4 py-3 rounded-[8px] bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-700/60 font-medium text-sm leading-[1.43]"
-              />
-
-              {onOpenVideoStudio && (
-                <button
-                  type="button"
-                  onClick={onOpenVideoStudio}
-                  className="px-4 py-3 rounded-[8px] text-sm font-semibold bg-purple-950/60 hover:bg-purple-900/80 text-purple-200 border border-purple-700/60 transition-colors flex items-center gap-2 cursor-pointer leading-[1.43]"
-                  title="Generate 360° vehicle video with Veo 3 (16:9 & 9:16)"
-                >
-                  <Video className="w-4 h-4 text-purple-400" />
-                  <span>Veo 3 Video Studio</span>
-                </button>
-              )}
-            </div>
-
-            {/* Section 7: Vehicle Search / Order Component */}
-            <div className={`mt-4 bg-[#0F1B2D]/95 border border-[rgba(148,163,184,0.20)] rounded-[14px] p-4 sm:p-5 md:p-6 shadow-2xl backdrop-blur-md max-w-xl transition-all ${isShaking ? 'animate-shake border-rose-500' : ''}`}>
+            {/* Main Action Container: VIN / US License Plate tabbed input */}
+            <div className="bg-[#0F172A] border border-slate-700/70 rounded-[12px] p-5 sm:p-6 shadow-md space-y-4">
               
-              {/* Tabs */}
-              <div className="flex items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4">
+              {/* Tabs: VIN or License Plate */}
+              <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
                 <button
                   type="button"
-                  onClick={() => setInputType('vin')}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-[8px] transition-colors cursor-pointer leading-[1.43] ${
+                  onClick={() => {
+                    setInputType('vin');
+                    setErrorMessage(null);
+                  }}
+                  className={`px-3.5 py-1.5 text-xs font-semibold rounded-[6px] transition-colors cursor-pointer ${
                     inputType === 'vin'
-                      ? 'bg-[#2563EB] text-white shadow-[0_1px_2px_rgba(0,0,0,0.1)]'
-                      : 'text-[#CBD5E1] hover:text-white bg-[#0B132B]'
+                      ? 'bg-[#2563EB] text-white shadow-2xs'
+                      : 'text-slate-400 hover:text-white bg-slate-800/60'
                   }`}
                 >
                   {t('tabVin')}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setInputType('plate')}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-[8px] transition-colors cursor-pointer leading-[1.43] ${
+                  onClick={() => {
+                    setInputType('plate');
+                    setErrorMessage(null);
+                  }}
+                  className={`px-3.5 py-1.5 text-xs font-semibold rounded-[6px] transition-colors cursor-pointer ${
                     inputType === 'plate'
-                      ? 'bg-[#2563EB] text-white shadow-[0_1px_2px_rgba(0,0,0,0.1)]'
-                      : 'text-[#CBD5E1] hover:text-white bg-[#0B132B]'
+                      ? 'bg-[#2563EB] text-white shadow-2xs'
+                      : 'text-slate-400 hover:text-white bg-slate-800/60'
                   }`}
                 >
                   {t('tabPlate')}
                 </button>
               </div>
 
-              {/* Form Input + Button */}
-              <form onSubmit={handleSubmit} className="space-y-2.5 sm:space-y-3">
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 sm:pl-3.5 flex items-center pointer-events-none text-slate-400">
-                    <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              {/* Form Input: Button NEVER covers the input, placeholder fully visible */}
+              <form onSubmit={handleSubmit} className="space-y-3">
+                <label
+                  htmlFor="vehicle-identifier-input"
+                  className="block text-xs font-semibold text-slate-300 tracking-tight"
+                >
+                  {inputType === 'vin'
+                    ? 'Enter 17-Character Vehicle Identification Number (VIN)'
+                    : 'Enter US License Plate & Registration State'}
+                </label>
+
+                {/* Main Input Row: Standalone input with adjacent action button */}
+                <div className="flex flex-col sm:flex-row items-stretch gap-2.5">
+                  <div className="relative flex-1">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                      <Search className="w-4 h-4" />
+                    </div>
+
+                    <input
+                      id="vehicle-identifier-input"
+                      type="text"
+                      value={vehicleInput}
+                      onChange={(e) => {
+                        setVehicleInput(e.target.value.toUpperCase());
+                        if (errorMessage) setErrorMessage(null);
+                      }}
+                      placeholder={
+                        inputType === 'vin'
+                          ? 'e.g. 1HGCV1F33LA000001'
+                          : 'e.g. 7XYZ890'
+                      }
+                      maxLength={inputType === 'vin' ? 17 : 12}
+                      aria-invalid={Boolean(errorMessage) || validationState === 'invalid'}
+                      className={`w-full min-h-[48px] pl-10 pr-4 py-2.5 bg-[#0B132B] border rounded-[8px] text-white placeholder-slate-400 font-mono text-sm tracking-wider uppercase transition-colors focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-[#2563EB] ${
+                        validationState === 'valid'
+                          ? 'border-emerald-500/80 focus:ring-emerald-500'
+                          : validationState === 'invalid' || errorMessage
+                          ? 'border-rose-500/80 focus:ring-rose-500 text-rose-200'
+                          : 'border-slate-700 focus:border-[#2563EB]'
+                      }`}
+                    />
                   </div>
 
-                  <input
-                    type="text"
-                    value={vinInput}
-                    onChange={(e) => handleInputChange(e.target.value)}
-                    placeholder={inputType === 'vin' ? t('vinPlaceholder') : t('platePlaceholder')}
-                    maxLength={inputType === 'vin' ? 17 : 20}
-                    className={`w-full pl-9 sm:pl-10 ${
-                      inputType === 'vin' && validationState !== 'idle'
-                        ? 'pr-44 sm:pr-48'
-                        : 'pr-26 sm:pr-30'
-                    } py-2.5 sm:py-3 bg-[#0B132B] border rounded-[8px] text-white placeholder-slate-400 font-mono text-xs sm:text-sm tracking-wider uppercase focus:outline-none transition-all ${
-                      isInputShaking ? 'animate-gentle-shake border-rose-500 ring-1 ring-rose-500/50' : ''
-                    } ${
-                      inputType === 'vin' && validationState === 'valid'
-                        ? 'border-emerald-500 ring-1 ring-emerald-500/30'
-                        : inputType === 'vin' && validationState === 'invalid'
-                        ? 'border-rose-500/80 ring-1 ring-rose-500/20'
-                        : inputType === 'vin' && validationState === 'validating'
-                        ? 'border-blue-500/80 ring-1 ring-blue-500/30'
-                        : 'border-[rgba(148,163,184,0.20)] focus:border-[#10B981]'
-                    }`}
-                  />
-
-                  {/* Immediate Visual Validation Status Indicator (Validating Spinner / Checkmark / Alert) */}
-                  {inputType === 'vin' && validationState !== 'idle' && (
-                    <div className="absolute inset-y-0 right-28 sm:right-32 flex items-center pr-1.5 pointer-events-none transition-all">
-                      {validationState === 'validating' && (
-                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-400 text-[10px] font-medium tracking-normal animate-pulse">
-                          <Loader2 className="w-3 h-3 animate-spin text-blue-400 shrink-0" />
-                          <span className="hidden xs:inline">Validating...</span>
-                        </div>
-                      )}
-                      {validationState === 'valid' && (
-                        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 text-[10px] font-semibold tracking-normal shadow-xs">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 report-checkmark-pop" />
-                          <span className="hidden xs:inline">Passed</span>
-                        </div>
-                      )}
-                      {validationState === 'invalid' && (
-                        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-rose-500/15 border border-rose-500/40 text-rose-400 text-[10px] font-medium tracking-normal">
-                          <AlertCircle className="w-3 h-3 text-rose-400 shrink-0" />
-                          <span className="hidden xs:inline">Invalid</span>
-                        </div>
-                      )}
-                    </div>
+                  {/* US State Selector when in License Plate Mode */}
+                  {inputType === 'plate' && (
+                    <select
+                      value={selectedState}
+                      onChange={(e) => setSelectedState(e.target.value)}
+                      className="min-h-[48px] px-3 py-2.5 bg-[#0B132B] border border-slate-700 rounded-[8px] text-white text-xs font-semibold cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                    >
+                      {['CA', 'TX', 'FL', 'NY', 'PA', 'IL', 'OH', 'GA', 'NC', 'MI', 'NJ', 'VA', 'WA', 'AZ', 'MA', 'TN', 'IN', 'MO', 'MD', 'WI', 'CO', 'MN', 'SC', 'AL', 'LA', 'KY', 'OR', 'OK', 'CT', 'UT', 'IA', 'NV', 'AR', 'MS', 'KS', 'NM', 'NE', 'WV', 'ID', 'HI', 'NH', 'ME', 'MT', 'RI', 'DE', 'SD', 'ND', 'AK', 'DC', 'VT', 'WY'].map((st) => (
+                        <option key={st} value={st} className="bg-[#0B132B] text-white">
+                          {st}
+                        </option>
+                      ))}
+                    </select>
                   )}
 
-                  <div className="absolute inset-y-1 sm:inset-y-1.5 right-1 sm:right-1.5">
+                  {/* Order Button: Standalone and Never Overlapping the Input */}
+                  <button
+                    type="submit"
+                    className="min-h-[48px] px-6 py-2.5 bg-[#2563EB] hover:bg-[#1D4ED8] active:bg-[#1E40AF] text-white font-semibold text-sm rounded-[8px] transition-colors shadow-xs flex items-center justify-center gap-2 cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] focus-visible:ring-offset-2"
+                  >
+                    <span>{t('orderReportBtn')}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Inline Validation Feedback Below Input */}
+                <div className="min-h-[22px] flex items-center justify-between text-xs pt-0.5">
+                  <div>
+                    {inputType === 'vin' && validationState === 'valid' && (
+                      <span className="text-emerald-400 font-medium flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span>{validationFeedback || 'Valid VIN verified'}</span>
+                      </span>
+                    )}
+                    {inputType === 'vin' && validationState === 'validating' && (
+                      <span className="text-blue-400 font-medium flex items-center gap-1.5">
+                        <Loader2 className="w-3.5 h-3.5 text-blue-400 animate-spin shrink-0" />
+                        <span>Validating VIN checksum...</span>
+                      </span>
+                    )}
+                    {inputType === 'vin' && validationState === 'invalid' && (
+                      <span className="text-rose-400 font-medium flex items-center gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                        <span>{validationFeedback}</span>
+                      </span>
+                    )}
+                    {errorMessage && validationState !== 'invalid' && (
+                      <span className="text-rose-400 font-medium flex items-center gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                        <span>{errorMessage}</span>
+                      </span>
+                    )}
+                    {validationState === 'idle' && !errorMessage && (
+                      <span className="text-slate-400">
+                        Enter any 17-digit VIN or US plate to inspect records.
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Sample VIN Quick Fill helper */}
+                  <div className="flex items-center gap-1.5 text-slate-400">
+                    <span>Try sample:</span>
                     <button
-                      type="submit"
-                      className="h-full px-3 sm:px-4 rounded-[8px] bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xs font-semibold flex items-center gap-1 sm:gap-1.5 transition-colors cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.1)] active:scale-95 leading-[1.43]"
+                      type="button"
+                      onClick={() => handleQuickFill(SAMPLE_VERIFIED_VIN)}
+                      className="text-blue-400 hover:text-blue-300 font-mono hover:underline cursor-pointer"
                     >
-                      <span>{t('orderReportBtn')}</span>
-                      <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                      {SAMPLE_VERIFIED_VIN}
                     </button>
                   </div>
                 </div>
 
-                {/* Immediate Real-time Validation Feedback Message */}
-                {inputType === 'vin' && validationFeedback && (
-                  <div
-                    className={`flex items-center gap-1.5 text-[11px] sm:text-xs font-medium transition-colors ${
-                      validationState === 'valid'
-                        ? 'text-emerald-400'
-                        : validationState === 'validating'
-                        ? 'text-blue-400'
-                        : validationState === 'invalid'
-                        ? 'text-rose-400'
-                        : 'text-slate-400'
-                    }`}
-                  >
-                    {validationState === 'valid' ? (
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    ) : validationState === 'validating' ? (
-                      <Loader2 className="w-3.5 h-3.5 text-blue-400 animate-spin shrink-0" />
-                    ) : validationState === 'invalid' ? (
-                      <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-                    ) : (
-                      <Car className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    )}
-                    <span>{validationFeedback}</span>
-                  </div>
-                )}
-
-                {errorMessage && (!validationFeedback || validationState !== 'invalid') && (
-                  <p className="text-[11px] sm:text-xs text-rose-400 font-medium flex items-center gap-1.5">
-                    <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-                    <span>{errorMessage}</span>
-                  </p>
-                )}
-
-                {/* Quick Examples */}
-                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 pt-0.5 sm:pt-1 text-[10px] sm:text-[11px] text-[#CBD5E1]">
-                  <span className="text-slate-400">{t('quickSampleVins')}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickFill('1HGCM82633A004352')}
-                    className="text-[#10B981] hover:underline font-mono cursor-pointer"
-                  >
-                    1HGCM82633A004352
-                  </button>
-                  <span aria-hidden="true" className="text-slate-600">·</span>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickFill('WAUZZZF45LA019283')}
-                    className="text-blue-400 hover:underline font-mono cursor-pointer"
-                  >
-                    Audi A4
-                  </button>
-                </div>
-
-                {/* Trust Message & WhatsApp Quick Link Below */}
-                <div className="pt-2.5 border-t border-[rgba(148,163,184,0.15)] flex flex-col sm:flex-row items-center justify-between gap-2 text-[10.5px] sm:text-xs text-[#CBD5E1]">
-                  <div className="flex items-center gap-1.5">
-                    <Lock className="w-3 h-3 text-[#10B981] shrink-0" />
-                    <span>{t('secureCheckoutNote')}</span>
-                  </div>
-                  <WhatsAppButton
-                    variant="text"
-                    source="hero"
-                    intent="vin_check"
-                    openQrModal={true}
-                    label={t('needVinHelp')}
-                    className="text-[#10B981] hover:text-emerald-300 font-medium text-[11px]"
-                  />
-                </div>
               </form>
+            </div>
 
-              {/* Customer Intake Specification Link */}
-              {onRequestReport && (
-                <div className="pt-3 border-t border-[rgba(148,163,184,0.15)] flex items-center justify-between text-xs">
-                  <span className="text-slate-400 text-[11px]">{t('customIntakePrompt')}</span>
-                  <button
-                    type="button"
-                    onClick={onRequestReport}
-                    className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
-                  >
-                    <FileText className="w-3.5 h-3.5" />
-                    <span>{t('fillIntakeBtn')} →</span>
-                  </button>
-                </div>
-              )}
-
+            {/* One Secondary Link: View Sample Report */}
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={onOpenSample}
+                className="inline-flex items-center gap-2 text-sm font-semibold text-slate-300 hover:text-white transition-colors cursor-pointer group"
+              >
+                <FileCheck className="w-4 h-4 text-blue-400" />
+                <span className="group-hover:underline">View Sample Report</span>
+                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform text-slate-400" />
+              </button>
             </div>
 
           </div>
 
-          {/* Right Column: Hero Right — Vehicle Report Preview */}
+          {/* Right Column: Sample Report Card on Desktop, Below on Mobile */}
           <div className="lg:col-span-5">
-            <div className="bg-[#0F1B2D]/95 border border-[rgba(148,163,184,0.20)] rounded-[14px] p-5 sm:p-6 shadow-2xl space-y-5 backdrop-blur-md">
+            <div className="bg-[#0F172A] border border-slate-700/70 rounded-[12px] p-5 sm:p-6 shadow-md space-y-4">
               
-              {/* Header with Title and Verified Badge */}
-              <div className="flex items-center justify-between pb-3.5 border-b border-[rgba(148,163,184,0.20)]">
-                <div className="flex items-center gap-2">
-                  <Car className="w-4 h-4 text-slate-400" />
-                  <span className="font-bold text-sm text-slate-200">Vehicle History Report</span>
-                </div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#059669]/20 text-[#10B981] border border-[#059669]/40">
-                  <Check className="w-3.5 h-3.5 stroke-[3]" />
-                  <span>VERIFIED</span>
-                </div>
-              </div>
-
-              {/* Fictional Example Notice & VIN */}
-              <div>
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                  Example Vehicle Profile
+              {/* Clear Sample Report Label */}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  SAMPLE REPORT - demo data
                 </span>
-                <p className="text-base font-bold text-white font-mono mt-0.5">
-                  VIN: 1HGCM82633A004352
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-[4px] text-xs font-semibold bg-emerald-950/70 text-emerald-400 border border-emerald-500/40">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>VERIFIED RECORD</span>
+                </span>
+              </div>
+
+              {/* Stated Model Year Consistent with 10th Character ('L' = 2020) */}
+              <div className="space-y-1">
+                <p className="text-base font-bold text-white tracking-tight">
+                  {SAMPLE_VEHICLE_TITLE}
                 </p>
-                <p className="text-xs text-[#CBD5E1] mt-0.5">
-                  2020 Honda Accord Touring 2.0T
+                <p className="text-xs font-mono text-slate-300">
+                  VIN: <span className="font-semibold text-white">{SAMPLE_VERIFIED_VIN}</span>
+                </p>
+                <p className="text-xs text-slate-400">
+                  Model Year 2020 (10th VIN Character: &apos;L&apos;)
                 </p>
               </div>
 
-              {/* Interactive Customer Vehicle Inspection View */}
-              <div className="relative rounded-[10px] overflow-hidden border border-[rgba(148,163,184,0.25)] bg-[#0B132B] shadow-inner group">
-                <div className="relative aspect-[16/9] w-full overflow-hidden">
-                  <img
-                    src={
-                      heroInspectAngle === 'paint'
-                        ? '/images/inspection/paint-inspection.jpg'
-                        : heroInspectAngle === 'profile'
-                        ? '/images/inspection/luxury-bentley.jpg'
-                        : heroInspectAngle === 'engine'
-                        ? '/images/inspection/engine-inspection.jpg'
-                        : '/images/inspection/headlight-inspection.jpg'
-                    }
-                    alt="AutoAudit Vehicle Inspection Telemetry"
-                    className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#07111F]/90 via-transparent to-[#07111F]/30 pointer-events-none" />
-
-                  {/* Pulsing Interactive Hotspot Indicator */}
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-                    <span className="relative flex h-8 w-8 items-center justify-center">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#10B981] opacity-75" />
-                      <span className="relative inline-flex rounded-full h-4 w-4 bg-[#10B981] border-2 border-white shadow-lg" />
-                    </span>
-                  </div>
-
-                  {/* Top Badge: View Angle Tag */}
-                  <div className="absolute top-2 left-2 flex items-center gap-1.5">
-                    <span className="px-2 py-0.5 rounded-[4px] text-[10px] font-bold uppercase tracking-wider bg-[#07111F]/80 text-[#10B981] border border-[#10B981]/30 backdrop-blur-md">
-                      {heroInspectAngle === 'paint' ? 'Paint Surface Audit' : heroInspectAngle === 'profile' ? 'Executive Profile' : heroInspectAngle === 'engine' ? 'Engine Bay Check' : 'Optical Headlight'}
-                    </span>
-                  </div>
-
-                  {/* Live Inspection Hotspot Label */}
-                  <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[11px] text-white">
-                    <span className="bg-[#07111F]/80 px-2 py-0.5 rounded backdrop-blur-md text-[10px] font-mono border border-[rgba(148,163,184,0.20)]">
-                      {heroInspectAngle === 'paint' ? 'Micro-Depth: 118μm' : heroInspectAngle === 'profile' ? 'Clean Title Verified' : heroInspectAngle === 'engine' ? 'Numbers-Matching OEM' : 'OEM Date Verified'}
-                    </span>
-                    <a
-                      href="#interactive-view"
-                      className="text-[10px] text-[#10B981] hover:underline font-semibold flex items-center gap-0.5"
-                    >
-                      <span>Explore 360° View →</span>
-                    </a>
-                  </div>
-                </div>
-
-                {/* Interactive Angle Switcher Tabs */}
-                <div className="grid grid-cols-4 gap-1 p-1 bg-[#07111F]/90 border-t border-[rgba(148,163,184,0.20)] text-[10px]">
-                  <button
-                    type="button"
-                    onClick={() => setHeroInspectAngle('paint')}
-                    className={`py-1 px-1.5 rounded-[6px] font-semibold text-center transition-colors cursor-pointer truncate ${
-                      heroInspectAngle === 'paint'
-                        ? 'bg-[#10B981] text-white shadow-xs'
-                        : 'text-[#CBD5E1] hover:text-white hover:bg-[#0F1B2D]'
-                    }`}
-                  >
-                    Paint
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setHeroInspectAngle('profile')}
-                    className={`py-1 px-1.5 rounded-[6px] font-semibold text-center transition-colors cursor-pointer truncate ${
-                      heroInspectAngle === 'profile'
-                        ? 'bg-[#10B981] text-white shadow-xs'
-                        : 'text-[#CBD5E1] hover:text-white hover:bg-[#0F1B2D]'
-                    }`}
-                  >
-                    Profile
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setHeroInspectAngle('engine')}
-                    className={`py-1 px-1.5 rounded-[6px] font-semibold text-center transition-colors cursor-pointer truncate ${
-                      heroInspectAngle === 'engine'
-                        ? 'bg-[#10B981] text-white shadow-xs'
-                        : 'text-[#CBD5E1] hover:text-white hover:bg-[#0F1B2D]'
-                    }`}
-                  >
-                    Engine
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setHeroInspectAngle('headlight')}
-                    className={`py-1 px-1.5 rounded-[6px] font-semibold text-center transition-colors cursor-pointer truncate ${
-                      heroInspectAngle === 'headlight'
-                        ? 'bg-[#10B981] text-white shadow-xs'
-                        : 'text-[#CBD5E1] hover:text-white hover:bg-[#0F1B2D]'
-                    }`}
-                  >
-                    Optics
-                  </button>
-                </div>
-              </div>
-
-              {/* 4 Metric Cards with Green Check Indicators */}
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                
-                {/* Metric 1 */}
-                <div className="p-3 bg-[#0B132B] rounded-[8px] border border-[rgba(148,163,184,0.20)] space-y-1">
-                  <span className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase block">
-                    TITLE RECORD
+              {/* 4 Verified Metric Cards */}
+              <div className="grid grid-cols-2 gap-2.5 text-xs pt-1">
+                <div className="p-3 bg-[#0B132B] rounded-[8px] border border-slate-800 space-y-1">
+                  <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-semibold">
+                    TITLE STATUS
                   </span>
-                  <div className="flex items-center gap-1.5 text-white font-bold text-sm">
-                    <CheckCircle2 className="w-4 h-4 text-[#10B981]" />
+                  <div className="flex items-center gap-1.5 text-white font-semibold">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                     <span>Clean</span>
                   </div>
                 </div>
 
-                {/* Metric 2 */}
-                <div className="p-3 bg-[#0B132B] rounded-[8px] border border-[rgba(148,163,184,0.20)] space-y-1">
-                  <span className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase block">
-                    REPORTED ACCIDENTS
+                <div className="p-3 bg-[#0B132B] rounded-[8px] border border-slate-800 space-y-1">
+                  <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-semibold">
+                    ACCIDENTS
                   </span>
-                  <div className="flex items-center gap-1.5 text-white font-bold text-sm">
-                    <CheckCircle2 className="w-4 h-4 text-[#10B981]" />
-                    <span>0</span>
+                  <div className="flex items-center gap-1.5 text-white font-semibold">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>0 Reported</span>
                   </div>
                 </div>
 
-                {/* Metric 3 */}
-                <div className="p-3 bg-[#0B132B] rounded-[8px] border border-[rgba(148,163,184,0.20)] space-y-1">
-                  <span className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase block">
+                <div className="p-3 bg-[#0B132B] rounded-[8px] border border-slate-800 space-y-1">
+                  <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-semibold">
                     ODOMETER TREND
                   </span>
-                  <div className="flex items-center gap-1.5 text-white font-bold text-sm">
-                    <CheckCircle2 className="w-4 h-4 text-[#10B981]" />
+                  <div className="flex items-center gap-1.5 text-white font-semibold">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                     <span>Consistent</span>
                   </div>
                 </div>
 
-                {/* Metric 4 */}
-                <div className="p-3 bg-[#0B132B] rounded-[8px] border border-[rgba(148,163,184,0.20)] space-y-1">
-                  <span className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase block">
-                    SALVAGE STATUS
+                <div className="p-3 bg-[#0B132B] rounded-[8px] border border-slate-800 space-y-1">
+                  <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-semibold">
+                    SALVAGE / JUNK
                   </span>
-                  <div className="flex items-center gap-1.5 text-white font-bold text-sm">
-                    <CheckCircle2 className="w-4 h-4 text-[#10B981]" />
+                  <div className="flex items-center gap-1.5 text-white font-semibold">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                     <span>Clear</span>
                   </div>
                 </div>
-
               </div>
 
-              {/* Bottom Label: Sample Report Preview */}
-              <div className="pt-2 text-center">
+              {/* Sample Card Action */}
+              <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
+                <span className="text-xs text-slate-400">
+                  Full 18-point verification preview
+                </span>
                 <button
                   type="button"
                   onClick={onOpenSample}
-                  className="text-xs font-semibold text-[#CBD5E1] hover:text-white inline-flex items-center gap-1.5 transition-colors cursor-pointer group"
+                  className="text-xs font-semibold text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1 cursor-pointer"
                 >
-                  <span>Sample Report Preview</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform text-[#10B981]" />
+                  <span>Inspect Sample</span>
+                  <ArrowRight className="w-3 h-3" />
                 </button>
               </div>
 

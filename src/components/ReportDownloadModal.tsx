@@ -24,7 +24,7 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
 }) => {
   const { showToast } = useToast();
   const [percent, setPercent] = useState<number>(0);
-  const [statusMessage, setStatusMessage] = useState<string>('Connecting to NMVTIS & DMV Registries...');
+  const [statusMessage, setStatusMessage] = useState<string>('Preparing vehicle report layout...');
   const [isGenerating, setIsGenerating] = useState<boolean>(true);
   const [isDone, setIsDone] = useState<boolean>(false);
 
@@ -36,7 +36,7 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
       setPercent(0);
       setIsGenerating(true);
       setIsDone(false);
-      setStatusMessage('Connecting to NMVTIS & DMV Registries...');
+      setStatusMessage('Preparing vehicle report layout...');
       hasNotifiedStart.current = false;
       hasNotifiedComplete.current = false;
       return;
@@ -70,7 +70,7 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
             showToast({
               type: 'success',
               title: 'Report Generation Complete',
-              message: `Official PDF report for ${vehicleTitle} is ready to view and download.`,
+              message: `PDF report for ${vehicleTitle} is ready to view and download.`,
               duration: 5000,
             });
           }
@@ -82,15 +82,15 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
         const next = Math.min(100, prev + Math.floor(Math.random() * 8) + 4);
 
         if (next < 30) {
-          setStatusMessage('Connecting to NMVTIS & DMV Registries...');
+          setStatusMessage('Preparing vehicle report layout...');
         } else if (next < 60) {
-          setStatusMessage('Cross-referencing Title Brands & Collision Records...');
+          setStatusMessage('Formatting Title Records & Incident Logs...');
         } else if (next < 85) {
-          setStatusMessage('Verifying Odometer Readings & Auction Archive...');
+          setStatusMessage('Compiling Odometer Timeline...');
         } else if (next < 100) {
-          setStatusMessage('Compiling Encrypted PDF Document & Security Seals...');
+          setStatusMessage('Formatting PDF Document Layout...');
         } else {
-          setStatusMessage('Official Vehicle History Report Ready!');
+          setStatusMessage('Vehicle History Report Ready!');
         }
 
         return next;
@@ -115,7 +115,7 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
     showToast({
       type: 'info',
       title: 'Download as PDF Initialized',
-      message: 'In the print dialog, select "Save as PDF" as the Destination to download your official report.',
+      message: 'In the print dialog, select "Save as PDF" as the Destination to download your report.',
       duration: 5000,
     });
 
@@ -151,8 +151,8 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
 
       showToast({
         type: 'success',
-        title: 'Certified PDF Downloaded',
-        message: `Saved official report: ${fileName}`,
+        title: 'PDF Report Downloaded',
+        message: `Saved report: ${fileName}`,
         duration: 4500,
       });
     } catch {
@@ -164,7 +164,7 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
     showToast({
       type: 'info',
       title: 'Preparing Print Preview',
-      message: `Formatting official paper report for VIN: ${vin}. Check your printer settings.`,
+      message: `Formatting paper report for VIN: ${vin}. Check your printer settings.`,
       duration: 3500,
     });
     window.print();
@@ -174,13 +174,13 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
     setPercent(0);
     setIsGenerating(true);
     setIsDone(false);
-    setStatusMessage('Connecting to NMVTIS & DMV Registries...');
+    setStatusMessage('Preparing vehicle report layout...');
     hasNotifiedComplete.current = false;
 
     showToast({
       type: 'info',
       title: 'Re-compiling Report',
-      message: 'Re-querying authorized database clearinghouses...',
+      message: 'Re-compiling vehicle report data...',
       duration: 3500,
     });
 
@@ -203,11 +203,11 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
           return 100;
         }
         const next = Math.min(100, prev + Math.floor(Math.random() * 10) + 5);
-        if (next < 30) setStatusMessage('Connecting to NMVTIS & DMV Registries...');
-        else if (next < 60) setStatusMessage('Cross-referencing Title Brands & Collision Records...');
-        else if (next < 85) setStatusMessage('Verifying Odometer Readings & Auction Archive...');
-        else if (next < 100) setStatusMessage('Compiling Encrypted PDF Document & Security Seals...');
-        else setStatusMessage('Official Vehicle History Report Ready!');
+        if (next < 30) setStatusMessage('Preparing vehicle report layout...');
+        else if (next < 60) setStatusMessage('Formatting Title Records & Incident Logs...');
+        else if (next < 85) setStatusMessage('Compiling Odometer Timeline...');
+        else if (next < 100) setStatusMessage('Formatting PDF Document Layout...');
+        else setStatusMessage('Vehicle History Report Ready!');
         return next;
       });
     }, 130);
@@ -259,7 +259,7 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
             <div className="flex justify-between items-center text-slate-400 text-[11px]">
               <span className="font-mono">Order: {orderNumber}</span>
               <span className={`font-mono px-2 py-0.5 rounded text-[10px] font-bold transition-all duration-300 ${isDone ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'}`}>
-                {isDone ? 'RECORDS READY' : 'NMVTIS VERIFIED'}
+                {isDone ? 'RECORDS READY' : 'REPORT READY'}
               </span>
             </div>
             <div className="flex items-center gap-3">
@@ -284,7 +284,7 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
             </p>
             <p className="text-xs text-slate-400 transition-opacity duration-300">
               {isGenerating
-                ? 'Official records are being retrieved and formatted into a tamper-evident PDF.'
+                ? 'Report data is being compiled and formatted into a PDF document.'
                 : 'All ownership history, title records, and damage logs compiled successfully.'}
             </p>
           </div>
@@ -324,14 +324,14 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
             ) : (
               /* SUCCESS STATE: Action buttons once generation finishes with subtle CSS transitions */
               <div className="space-y-3 report-ready-transition report-ready-glow">
-                {/* Primary Button: Instant Certified PDF File (.pdf) */}
+                {/* Primary Button: Instant PDF File (.pdf) */}
                 <button
                   type="button"
                   onClick={handleDownloadPdf}
                   className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm rounded-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-lg active:scale-[0.99] report-stagger-1 group"
                 >
                   <Download className="w-4 h-4 transition-transform group-hover:-translate-y-0.5" />
-                  <span>Download Certified PDF (Admin Only)</span>
+                  <span>Download PDF (Admin Only)</span>
                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-800 text-emerald-100 border border-emerald-400/30">
                     Admin Dispatch
                   </span>
@@ -344,14 +344,14 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
                     <span>Admin Fulfillment & Payment Protection Notice</span>
                   </div>
                   <p className="text-[11px] text-slate-300 leading-relaxed">
-                    Client self-downloads on the public website are disabled to prevent customers taking reports without paying. Download this certified PDF and dispatch it directly to the customer via WhatsApp or Email once you have verified their payment.
+                    Client self-downloads on the public website are disabled to prevent customers taking reports without paying. Download this PDF report and dispatch it directly to the customer via WhatsApp or Email once you have verified their payment.
                   </p>
                 </div>
 
                 {/* WhatsApp Payment & Delivery Link */}
                 <a
                   href={`https://wa.me/923420617217?text=${encodeURIComponent(
-                    `Hi, AutoAudit Administration here regarding order #${orderNumber} for ${vehicleTitle} (VIN: ${vin}). Your official report has been verified. Please confirm payment so we can dispatch your certified PDF document.`
+                    `Hi, AutoAudit Administration here regarding order #${orderNumber} for ${vehicleTitle} (VIN: ${vin}). Your vehicle report is ready. Please confirm payment so we can dispatch your PDF document.`
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -431,7 +431,7 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
       <div id="printable-vehicle-report" className="hidden print:block text-slate-900 font-sans p-2">
         {/* Subtle diagonal watermark (visible only when printed) */}
         <div className="print-watermark" aria-hidden="true">
-          OFFICIAL AUTOAUDIT REPORT
+          AUTOAUDIT REPORT - DEMO DATA
         </div>
 
         {/* Document Header */}
@@ -440,16 +440,16 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
             <div className="flex items-center gap-2">
               <span className="font-extrabold text-xl tracking-tight text-slate-900">AutoAudit™</span>
               <span className="text-[10px] font-mono uppercase bg-slate-100 border border-slate-300 px-2 py-0.5 rounded font-bold">
-                Official Vehicle History Record
+                Vehicle History Record - Demo Data
               </span>
             </div>
             <p className="text-xs text-slate-600 mt-1">
-              NMVTIS National Motor Vehicle Title Information System · Certified Database Clearinghouse
+              Sample report layout. Data shown is for demonstration and is not a real vehicle record.
             </p>
           </div>
           <div className="text-right print-header-badge">
             <span className="inline-block bg-emerald-50 border border-emerald-300 text-emerald-800 font-bold text-xs px-2.5 py-1 rounded">
-              ✓ CLEAN TITLE CERTIFIED
+              ✓ CLEAN TITLE STATUS
             </span>
             <p className="text-[10px] text-slate-500 font-mono mt-1">
               Order Ref: {orderNumber}
@@ -503,14 +503,14 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
         <div className="space-y-4 text-xs">
           <div className="print-avoid-break">
             <div className="font-bold text-slate-900 border-b border-slate-300 pb-1 mb-2 flex items-center justify-between print-section-header">
-              <span>1. State Title Brand Clearinghouse (All 50 US States + Federal Registries)</span>
+              <span>1. Title Brand Status Records</span>
               <span className="text-[10px] text-emerald-700 font-semibold font-mono">STATUS: PASSED</span>
             </div>
             <table className="w-full text-left border-collapse text-[10px] print-table">
               <thead>
                 <tr className="bg-slate-100 text-slate-700">
                   <th className="p-1.5 border border-slate-200">Record Verification</th>
-                  <th className="p-1.5 border border-slate-200">Reporting Clearinghouse</th>
+                  <th className="p-1.5 border border-slate-200">Record Category</th>
                   <th className="p-1.5 border border-slate-200">Result</th>
                   <th className="p-1.5 border border-slate-200">Finding Details</th>
                 </tr>
@@ -518,25 +518,25 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
               <tbody className="divide-y divide-slate-200">
                 <tr>
                   <td className="p-1.5 border border-slate-200 font-semibold">Salvage / Total Loss</td>
-                  <td className="p-1.5 border border-slate-200">Insurance Clearinghouses & Auto Auctions</td>
+                  <td className="p-1.5 border border-slate-200">Total Loss & Salvage Logs</td>
                   <td className="p-1.5 border border-slate-200 text-emerald-700 font-bold">Clear</td>
                   <td className="p-1.5 border border-slate-200 text-slate-600">No total loss claims or salvage auction transfers reported</td>
                 </tr>
                 <tr>
                   <td className="p-1.5 border border-slate-200 font-semibold">Flood / Hail / Water Damage</td>
-                  <td className="p-1.5 border border-slate-200">FEMA Emergency Registries & State DMVs</td>
+                  <td className="p-1.5 border border-slate-200">Severe Weather & Water Damage</td>
                   <td className="p-1.5 border border-slate-200 text-emerald-700 font-bold">Clear</td>
-                  <td className="p-1.5 border border-slate-200 text-slate-600">No flood title brands or hurricane storm damage flags found</td>
+                  <td className="p-1.5 border border-slate-200 text-slate-600">No flood title brands or storm damage flags found</td>
                 </tr>
                 <tr>
                   <td className="p-1.5 border border-slate-200 font-semibold">Junk / Dismantler Record</td>
-                  <td className="p-1.5 border border-slate-200">NMVTIS National Motor Clearinghouse</td>
+                  <td className="p-1.5 border border-slate-200 font-medium">Dismantler & Scrap Records</td>
                   <td className="p-1.5 border border-slate-200 text-emerald-700 font-bold">Clear</td>
                   <td className="p-1.5 border border-slate-200 text-slate-600">Vehicle was never scrapped, crushed, or parted out</td>
                 </tr>
                 <tr>
-                  <td className="p-1.5 border border-slate-200 font-semibold">Stolen Vehicle Database</td>
-                  <td className="p-1.5 border border-slate-200">NICB & Federal Law Enforcement</td>
+                  <td className="p-1.5 border border-slate-200 font-semibold">Stolen Vehicle Record</td>
+                  <td className="p-1.5 border border-slate-200">Active Theft Records</td>
                   <td className="p-1.5 border border-slate-200 text-emerald-700 font-bold">Clear</td>
                   <td className="p-1.5 border border-slate-200 text-slate-600">No active police theft records or stolen vehicle reports</td>
                 </tr>
@@ -544,14 +544,14 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
             </table>
           </div>
 
-          {/* Section 2: Certified Odometer Timeline */}
+          {/* Section 2: Odometer Timeline */}
           <div className="print-avoid-break">
             <div className="font-bold text-slate-900 border-b border-slate-300 pb-1 mb-2 flex items-center justify-between print-section-header">
               <span>2. Odometer Readings & Annual Mileage Timeline</span>
-              <span className="text-[10px] text-emerald-700 font-semibold font-mono">INTEGRITY: CERTIFIED</span>
+              <span className="text-[10px] text-emerald-700 font-semibold font-mono">INTEGRITY: CONSISTENT</span>
             </div>
             <p className="text-[10px] text-slate-600 mb-2 print-section-desc">
-              Cross-checked across state registration renewals, annual safety inspection centers, and authorized dealership services. Certified steady mileage accumulation without reverse rollback indicators.
+              Cross-checked across registration renewals, annual safety inspection centers, and authorized dealership services. Consistent steady mileage accumulation without reverse rollback indicators.
             </p>
             <table className="w-full text-left border-collapse text-[10px] print-table">
               <thead>
@@ -572,13 +572,13 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
                 <tr>
                   <td className="p-1.5 border border-slate-200 font-mono">10/05/2023</td>
                   <td className="p-1.5 border border-slate-200 font-bold">18,420 mi</td>
-                  <td className="p-1.5 border border-slate-200">State DMV Registration Bureau</td>
+                  <td className="p-1.5 border border-slate-200">Registration Bureau</td>
                   <td className="p-1.5 border border-slate-200">Annual Registration Renewal</td>
                 </tr>
                 <tr>
                   <td className="p-1.5 border border-slate-200 font-mono">08/19/2025</td>
                   <td className="p-1.5 border border-slate-200 font-bold">36,810 mi</td>
-                  <td className="p-1.5 border border-slate-200">Certified Vehicle Service Center</td>
+                  <td className="p-1.5 border border-slate-200">Vehicle Service Center</td>
                   <td className="p-1.5 border border-slate-200">Scheduled 35k Mile Service</td>
                 </tr>
               </tbody>
@@ -588,12 +588,11 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
           {/* Document Legal Footnote */}
           <div className="pt-3 border-t border-slate-300 text-[9px] text-slate-500 flex items-center justify-between print-avoid-break print-footer-note">
             <div>
-              <p>Official Vehicle History Document generated for VIN: <strong>{vin}</strong> by AutoAudit Technologies Inc.</p>
-              <p>Provided in accordance with the Federal Anti-Car Theft Act and NMVTIS public access mandates.</p>
+              <p>Sample report layout. Data shown is for demonstration and is not a real vehicle record.</p>
             </div>
             <div className="text-right font-mono">
-              <span className="text-slate-400">SECURITY DIGEST:</span><br />
-              <span className="text-slate-800 font-bold">AA-CERT-{orderNumber}</span>
+              <span className="text-slate-400">DIGEST:</span><br />
+              <span className="text-slate-800 font-bold">AA-DEMO-{orderNumber}</span>
             </div>
           </div>
         </div>

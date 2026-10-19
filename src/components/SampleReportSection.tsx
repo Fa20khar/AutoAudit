@@ -32,7 +32,7 @@ export const SampleReportSection: React.FC<SampleReportSectionProps> = ({
             <div className="space-y-3 pt-2 text-xs text-[#CBD5E1]">
               <div className="flex items-center gap-2.5">
                 <CheckCircle2 className="w-4 h-4 text-[#10B981] shrink-0" />
-                <span>DMV title brand registrations across all provinces & states</span>
+                <span>Title brand registrations across all provinces & states</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <CheckCircle2 className="w-4 h-4 text-[#10B981] shrink-0" />
@@ -71,8 +71,8 @@ export const SampleReportSection: React.FC<SampleReportSectionProps> = ({
                     <ShieldCheck className="w-4 h-4 text-white" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-slate-100">AutoAudit Official History Report</h4>
-                    <span className="text-[11px] text-[#CBD5E1] font-mono">VIN: 1HGCM82633A004352</span>
+                    <h4 className="text-sm font-bold text-slate-100">AutoAudit Sample History Report</h4>
+                    <span className="text-[11px] text-[#CBD5E1] font-mono">VIN: 1HGCV1F33LA000001</span>
                   </div>
                 </div>
 
@@ -128,7 +128,7 @@ export const SampleReportSection: React.FC<SampleReportSectionProps> = ({
                   </div>
                   <p className="font-bold text-white text-sm">Clean Title</p>
                   <p className="text-[11px] text-[#CBD5E1] leading-snug">
-                    0 junk or salvage brands recorded across 50 state DMVs.
+                    0 junk or salvage brands recorded in title history.
                   </p>
                 </div>
 
@@ -188,16 +188,17 @@ export const SampleReportSection: React.FC<SampleReportSectionProps> = ({
               </div>
 
               {/* Section 6: Report Summary Notice */}
-              <div className="flex items-center justify-between pt-1">
+              <div className="pt-2 border-t border-[rgba(148,163,184,0.15)] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <span className="text-xs text-slate-400">
-                  Data compiled from NMVTIS, state DMVs, insurance carriers, and auction registries.
+                  Sample report layout. Data shown is for demonstration and is not a real vehicle record.
                 </span>
                 <button
                   type="button"
                   onClick={onOpenSampleModal}
-                  className="text-xs text-[#10B981] hover:underline font-semibold cursor-pointer shrink-0"
+                  className="text-xs text-[#10B981] hover:underline font-semibold cursor-pointer shrink-0 inline-flex items-center gap-1 self-start sm:self-auto"
                 >
-                  Inspect Full Sample →
+                  <span>Inspect Full Sample</span>
+                  <ArrowRight className="w-3 h-3" />
                 </button>
               </div>
 
