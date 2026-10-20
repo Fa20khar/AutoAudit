@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+Allow: /request-report
+Disallow: /admin
+Disallow: /api/
+Disallow: /health
+
+User-agent: OAI-SearchBot
+Allow: /
+Allow: /request-report
+Disallow: /admin
+Disallow: /api/
+
+User-agent: GPTBot
+Disallow: /
+
+Sitemap: https://auto-audit-chi.vercel.app/sitemap.xml
