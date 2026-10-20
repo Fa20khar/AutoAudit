@@ -14,8 +14,6 @@ import { ServicesSection } from './components/ServicesSection';
 import { HowItWorks } from './components/HowItWorks';
 import { SampleReportSection } from './components/SampleReportSection';
 import { TrustBenefitsSection } from './components/TrustBenefitsSection';
-import { TestimonialsSection } from './components/TestimonialsSection';
-import { VerifiedReviewsCarousel } from './components/VerifiedReviewsCarousel';
 import { FAQSection } from './components/FAQSection';
 import { FinalCTA } from './components/FinalCTA';
 import { Footer } from './components/Footer';
@@ -465,16 +463,6 @@ function AppContent() {
 
             {/* Section 20: Trust / Benefits */}
             <TrustBenefitsSection />
-
-            {/* Section 21: Testimonials */}
-            <TestimonialsSection />
-
-            {/* Verified Customer Reviews Carousel Section with Real-Time 'Recently Ordered' Activity Badges */}
-            <VerifiedReviewsCarousel
-              orders={orders}
-              onStartOrderWithVin={handleStartOrderWithVin}
-              onOpenSample={() => setIsSampleModalOpen(true)}
-            />
 
             {/* Refer-a-Friend Rewards Module: Generate unique referral codes, share link, earn discounts */}
             <ReferralBannerSection

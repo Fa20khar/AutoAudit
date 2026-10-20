@@ -1,3 +1,4 @@
+// TODO: Legal review required before launch
 import React, { useState } from 'react';
 import { X, ShieldCheck, FileText, RefreshCw, AlertCircle } from 'lucide-react';
 
@@ -84,7 +85,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            Business Licensing
+            Operating Disclosures
           </button>
           <button
             onClick={() => setActiveTab('privacy')}
@@ -113,7 +114,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
               </p>
               <h5 className="font-bold text-slate-800">2. Accuracy and Data Limitations</h5>
               <p>
-                Reports compile historical records provided by government DMV departments, the National Motor Vehicle Title Information System (NMVTIS), insurance carriers, and automotive salvage registries. While we endeavor to compile all available historical documents, AutoAudit cannot guarantee records of private collision repairs conducted without an insurance claim or outside registered facilities.
+                Reports are compiled by AutoAudit from the data sources available to it and may be incomplete. AutoAudit does not guarantee the completeness or accuracy of any historical vehicle record.
               </p>
               <h5 className="font-bold text-slate-800">3. Non-Commercial Personal Use</h5>
               <p>
@@ -159,21 +160,21 @@ export const LegalModal: React.FC<LegalModalProps> = ({
           {activeTab === 'data-sources' && (
             <div className="space-y-3">
               <h4 className="font-bold text-slate-900 text-base">Data Source Disclaimers & Limitations</h4>
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl text-blue-900 space-y-2">
-                <p className="font-bold">Official Registries & Commercial Partners</p>
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 space-y-2">
+                <p className="font-bold text-slate-900">Vehicle History Records Notice</p>
                 <p>
-                  AutoAudit aggregates vehicle records from verified government titling agencies (including NMVTIS approved data sources), state DMVs, law enforcement stolen vehicle registries, insurance claim loss databases, certified auto auctions, and authorized salvage registries.
+                  Reports are compiled by AutoAudit from the data sources available to it and may be incomplete. AutoAudit does not guarantee the completeness or accuracy of any historical vehicle record.
                 </p>
               </div>
               <h5 className="font-bold text-slate-800">Scope of Disclosed Information</h5>
               <p>
-                Records compiled in an AutoAudit report represent data reported to participating repositories at the time the query is run. While our data feeds cover hundreds of millions of public and commercial vehicle events:
+                Records compiled in an AutoAudit report represent data reported to participating data providers at the time the query is run:
               </p>
               <ul className="list-disc pl-5 space-y-1.5 text-xs text-slate-600">
-                <li>Repairs performed privately or without an insurance claim or certified workshop record may not appear in official databases.</li>
-                <li>Recent title transfers, lien additions, or municipal citations may experience processing lags (typically 3 to 14 business days) depending on individual state DMV reporting schedules.</li>
-                <li>Odometer readings reflect mileage recorded at official inspection stations, auctions, title transactions, or dealership service visits.</li>
-                <li>Photographs submitted by customers or retrieved from salvage auction listings support historical visual context and do not independently substitute for on-site physical mechanical inspections.</li>
+                <li>Repairs performed privately or without a recorded service or insurance record may not appear in vehicle history records.</li>
+                <li>Recent title transfers, lien additions, or records may experience reporting delays depending on reporting schedules.</li>
+                <li>Odometer readings reflect mileage recorded at service visits, inspections, or title transactions.</li>
+                <li>Photographs submitted or retrieved from vehicle records support visual context and do not independently substitute for on-site physical mechanical inspections.</li>
               </ul>
               <p className="text-[11px] text-slate-500 italic">
                 AutoAudit strongly encourages prospective buyers to complement a digital history report with an independent pre-purchase physical inspection by a licensed technician.
@@ -183,31 +184,19 @@ export const LegalModal: React.FC<LegalModalProps> = ({
 
           {activeTab === 'licensing' && (
             <div className="space-y-3">
-              <h4 className="font-bold text-slate-900 text-base">Business Licensing & Commercial Registrations</h4>
-              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 space-y-2">
-                <p className="font-bold">Authorized Digital Information Provider</p>
+              <h4 className="font-bold text-slate-900 text-base">Operating Disclosures</h4>
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 space-y-2">
+                <p className="font-bold text-slate-900">Digital Information Service</p>
                 <p>
-                  AutoAudit is a registered commercial business providing automotive vehicle history data aggregation, digital report generation, and customer intake record management.
+                  AutoAudit provides automotive vehicle history data aggregation and digital report generation.
                 </p>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <div className="font-bold text-slate-800 text-xs">Entity Information</div>
-                  <div className="text-[11px] text-slate-600 mt-1">AutoAudit Vehicle Intelligence Services</div>
-                  <div className="text-[11px] text-slate-500">Commercial Registration No: AA-2024-9481B</div>
-                </div>
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <div className="font-bold text-slate-800 text-xs">Regulatory Framework</div>
-                  <div className="text-[11px] text-slate-600 mt-1">DPPA (18 U.S.C. § 2721) Compliant</div>
-                  <div className="text-[11px] text-slate-500">PCI-DSS Level 1 Secure Billing</div>
-                </div>
-              </div>
-              <h5 className="font-bold text-slate-800">Consumer & Operating Disclosures</h5>
+              <h5 className="font-bold text-slate-800">Consumer Disclosures</h5>
               <p>
                 AutoAudit operates strictly as a digital research platform. AutoAudit is not a motor vehicle dealership, licensed car broker, automotive finance creditor, or field inspection mechanic shop. All brand names, marks, and vehicle identifiers referenced remain trademarks of their respective owners.
               </p>
               <p>
-                For official inquiries or regulatory licensing verification, reach our compliance office via email at compliance@autoaudit.com or through customer support.
+                For questions or support, reach customer support.
               </p>
             </div>
           )}

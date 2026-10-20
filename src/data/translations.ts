@@ -152,8 +152,8 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     quickSampleVins: 'Quick Sample VINs:',
 
     // Trust Benefits
-    trustRegistryAudited: 'Certified Records',
-    trustOfficialNMVTIS: 'Official NMVTIS Partner Registry',
+    trustRegistryAudited: 'Vehicle Records Check',
+    trustOfficialNMVTIS: 'Comprehensive Vehicle History',
     trustInstantDelivery: 'Delivered in under 60 Seconds',
     trustEncryptedCheckout: '256-Bit SSL Encrypted Checkout',
     trustOdometerVerified: 'Odometer Rollback Auditing',
@@ -162,20 +162,20 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     // Services / Pricing Section
     pricingBadge: 'SIMPLE PLANS',
     pricingTitle: 'Choose the Right Vehicle Report',
-    pricingSubtitle: 'Simple plans with clear pricing and transparent official records. No recurring subscriptions.',
+    pricingSubtitle: 'Simple plans with clear pricing and transparent vehicle records. No recurring subscriptions.',
     mostPopular: 'MOST POPULAR',
     orderReportBtn: 'Order Report',
-    planBasicTitle: 'Basic Title Check',
-    planBasicDesc: 'Essential title brand verification, salvage registry lookup, and theft alerts.',
-    planComprehensiveTitle: 'Comprehensive VIN Audit',
-    planComprehensiveDesc: 'Complete history: collisions, odometer rollback checks, lien status, and official PDF.',
-    planDealerTitle: 'Dealer Multi-VIN 5-Pack',
-    planDealerDesc: 'Bundle of 5 comprehensive audits for dealerships and active car buyers.',
+    planBasicTitle: 'Basic History Check',
+    planBasicDesc: 'Title brand checks, salvage record lookup, and theft alerts.',
+    planComprehensiveTitle: 'Complete Vehicle History',
+    planComprehensiveDesc: 'Complete history: recorded collisions, odometer records, lien status, and PDF report.',
+    planDealerTitle: 'Multi-VIN 5-Pack',
+    planDealerDesc: 'Bundle of 5 complete reports for dealerships and active car buyers.',
 
     // How It Works
     howBadge: 'SIMPLE PROCESS',
     howTitle: 'How AutoAudit Works',
-    howSubtitle: 'Follow four simple steps from entering your vehicle details to receiving your verified report.',
+    howSubtitle: 'Follow four simple steps from entering your vehicle details to receiving your report.',
     howStep1Title: 'Choose Your Report',
     howStep1Desc: 'Select the vehicle report tier or service that fits your purchase requirements.',
     howStep2Title: 'Enter Vehicle Details',
@@ -195,14 +195,14 @@ export const TRANSLATIONS: Record<Language, Translations> = {
 
     // Final CTA
     ctaTitle: 'Ready to check vehicle history?',
-    ctaSubtitle: 'Enter any 17-digit VIN now and receive complete title brands, salvage records, and collision data.',
+    ctaSubtitle: 'Enter any 17-digit VIN now and receive title brands, salvage records, and collision data.',
     ctaOrderBtn: 'Get Vehicle Report Now',
     ctaSampleBtn: 'View Sample Report',
     ctaIntakeBtn: 'Customer Intake Form',
 
     // Footer
     footerTagline: 'Simple, transparent vehicle history reporting.',
-    footerDisclaimer: 'AutoAudit is an online digital ordering platform compiling vehicle title, salvage, and collision records from authorized registries. We do not provide physical vehicle inspections.',
+    footerDisclaimer: 'AutoAudit is an online digital ordering platform compiling vehicle title, salvage, and collision records from available data sources. We do not provide physical vehicle inspections.',
     footerCompany: 'Company',
     footerReports: 'Reports',
     footerSupportLegal: 'Support & Legal',
@@ -211,7 +211,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     footerTerms: 'Terms of Service',
     footerPrivacy: 'Privacy Policy',
     footerRefund: 'Refund Policy',
-    footerCompliance: 'NMVTIS Compliance',
+    footerCompliance: 'Compliance & Policies',
     footerRights: 'All rights reserved.',
   },
   es: {
@@ -258,8 +258,8 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     quickSampleVins: 'VINs de Prueba:',
 
     // Trust Benefits
-    trustRegistryAudited: 'Registros Certificados',
-    trustOfficialNMVTIS: 'Registro Oficial de Socios NMVTIS',
+    trustRegistryAudited: 'Verificación de Registros',
+    trustOfficialNMVTIS: 'Historial Vehicular Completo',
     trustInstantDelivery: 'Entrega en menos de 60 Segundos',
     trustEncryptedCheckout: 'Pago Seguro con Cifrado SSL de 256 Bits',
     trustOdometerVerified: 'Auditoría de Manipulación de Odómetro',
@@ -268,20 +268,20 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     // Services / Pricing Section
     pricingBadge: 'PLANES SENCILLOS',
     pricingTitle: 'Elija el Informe de Vehículo Adecuado',
-    pricingSubtitle: 'Planes claros con precios transparentes y registros oficiales verificados. Sin suscripciones recurrentes.',
+    pricingSubtitle: 'Planes claros con precios transparentes y registros detallados. Sin suscripciones recurrentes.',
     mostPopular: 'MÁS POPULAR',
     orderReportBtn: 'Ordenar Informe',
-    planBasicTitle: 'Verificación Básica de Título',
-    planBasicDesc: 'Verificación esencial de título, búsqueda de salvamento y alertas de robo.',
-    planComprehensiveTitle: 'Auditoría Completa de VIN',
-    planComprehensiveDesc: 'Historial completo: colisiones, odómetro, gravámenes y PDF oficial descargable.',
-    planDealerTitle: 'Paquete Concesionario 5-VIN',
-    planDealerDesc: 'Paquete de 5 auditorías completas para concesionarios y compradores frecuentes.',
+    planBasicTitle: 'Verificación Básica de Historial',
+    planBasicDesc: 'Marcas de título, historial de salvamento y alertas de robo.',
+    planComprehensiveTitle: 'Informe Completo de Vehículo',
+    planComprehensiveDesc: 'Historial completo: accidentes registrados, odómetro, gravámenes e informe en PDF.',
+    planDealerTitle: 'Paquete de 5 Informes',
+    planDealerDesc: 'Paquete de 5 informes completos para concesionarios y compradores frecuentes.',
 
     // How It Works
     howBadge: 'PROCESO SIMPLE',
     howTitle: 'Cómo Funciona AutoAudit',
-    howSubtitle: 'Siga cuatro sencillos pasos desde ingresar los datos del vehículo hasta recibir su informe verificado.',
+    howSubtitle: 'Siga cuatro sencillos pasos desde ingresar los datos del vehículo hasta recibir su informe.',
     howStep1Title: 'Elija su Informe',
     howStep1Desc: 'Seleccione el nivel de informe que mejor se adapte a sus necesidades de compra.',
     howStep2Title: 'Ingrese los Datos',
@@ -308,7 +308,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
 
     // Footer
     footerTagline: 'Informes de historial de vehículos simples y transparentes.',
-    footerDisclaimer: 'AutoAudit es una plataforma digital de pedidos en línea que compila registros de títulos, salvamento y colisiones de registros autorizados. No proporcionamos inspecciones físicas de vehículos.',
+    footerDisclaimer: 'AutoAudit es una plataforma digital de pedidos en línea que compila registros de títulos, salvamento y colisiones de fuentes de datos disponibles. No proporcionamos inspecciones físicas de vehículos.',
     footerCompany: 'Compañía',
     footerReports: 'Informes',
     footerSupportLegal: 'Soporte y Legal',
@@ -317,7 +317,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     footerTerms: 'Términos de Servicio',
     footerPrivacy: 'Política de Privacidad',
     footerRefund: 'Política de Reembolso',
-    footerCompliance: 'Cumplimiento NMVTIS',
+    footerCompliance: 'Políticas y Cumplimiento',
     footerRights: 'Todos los derechos reservados.',
   },
 };

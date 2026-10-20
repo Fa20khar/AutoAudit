@@ -28,15 +28,15 @@ export const ProgressStepper: React.FC<ProgressStepperProps> = ({
     },
     {
       number: 2,
-      title: 'AutoAudit Record Scan',
-      subtitle: 'NMVTIS, salvage & lien verification',
+      title: 'Vehicle Records Scan',
+      subtitle: 'Title status, salvage & history check',
       status: currentStep === 2 ? 'active' : currentStep > 2 ? 'completed' : 'upcoming',
       icon: <ShieldAlert className="w-4 h-4" />,
     },
     {
       number: 3,
       title: 'Report Delivery',
-      subtitle: 'Official PDF sent to your email',
+      subtitle: 'PDF report sent to your email',
       status: currentStep === 3 ? 'active' : currentStep > 3 ? 'completed' : 'upcoming',
       icon: <Send className="w-4 h-4" />,
     },

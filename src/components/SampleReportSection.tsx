@@ -44,7 +44,7 @@ export const SampleReportSection: React.FC<SampleReportSectionProps> = ({
               </div>
               <div className="flex items-center gap-2.5">
                 <CheckCircle2 className="w-4 h-4 text-[#10B981] shrink-0" />
-                <span>Salvage, rebuilt, flood, and insurance total loss determinations</span>
+                <span>Salvage, rebuilt, flood, and total loss records</span>
               </div>
             </div>
 
@@ -136,13 +136,13 @@ export const SampleReportSection: React.FC<SampleReportSectionProps> = ({
                 <div className="bg-[#0B132B] rounded-[8px] p-3.5 border border-[rgba(148,163,184,0.20)] space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                      Accident Records
+                      Accident Records (Sample)
                     </span>
                     <CheckCircle2 className="w-3.5 h-3.5 text-[#10B981]" />
                   </div>
                   <p className="font-bold text-white text-sm">0 Accidents</p>
                   <p className="text-[11px] text-[#CBD5E1] leading-snug">
-                    No insurance collision claims or airbag deployments reported.
+                    Sample layout: No collision records or airbag deployments reported.
                   </p>
                 </div>
 
@@ -150,13 +150,13 @@ export const SampleReportSection: React.FC<SampleReportSectionProps> = ({
                 <div className="bg-[#0B132B] rounded-[8px] p-3.5 border border-[rgba(148,163,184,0.20)] space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                      Salvage Status
+                      Salvage Status (Sample)
                     </span>
                     <CheckCircle2 className="w-3.5 h-3.5 text-[#10B981]" />
                   </div>
                   <p className="font-bold text-white text-sm">Clear Status</p>
                   <p className="text-[11px] text-[#CBD5E1] leading-snug">
-                    No total loss declarations from major insurance underwriters.
+                    Sample layout: No total loss declarations reported.
                   </p>
                 </div>
 

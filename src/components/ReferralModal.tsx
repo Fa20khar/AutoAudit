@@ -126,17 +126,17 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
     });
   };
 
-  const whatsappShareText = `Hey! Check any vehicle's official history, NMVTIS records, and accidents on AutoAudit. Use my referral code ${profile.referralCode} for ${profile.discountPercentForFriend}% OFF your report: ${referralLink}`;
+  const whatsappShareText = `Hey! Check a vehicle's history with AutoAudit. Use my referral code ${profile.referralCode} for ${profile.discountPercentForFriend}% OFF your report: ${referralLink}`;
   const whatsappShareUrl = `https://wa.me/?text=${encodeURIComponent(whatsappShareText)}`;
 
-  const emailSubject = encodeURIComponent('20% OFF Official Vehicle History Report on AutoAudit');
+  const emailSubject = encodeURIComponent('20% OFF Vehicle History Report on AutoAudit');
   const emailBody = encodeURIComponent(
-    `Hi,\n\nI recommend using AutoAudit to verify vehicle history before buying or selling a car.\n\nUse my referral code ${profile.referralCode} or visit the link below for 20% OFF:\n${referralLink}\n\nSafe driving!`
+    `Hi,\n\nI recommend using AutoAudit to check vehicle history before buying or selling a car.\n\nUse my referral code ${profile.referralCode} or visit the link below for 20% OFF:\n${referralLink}\n\nSafe driving!`
   );
   const emailShareUrl = `mailto:?subject=${emailSubject}&body=${emailBody}`;
 
   const twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
-    `Get 20% OFF official vehicle history reports with AutoAudit! Use code ${profile.referralCode}: ${referralLink}`
+    `Get 20% OFF vehicle history reports with AutoAudit! Use code ${profile.referralCode}: ${referralLink}`
   )}`;
 
   return (
@@ -612,7 +612,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
         <div className="p-4 bg-[#07111F] border-t border-[rgba(148,163,184,0.15)] flex items-center justify-between text-xs text-slate-400">
           <div className="flex items-center gap-1.5">
             <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Discounts valid on all official vehicle reports</span>
+            <span>Discounts valid on all vehicle history reports</span>
           </div>
 
           <button

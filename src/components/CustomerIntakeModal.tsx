@@ -386,7 +386,7 @@ export const CustomerIntakeModal: React.FC<CustomerIntakeModalProps> = ({
           type: 'success',
           title: 'Request Submitted Successfully!',
           message: autoGenerateReport 
-            ? 'Official dummy report PDF generated and ready for instant download.' 
+            ? 'Sample report PDF generated and ready for instant download.' 
             : 'Our verification team has received your vehicle details.',
           duration: 6000
         });
@@ -430,7 +430,7 @@ export const CustomerIntakeModal: React.FC<CustomerIntakeModalProps> = ({
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                Official Customer Data Form
+                Vehicle Intake Form
               </span>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
                 <Sparkles className="w-2.5 h-2.5" /> Auto-Generate Supported
@@ -440,7 +440,7 @@ export const CustomerIntakeModal: React.FC<CustomerIntakeModalProps> = ({
               AutoAudit Customer Data Form
             </h2>
             <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-xl">
-              Customer-ready intake form for vehicle history report requests and certified NMVTIS record verification.
+              Customer intake form for vehicle history report requests.
             </p>
           </div>
           <button
@@ -522,7 +522,7 @@ export const CustomerIntakeModal: React.FC<CustomerIntakeModalProps> = ({
                     <span>Admin Fulfillment & Payment Protection Notice</span>
                   </div>
                   <p className="text-xs text-slate-700 leading-relaxed">
-                    Your request has been forwarded directly to the <strong>AutoAudit Admin Operations Console</strong>. To protect records integrity, complete official vehicle history reports are compiled and dispatched directly by AutoAudit Administration upon payment confirmation.
+                    Your request has been forwarded directly to the <strong>AutoAudit Admin Operations Console</strong>. Vehicle history reports are compiled and dispatched directly by AutoAudit Administration upon payment confirmation.
                   </p>
                   <div className="flex items-center gap-1.5 text-[11px] text-blue-800 bg-blue-100/60 px-2.5 py-1.5 rounded-lg font-medium">
                     <span>Reference ID:</span>
@@ -533,7 +533,7 @@ export const CustomerIntakeModal: React.FC<CustomerIntakeModalProps> = ({
                 </div>
 
                 <a
-                  href={`https://wa.me/923420617217?text=${encodeURIComponent(`Hi AutoAudit Admin, I submitted report request #${submittedData.submission.submissionNumber} for VIN: ${submittedData.submission.vinOrChassis} (${submittedData.submission.make} ${submittedData.submission.model}). Please send payment details so I can receive my official certified report.`)}`}
+                  href={`https://wa.me/923420617217?text=${encodeURIComponent(`Hi AutoAudit Admin, I submitted report request #${submittedData.submission.submissionNumber} for VIN: ${submittedData.submission.vinOrChassis} (${submittedData.submission.make} ${submittedData.submission.model}). Please send payment details so I can receive my vehicle history report.`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer text-xs sm:text-sm"
@@ -1149,7 +1149,7 @@ export const CustomerIntakeModal: React.FC<CustomerIntakeModalProps> = ({
 
                     {/* Disclaimer */}
                     <p className="text-[10px] text-slate-400 leading-relaxed italic">
-                      Note: Photographs support our team's manual review process but do not independently verify a vehicle's official title branding or complete historical records.
+                      Note: Photographs support our team's manual review process but do not independently verify a vehicle's complete title branding or complete historical records.
                     </p>
                   </div>
 
@@ -1207,9 +1207,9 @@ export const CustomerIntakeModal: React.FC<CustomerIntakeModalProps> = ({
                   <div className="border-b border-slate-200 pb-2">
                     <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                       <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                      Section 5 — Customer Consent & Verification
+                      Section 5 — Customer Authorization & Submission
                     </h3>
-                    <p className="text-xs text-slate-500">Please confirm your consents to authorize report processing.</p>
+                    <p className="text-xs text-slate-500">Please authorize processing the entered vehicle and contact details to prepare the report.</p>
                   </div>
 
                   {/* Consents */}
@@ -1278,7 +1278,7 @@ export const CustomerIntakeModal: React.FC<CustomerIntakeModalProps> = ({
                         <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 rounded text-[9px] font-bold">SECURE</span>
                       </div>
                       <p className="text-[11px] text-slate-600 leading-tight">
-                        Submits vehicle records directly into the Admin Operations Console for verification. Official PDF report will be delivered by AutoAudit Admin upon payment confirmation.
+                        Submits vehicle records directly into the Admin Operations Console. The PDF report will be delivered by AutoAudit Admin upon payment confirmation.
                       </p>
                     </div>
                     <div className="px-2.5 py-1 bg-white border border-blue-200 rounded-lg text-[10px] font-bold text-blue-700 shrink-0 font-mono">

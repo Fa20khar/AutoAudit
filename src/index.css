@@ -315,7 +315,7 @@
     print-color-adjust: exact !important;
   }
 
-  /* Subtle diagonal 'OFFICIAL AUTOAUDIT REPORT' watermark background */
+  /* Subtle diagonal 'AUTOAUDIT REPORT - DEMO DATA' watermark background */
   .print-watermark {
     display: flex !important;
     align-items: center !important;

@@ -1017,7 +1017,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           timestamp: now,
           actor: 'Admin Specialist',
           action: 'Marked Ready',
-          details: 'Official report verified and marked ready for dispatch'
+          details: 'Vehicle history report marked ready for dispatch'
         }
       ]
     };
@@ -1086,7 +1086,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       const deliveredUpdated = await api.updateOrderStatus(
         targetOrder.id,
         'Delivered',
-        'Official certified report dispatched after payment confirmation.'
+        'Vehicle history report dispatched after payment confirmation.'
       );
       onUpdateOrder(deliveredUpdated || serverUpdated);
       showToast({
@@ -2410,7 +2410,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                 {/* Quick WhatsApp Customer */}
                                 <a
                                   href={`https://wa.me/${(ord.customer.phone || '923420617217').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
-                                    `Hi ${ord.customer.fullName}, AutoAudit Administration here regarding your vehicle report request #${ord.orderNumber} for ${ord.vehicle.year} ${ord.vehicle.make} ${ord.vehicle.model} (VIN: ${ord.vehicle.vinOrReg}). Total amount: $${ord.total.toFixed(2)} USD. Please confirm payment so our admin can release your certified PDF report.`
+                                    `Hi ${ord.customer.fullName}, your AutoAudit vehicle history report for order #${ord.orderNumber} (${ord.vehicle.year} ${ord.vehicle.make} ${ord.vehicle.model}, VIN: ${ord.vehicle.vinOrReg}) is ready. Total amount: $${ord.total.toFixed(2)} USD. Please confirm payment to receive your PDF report.`
                                   )}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
@@ -2645,7 +2645,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       ) : (
                         <div className="p-2 bg-emerald-50 border border-emerald-200 rounded-lg text-[11px] text-emerald-800 flex items-center gap-1.5 font-medium">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          <span>Payment Confirmed: You may download and dispatch the certified report to the customer.</span>
+                          <span>Payment Confirmed: You may download and dispatch the report to the customer.</span>
                         </div>
                       )}
 
@@ -2654,7 +2654,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           <div className="flex items-center justify-between">
                             <p className="text-[#059669] font-bold text-xs flex items-center gap-1.5">
                               <CheckCircle2 className="w-4 h-4" />
-                              <span>Official Certified PDF Ready</span>
+                              <span>Vehicle Report PDF Ready</span>
                             </p>
                             <span className="font-mono text-[10px] text-slate-400">PDF-1.4 Encrypted</span>
                           </div>
@@ -2673,7 +2673,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                   showToast({
                                     type: 'success',
                                     title: 'Report Downloaded by Admin',
-                                    message: `Downloaded official certified PDF: ${downloadedFile}`,
+                                    message: `Downloaded PDF: ${downloadedFile}`,
                                     duration: 4000,
                                   });
                                 } catch {
@@ -2687,7 +2687,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                 }
                               }}
                               className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] inline-flex items-center gap-1.5 shadow-xs cursor-pointer transition-colors active:scale-95"
-                              title="Download official PDF to admin computer"
+                              title="Download PDF to admin computer"
                             >
                               <Download className="w-3.5 h-3.5" />
                               <span>Download PDF (Admin)</span>
@@ -2696,7 +2696,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             {/* 2. Dispatch via WhatsApp */}
                             <a
                               href={`https://wa.me/${(currentOrder.customer.phone || '923420617217').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
-                                `Hi ${currentOrder.customer.fullName}, AutoAudit has verified and compiled your official vehicle history report for ${currentOrder.vehicle.year} ${currentOrder.vehicle.make} ${currentOrder.vehicle.model} (VIN: ${currentOrder.vehicle.vinOrReg}). Total amount: $${currentOrder.total.toFixed(2)} USD. Please confirm payment to receive your certified PDF document.`
+                                `Hi ${currentOrder.customer.fullName}, your AutoAudit vehicle history report for order #${currentOrder.orderNumber} (${currentOrder.vehicle.year} ${currentOrder.vehicle.make} ${currentOrder.vehicle.model}) is ready. Total amount: $${currentOrder.total.toFixed(2)} USD. Please confirm payment to receive your PDF document.`
                               )}`}
                               target="_blank"
                               rel="noopener noreferrer"
@@ -2783,7 +2783,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                   showToast({
                                     type: 'success',
                                     title: 'Report Downloaded by Admin',
-                                    message: `Downloaded official certified PDF: ${downloadedFile}`,
+                                    message: `Downloaded PDF: ${downloadedFile}`,
                                     duration: 4000,
                                   });
                                 } catch {
@@ -2796,14 +2796,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                 }
                               }}
                               className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
-                              title="Download certified PDF on the fly"
+                              title="Download PDF on the fly"
                             >
                               <Download className="w-3.5 h-3.5" />
                               <span>Download PDF (Admin)</span>
                             </button>
                             <a
                               href={`https://wa.me/${(currentOrder.customer.phone || '923420617217').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
-                                `Hi ${currentOrder.customer.fullName}, AutoAudit Administration here regarding your vehicle report request #${currentOrder.orderNumber} for ${currentOrder.vehicle.year} ${currentOrder.vehicle.make} ${currentOrder.vehicle.model} (VIN: ${currentOrder.vehicle.vinOrReg}). Total amount: $${currentOrder.total.toFixed(2)} USD. Please confirm payment so our admin can release your certified PDF report.`
+                                `Hi ${currentOrder.customer.fullName}, your AutoAudit vehicle history report for order #${currentOrder.orderNumber} (${currentOrder.vehicle.year} ${currentOrder.vehicle.make} ${currentOrder.vehicle.model}) is ready. Total amount: $${currentOrder.total.toFixed(2)} USD. Please confirm payment so our admin can release your PDF report.`
                               )}`}
                               target="_blank"
                               rel="noopener noreferrer"
@@ -4324,7 +4324,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <div>
                 {selectedIntakeForView.preferredContactMethod === 'WhatsApp' ? (
                   <a
-                    href={`https://wa.me/${selectedIntakeForView.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hi ${selectedIntakeForView.fullName}, AutoAudit has verified your report request #${selectedIntakeForView.submissionNumber} for ${selectedIntakeForView.make} ${selectedIntakeForView.model}.`)}`}
+                    href={`https://wa.me/${selectedIntakeForView.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hi ${selectedIntakeForView.fullName}, AutoAudit has received your report request #${selectedIntakeForView.submissionNumber} for ${selectedIntakeForView.make} ${selectedIntakeForView.model}.`)}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="px-3 py-1.5 bg-[#25D366] hover:bg-[#20ba59] text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5"

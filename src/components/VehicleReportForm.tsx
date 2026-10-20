@@ -32,7 +32,6 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import confetti from 'canvas-confetti';
-import { SocialProofTicker } from './SocialProofTicker';
 import { ProgressStepper } from './ProgressStepper';
 import { ActiveSafetyRecallsBanner } from './ActiveSafetyRecallsBanner';
 import { ServicePlan, Coupon, Order } from '../types';
@@ -376,10 +375,10 @@ export const VehicleReportForm: React.FC<VehicleReportFormProps> = ({
 
   const whatsappMessage = createdOrder
     ? encodeURIComponent(
-        `Hi AutoAudit Admin, I just submitted Order #${createdOrder.orderNumber} for VIN: ${createdOrder.vehicle.vinOrReg} (${createdOrder.vehicle.make} ${createdOrder.vehicle.model}). I have sent payment of $${createdOrder.total.toFixed(2)} USD via ${paymentMethod === 'qr_code' ? 'QR Code' : 'Bank Transfer'}. ${proofRef.trim() ? `Transaction Ref: ${proofRef.trim()}` : 'Please confirm payment and dispatch my official report.'}`
+        `Hi AutoAudit Admin, I just submitted Order #${createdOrder.orderNumber} for VIN: ${createdOrder.vehicle.vinOrReg} (${createdOrder.vehicle.make} ${createdOrder.vehicle.model}). I have sent payment of $${createdOrder.total.toFixed(2)} USD via ${paymentMethod === 'qr_code' ? 'QR Code' : 'Bank Transfer'}. ${proofRef.trim() ? `Transaction Ref: ${proofRef.trim()}` : 'Please confirm payment and dispatch my vehicle history report.'}`
       )
     : encodeURIComponent(
-        `Hi AutoAudit Admin, I would like to request an official vehicle history report for VIN: ${vinOrPlate || '1HGCM82633A004352'}. Please provide payment instructions.`
+        `Hi AutoAudit Admin, I would like to request a vehicle history report for VIN: ${vinOrPlate || '1HGCM82633A004352'}. Please provide payment instructions.`
       );
 
   return (
@@ -429,11 +428,6 @@ export const VehicleReportForm: React.FC<VehicleReportFormProps> = ({
         {/* Active NHTSA Safety Recalls Banner */}
         <ActiveSafetyRecallsBanner />
 
-        {/* Real-Time Social Proof Ticker */}
-        <div className="mb-6">
-          <SocialProofTicker />
-        </div>
-
         {/* Branded Header Container */}
         <div className="text-center space-y-4 mb-6 sm:mb-8">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0F1B2D] border border-[rgba(148,163,184,0.20)] text-xs font-bold text-[#10B981] tracking-wider uppercase shadow-xs">
@@ -442,7 +436,7 @@ export const VehicleReportForm: React.FC<VehicleReportFormProps> = ({
           </div>
 
           <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-extrabold tracking-[-1.2px] text-white leading-tight">
-            Request Your Certified Vehicle History Report
+            Request Your Vehicle History Report
           </h1>
 
           <p className="text-sm sm:text-base text-[#CBD5E1] max-w-2xl mx-auto leading-relaxed">
@@ -524,7 +518,7 @@ export const VehicleReportForm: React.FC<VehicleReportFormProps> = ({
                       <span>Step 1: Vehicle Specifications</span>
                     </h3>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      Enter the 17-character VIN or registration plate to query federal NMVTIS and insurance records.
+                      Enter the 17-character VIN or registration plate to prepare your vehicle history report.
                     </p>
                   </div>
                   <span className="text-xs font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2.5 py-1 rounded-full">
@@ -742,7 +736,7 @@ export const VehicleReportForm: React.FC<VehicleReportFormProps> = ({
                       <span>Step 2: Choose Report Plan & Customer Details</span>
                     </h3>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      Select your inspection depth. The completed report and NMVTIS verification will be dispatched to your contact details.
+                      Select your report tier. The completed vehicle history report will be dispatched to your contact details.
                     </p>
                   </div>
                   <span className="text-xs font-mono text-blue-400 bg-blue-950/60 border border-blue-500/30 px-2.5 py-1 rounded-full">
@@ -895,7 +889,7 @@ export const VehicleReportForm: React.FC<VehicleReportFormProps> = ({
                     className="mt-0.5 rounded text-blue-600 focus:ring-blue-500 shrink-0"
                   />
                   <span>
-                    I authorize AutoAudit to query NMVTIS clearinghouses and DMV title registries for vehicle VIN <strong>{vinOrPlate}</strong> and agree to terms of service.
+                    I authorize processing the entered vehicle and contact details to prepare the vehicle history report and agree to the terms of service.
                   </span>
                 </label>
 
@@ -1088,7 +1082,7 @@ export const VehicleReportForm: React.FC<VehicleReportFormProps> = ({
 
                           <div className="space-y-2 text-center sm:text-left flex-1">
                             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-500/40">
-                              Official AutoAudit QR Code
+                              AutoAudit Payment QR Code
                             </span>
                             <h4 className="text-base font-bold text-white">
                               Scan QR to Pay or Verify via WhatsApp

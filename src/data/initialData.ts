@@ -18,7 +18,7 @@ export const INITIAL_SERVICES: ServicePlan[] = [
     ],
     exclusions: [
       'Copart / Manheim Historical Auction Photos',
-      'Detailed Insurance Collision Breakdown',
+      'Detailed Collision & Repair Records Breakdown',
       'Priority Queue Assignment'
     ],
     active: true
@@ -117,7 +117,7 @@ export const INITIAL_ORDERS: Order[] = [
       paidAt: '2026-09-28T05:30:00Z',
       method: 'Online Card Payment (Visa)'
     },
-    internalNotes: 'Customer imported from Japan/UK auction. Cross-checking NMVTIS and export manifest database.',
+    internalNotes: 'Customer imported from Japan/UK auction. Cross-checking vehicle records and export manifest database.',
     createdAt: '2026-09-28T05:28:12Z',
     updatedAt: '2026-09-28T05:30:00Z',
     auditLogs: [
@@ -307,7 +307,7 @@ Order Summary:
 - Delivery Method: Direct to hamza.tariq@gmail.com
 
 What happens next?
-As soon as your official history records and title checks are compiled, you will receive an email titled "[REPORT READY] Your Vehicle History Report" with your secure download link.
+As soon as your vehicle history report is compiled, you will receive an email titled "[REPORT READY] Your Vehicle History Report" with your secure download link.
 
 You can also track your order status anytime on our website using your order number.
 
@@ -326,17 +326,17 @@ AutoAudit Fulfillment Team`,
     type: 'report_ready',
     body: `Dear Zubair Ahmed,
 
-Great news! The official vehicle history report for your 2018 Toyota Prius Two 1.8L Hybrid (VIN: JTDKN3DU5E1293847) is complete and ready for you to view and download.
+Great news! The vehicle history report for your 2018 Toyota Prius Two 1.8L Hybrid (VIN: JTDKN3DU5E1293847) is complete and ready for you to view and download.
 
 Vehicle Summary:
 - Title Status: CLEAN (No Salvage, No Flood, No Rebuilt Brand)
 - Prior Owners: 2 Registered Private Owners
-- Verified Odometer: 78,400 km
+- Recorded Odometer: 78,400 km
 - Collision Records: 1 Minor Cosmetic Repair (2021)
 - Active Recalls: 0 Open Recalls
 
 Access your report:
-Download your official PDF report directly from our secure cloud storage or view the interactive version online.
+Download your PDF report directly from our secure cloud storage or view the interactive version online.
 
 Thank you for trusting AutoAudit for your car purchasing peace of mind!`,
     sentAt: '2026-09-27T18:40:02Z',
@@ -352,14 +352,14 @@ export const SAMPLE_REPORT_DATA = {
   drivetrain: 'Front-Wheel Drive',
   assembly: 'Marysville, Ohio, USA',
   estimatedMileage: '41,800 mi',
-  odometerStatus: 'Verified Normal / Consistent Trend',
+  odometerStatus: 'Consistent Trend Reported',
   titleRecord: 'Clean Title (No Brand)',
   priorOwners: 2,
   reportedAccidents: 1,
-  salvageOrJunk: 'None Reported (Passed)',
+  salvageOrJunk: 'None Reported',
   lienStatus: 'No Financial Liens Recorded',
   openRecalls: 0,
-  airbagDeployment: 'None Reported (Passed)',
+  airbagDeployment: 'None Reported',
   theftRecord: 'Not Reported Stolen',
   lemonLaw: 'No Lemon / Manufacturer Buyback',
   ownershipTimeline: [
@@ -386,14 +386,14 @@ export const SAMPLE_REPORT_DATA = {
       airbagsDeployed: 'No',
       structuralDamage: 'No Frame Damage',
       vehicleDrivable: 'Yes (Driven from scene)',
-      repairFacility: 'Audi Certified Collision Repair Center',
+      repairFacility: 'Authorized Collision Repair Center',
       details: 'Vehicle struck low curb/parking bollard. Right front bumper cover replaced, headlamp assembly re-aimed. Zero structural deflection.'
     }
   ],
   serviceHistory: [
     { date: 'Aug 20, 2024', mileage: '33,900 mi', service: 'Full synthetic oil & filter change, cabin air filter replacement, 4-wheel tire rotation' },
     { date: 'Nov 12, 2023', mileage: '24,500 mi', service: 'Brake fluid flush, spark plugs inspected, multi-point digital inspection' },
-    { date: 'May 18, 2023', mileage: '19,850 mi', service: 'Post-incident certified repair completion inspection & alignment' },
+    { date: 'May 18, 2023', mileage: '19,850 mi', service: 'Post-incident repair completion inspection & alignment' },
     { date: 'Jan 05, 2022', mileage: '10,120 mi', service: 'Manufacturer 10k scheduled maintenance, engine diagnostics cleared' }
   ]
 };
@@ -401,23 +401,23 @@ export const SAMPLE_REPORT_DATA = {
 export const FAQS = [
   {
     q: 'What information do I need to order a report?',
-    a: 'You only need the vehicle’s 17-character Vehicle Identification Number (VIN) or the official license plate / registration number along with the province or state. For delivery, provide your name and email address where the report should be sent.'
+    a: 'You only need the vehicle’s 17-character Vehicle Identification Number (VIN) or the license plate / registration number along with the province or state. For delivery, provide your name and email address where the report should be sent.'
   },
   {
     q: 'How long does it take to receive my report?',
-    a: 'Turnaround depends on the selected plan: Basic Reports are processed within 1–2 hours, Complete Reports within 30–45 minutes, and Premium Reports receive priority queue assignment for 15–30 minute fulfillment.'
+    a: 'Orders are processed upon payment confirmation. Sample reports can be viewed instantly, and compiled PDF reports are dispatched to your email and WhatsApp according to operational availability.'
   },
   {
     q: 'How will I receive my report?',
-    a: 'Your finished report is delivered securely to your registered email address as a high-resolution, tamper-evident PDF document. You can also view and download it directly from your AutoAudit customer dashboard anytime.'
+    a: 'Your finished report is delivered to your registered email address as a PDF document. You can also view and download it directly from your AutoAudit customer dashboard.'
   },
   {
     q: 'Can I access previous reports?',
-    a: 'Yes. Once an order is completed, your report remains accessible in your customer dashboard under "My Reports" using your order number and email, where it can be downloaded or printed for up to 60 days.'
+    a: 'Yes. Once an order is completed, your report remains accessible in your customer dashboard under "My Reports" using your order number and email, where it can be viewed or printed.'
   },
   {
     q: 'What information is included in a vehicle report?',
-    a: 'Reports include state DMV title records, salvage and rebuilt brands, reported accidents and insurance total loss payouts, verified odometer trend history, open safety recalls, lien and repossession flags, and auction records where available.'
+    a: 'Reports compile available vehicle history records, including title brand history, salvage records, reported damage, recorded odometer history, and past service or auction listings where available. Reports are compiled from available data sources and may be incomplete.'
   },
   {
     q: 'What is your refund/cancellation policy?',

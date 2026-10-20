@@ -18,7 +18,7 @@ interface InspectionViewPoint {
   subtitle: string;
   image: string;
   category: string;
-  status: 'Verified Clear' | 'Certified OEM' | 'Pass - No Defects';
+  status: 'Clear Record' | 'Factory OEM' | 'No Defects Recorded';
   hotspots: {
     id: string;
     x: number; // percentage
@@ -43,7 +43,7 @@ const INSPECTION_VIEWS: InspectionViewPoint[] = [
     subtitle: 'High-intensity optical inspection detects undisclosed repainting, body filler, structural seam repairs, and panel replacements.',
     image: '/images/inspection/paint-inspection.jpg',
     category: 'Exterior Surface Telemetry',
-    status: 'Verified Clear',
+    status: 'Clear Record',
     hotspots: [
       {
         id: 'hs-clearcoat',
@@ -66,7 +66,7 @@ const INSPECTION_VIEWS: InspectionViewPoint[] = [
         x: 78,
         y: 20,
         label: 'Optical Flashlight Audit',
-        detail: 'Surface uniformity certified across 8 inspection quadrants under 5500K inspection lighting.',
+        detail: 'Surface uniformity checked across 8 inspection quadrants under 5500K inspection lighting.',
         status: 'verified',
       },
     ],
@@ -85,14 +85,14 @@ const INSPECTION_VIEWS: InspectionViewPoint[] = [
     subtitle: 'Dual-technician inspection cross-verifying factory VIN stampings, engine fluid records, and mechanical maintenance history.',
     image: '/images/inspection/engine-inspection.jpg',
     category: 'Powertrain & Mechanical',
-    status: 'Pass - No Defects',
+    status: 'No Defects Recorded',
     hotspots: [
       {
         id: 'hs-block',
         x: 52,
         y: 65,
         label: 'Engine Block & VIN Stamping',
-        detail: 'Factory engine serial number matches NMVTIS build registry records. No engine swap detected.',
+        detail: 'Factory engine serial number matches recorded build records. No engine swap detected.',
         status: 'verified',
       },
       {
@@ -114,7 +114,7 @@ const INSPECTION_VIEWS: InspectionViewPoint[] = [
     ],
     telemetry: [
       { label: 'Powertrain Match', value: '100% OEM', subtext: 'Original numbers-matching assembly' },
-      { label: 'Service History', value: '12 Logs', subtext: 'Certified dealer oil & fluid records' },
+      { label: 'Service History', value: '12 Logs', subtext: 'Dealership oil & fluid service logs' },
       { label: 'Flood / Water Risk', value: '0% None', subtext: 'No corrosion or silt in electrical looms' },
       { label: 'ECU Tamper Check', value: 'Intact', subtext: 'Odometer mileage sync confirmed' },
     ],
@@ -127,7 +127,7 @@ const INSPECTION_VIEWS: InspectionViewPoint[] = [
     subtitle: 'Detailed inspection of front clip components, LED light modules, and radiator support structures where minor impacts hide.',
     image: '/images/inspection/headlight-inspection.jpg',
     category: 'Optical & Electrical Integrity',
-    status: 'Certified OEM',
+    status: 'Factory OEM',
     hotspots: [
       {
         id: 'hs-lens',
@@ -163,20 +163,20 @@ const INSPECTION_VIEWS: InspectionViewPoint[] = [
   },
   {
     id: 'luxury-profile',
-    tabLabel: 'Certified Vehicle Profile',
+    tabLabel: 'Sample Vehicle Profile',
     badge: 'Executive Audit',
     title: 'Complete Vehicle Profile & Registry History',
-    subtitle: 'Studio-verified automotive record linking nationwide DMV title events, lien records, and ownership transfers into one report.',
+    subtitle: 'Sample automotive record layout linking title events, lien records, and ownership transfers into one report.',
     image: '/images/inspection/luxury-bentley.jpg',
     category: 'Executive Vehicle Registry',
-    status: 'Verified Clear',
+    status: 'Clear Record',
     hotspots: [
       {
         id: 'hs-vin-title',
         x: 48,
         y: 62,
         label: 'Title Status: Clean',
-        detail: 'No junk, salvage, rebuilt, lemon law, or insurance total loss brands registered nationwide.',
+        detail: 'No junk, salvage, rebuilt, lemon law, or total loss records reported.',
         status: 'verified',
       },
       {
@@ -200,7 +200,7 @@ const INSPECTION_VIEWS: InspectionViewPoint[] = [
       { label: 'Title Brands', value: 'Clean Title', subtext: 'Zero salvage or brand restrictions' },
       { label: 'Prior Owners', value: '1 Owner', subtext: 'Corporate lease with full history' },
       { label: 'Lien Status', value: 'Clear', subtext: 'No unpaid bank loans or security interests' },
-      { label: 'Theft / Stolen', value: 'No Records', subtext: 'Cleared against active NCIC hot sheets' },
+      { label: 'Theft / Stolen', value: 'No Records', subtext: 'No active theft records reported' },
     ],
   },
   {
@@ -211,7 +211,7 @@ const INSPECTION_VIEWS: InspectionViewPoint[] = [
     subtitle: 'Chronological odometer verification tracking annual mileage accumulation to uncover digital rollback tampering before purchase.',
     image: '/images/inspection/highway-night-drive.jpg',
     category: 'Chassis & Mileage Audit',
-    status: 'Pass - No Defects',
+    status: 'No Defects Recorded',
     hotspots: [
       {
         id: 'hs-odo',
@@ -232,7 +232,7 @@ const INSPECTION_VIEWS: InspectionViewPoint[] = [
     ],
     telemetry: [
       { label: 'Mileage Trend', value: 'Consistent', subtext: 'Zero rollback or cluster tampering' },
-      { label: 'Recorded Miles', value: '41,800 mi', subtext: 'Confirmed via 3 independent DMV audits' },
+      { label: 'Recorded Miles', value: '41,800 mi', subtext: 'Recorded across 3 independent service events' },
       { label: 'Annual Average', value: '10,450 mi/yr', subtext: 'Standard normal personal driving' },
       { label: 'Structural Health', value: '100% True', subtext: 'Unibody laser geometry verified' },
     ],
@@ -273,7 +273,7 @@ export const InteractiveInspectionSection: React.FC<InteractiveInspectionSection
         <div className="text-center max-w-3xl mx-auto space-y-3 mb-10 sm:mb-14">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0F1B2D] border border-[rgba(148,163,184,0.20)] text-xs font-bold text-[#10B981] tracking-wider uppercase shadow-xs">
             <Eye className="w-3.5 h-3.5 text-[#10B981]" />
-            <span>Interactive Customer Inspection View</span>
+            <span>Sample inspection preview - demo data</span>
           </div>
 
           <h2 className="text-2xl sm:text-4xl lg:text-[42px] font-extrabold tracking-[-1.2px] text-white leading-tight text-balance">
@@ -281,7 +281,7 @@ export const InteractiveInspectionSection: React.FC<InteractiveInspectionSection
           </h2>
 
           <p className="text-sm sm:text-base text-[#CBD5E1] leading-[1.6]">
-            Click the interactive inspection viewpoints and telemetry points below to see how AutoAudit cross-examines title records, collision damage, and mechanical integrity before purchase.
+            Click the interactive inspection viewpoints and telemetry points below to preview how vehicle history data, damage records, and mechanical specifications are organized in a sample report.
           </p>
         </div>
 
@@ -431,7 +431,7 @@ export const InteractiveInspectionSection: React.FC<InteractiveInspectionSection
                         {activeHotspot.label}
                       </h4>
                       <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[#10B981]/15 text-[#10B981] border border-[#10B981]/30">
-                        {activeHotspot.status === 'verified' ? 'Verified by NMVTIS' : 'Pass Inspection'}
+                        {activeHotspot.status === 'verified' ? 'Records Checked' : 'Inspection Passed'}
                       </span>
                     </div>
                     <p className="text-xs text-[#CBD5E1] leading-relaxed max-w-2xl">
@@ -525,11 +525,11 @@ export const InteractiveInspectionSection: React.FC<InteractiveInspectionSection
                 ))}
               </div>
 
-              {/* Certification Assurance */}
-              <div className="p-3.5 rounded-[10px] bg-emerald-950/30 border border-emerald-800/50 flex items-start gap-2.5 text-xs text-emerald-300">
+              {/* Demonstration Notice */}
+              <div className="p-3.5 rounded-[10px] bg-slate-900/60 border border-slate-800 flex items-start gap-2.5 text-xs text-slate-300">
                 <ShieldCheck className="w-4 h-4 text-[#10B981] shrink-0 mt-0.5" />
                 <p className="leading-relaxed">
-                  All metrics backed by the National Motor Vehicle Title Information System (NMVTIS) and verified state DMV registry records.
+                  Sample inspection preview with demonstration telemetry. Data shown is simulated for layout illustration.
                 </p>
               </div>
 
@@ -604,7 +604,7 @@ export const InteractiveInspectionSection: React.FC<InteractiveInspectionSection
           </div>
 
           <div className="pt-4 border-t border-[rgba(148,163,184,0.20)] flex items-center justify-between text-xs text-slate-400">
-            <span>Official AutoAudit inspection snapshot sourced from certified vehicle audit documentation.</span>
+            <span>Sample inspection preview layout. Data shown is simulated for illustration.</span>
             <button
               type="button"
               onClick={() => {

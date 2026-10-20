@@ -33,29 +33,29 @@ const STAGES: StageConfig[] = [
   {
     id: 'ordered',
     title: 'Ordered',
-    shortDesc: 'Payment & VIN Logged',
-    fullDesc: 'Order confirmed and encrypted VIN profile registered.',
+    shortDesc: 'Order Received',
+    fullDesc: 'Order confirmed and vehicle details registered.',
     icon: FileText,
   },
   {
     id: 'processing',
     title: 'Processing',
-    shortDesc: 'Ingesting Records',
-    fullDesc: 'Factory specifications, lien registries, and auction databases queried.',
+    shortDesc: 'Compiling Records',
+    fullDesc: 'Vehicle specifications and history records compiled.',
     icon: Clock,
   },
   {
     id: 'nmvtis_check',
-    title: 'NMVTIS Check',
-    shortDesc: 'DMV & Title Clearing',
-    fullDesc: 'Cross-referencing 50-state DMV databases, salvage brands, and flood records.',
+    title: 'Records Check',
+    shortDesc: 'History & Title Records',
+    fullDesc: 'Reviewing vehicle history records, title status, and historical events.',
     icon: ShieldCheck,
   },
   {
     id: 'ready',
     title: 'Ready for Download',
-    shortDesc: 'PDF Compiled & Sealed',
-    fullDesc: 'Tamper-evident official vehicle history report ready for download.',
+    shortDesc: 'Report Ready',
+    fullDesc: 'Vehicle history report compiled and ready for download.',
     icon: Download,
   },
 ];
@@ -245,14 +245,14 @@ export const OrderTrackingProgressBar: React.FC<OrderTrackingProgressBarProps> =
 
           <p className="text-xs leading-relaxed text-slate-600">
             {isComplete
-              ? 'Official NMVTIS and title clearing verification completed successfully. Encrypted PDF report is generated and ready for instant viewing or download.'
+              ? 'Vehicle records check completed. PDF report is generated and ready for instant viewing or download.'
               : STAGES[currentStageIndex].fullDesc}
           </p>
 
           {!isComplete && currentStageIndex === 2 && (
             <div className="pt-1 flex items-center gap-1.5 text-[11px] text-blue-700 font-medium font-mono">
               <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
-              <span>Querying NMVTIS, AAMVA, and state DMV clearinghouses...</span>
+              <span>Reviewing vehicle records and title history...</span>
             </div>
           )}
         </div>

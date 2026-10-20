@@ -1,5 +1,5 @@
 /**
- * AutoAudit Official Customer Support & Contact Configuration
+ * AutoAudit Customer Support & Contact Configuration
  */
 export const WHATSAPP_NUMBER = '923420617217';
 export const WHATSAPP_DISPLAY = '+92 342 0617217';

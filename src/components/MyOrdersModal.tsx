@@ -305,7 +305,7 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
                 {activeTab === 'support' && 'Order Support & Inquiries'}
               </h2>
               <p className="text-xs text-slate-500">
-                Track real-time records retrieval and download official PDF audits.
+                Track real-time records compilation and download PDF vehicle history reports.
               </p>
             </div>
 
@@ -410,7 +410,7 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
                           <span>Payment Protection & Admin Fulfillment Policy</span>
                         </div>
                         <p className="text-[11px] text-slate-600 leading-relaxed">
-                          To ensure payment security and protect official NMVTIS records, reports are delivered directly by AutoAudit Administration upon confirmed payment. Direct website downloads are restricted. Your certified PDF has been dispatched directly to your registered WhatsApp and email. If you need a copy re-sent, contact admin via WhatsApp above.
+                          To ensure payment security, reports are delivered directly by AutoAudit Administration upon confirmed payment. Direct website downloads are restricted. Your PDF report has been dispatched directly to your registered WhatsApp and email. If you need a copy re-sent, contact admin via WhatsApp above.
                         </p>
                       </div>
                     </div>
@@ -449,7 +449,7 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
                           <span>Why is the report dispatched by the Admin?</span>
                         </div>
                         <p className="text-[11px] text-slate-600 leading-relaxed">
-                          To protect certified NMVTIS and DMV records and prevent unauthorized access, AutoAudit administrators verify payment and release documents directly to customers via WhatsApp and email.
+                          To protect customer orders and ensure payment verification, AutoAudit administrators verify payment and release documents directly to customers via WhatsApp and email.
                         </p>
                         <div className="text-[11px] text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded font-semibold inline-block">
                           Helpline: 03420617217 (+92 342 0617217)
@@ -531,7 +531,7 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
                             </div>
                             <h4 className="text-sm font-bold text-slate-800">No Vehicle Reports Found</h4>
                             <p className="text-xs text-slate-500">
-                              Enter your checkout email address or order number (e.g. AA-XXXXX) below to retrieve your official vehicle history report.
+                              Enter your checkout email address or order number (e.g. AA-XXXXX) below to retrieve your vehicle history report.
                             </p>
                             <form 
                               onSubmit={(e) => {

@@ -1,5 +1,5 @@
 /**
- * AutoAudit Client-Side Certified Vehicle History Report PDF Generator
+ * AutoAudit Client-Side Vehicle History Report PDF Generator
  * 
  * Generates 100% standards-compliant PDF-1.4 binary documents natively in the browser.
  * Works completely offline and on static hosts (like Vercel, Netlify, GitHub Pages)
@@ -73,7 +73,7 @@ export function buildReportPdfBytes(data: ReportPdfData): Uint8Array {
     '/F2 9 Tf',
     '0.7 0.75 0.85 rg',
     '40 732 Td',
-    `(${escPdf('Official NMVTIS Clearinghouse & 50-State DMV Title Verification Record')}) Tj`,
+    `(${escPdf('Sample Vehicle History Report Layout - Demo Data')}) Tj`,
     'ET',
 
     // Order number badge on right
@@ -84,33 +84,40 @@ export function buildReportPdfBytes(data: ReportPdfData): Uint8Array {
     `(${escPdf(`REF: ${orderNum}`)}) Tj`,
     'ET',
 
-    // Faint diagonal watermark in background (using standard PDF 1.4 text transformation matrix)
-    'BT',
-    '/F1 32 Tf',
-    '0.94 0.95 0.97 rg',
-    '0.866 0.5 -0.5 0.866 110 440 Tm',
-    `(${escPdf('OFFICIAL AUTOAUDIT REPORT')}) Tj`,
-    'ET',
-
-    // Status Banner: Clean Title Certified (Emerald)
-    '0.925 0.988 0.957 rg',
-    '0.05 0.6 0.4 RG',
+    // Prominent Red Demo Ribbon Bar below header
+    '0.99 0.94 0.94 rg', // soft red bg
+    '0.88 0.25 0.25 RG', // red border
     '1 w',
-    '40 655 532 38 re',
+    '40 682 532 20 re',
     'B',
 
     'BT',
-    '/F1 12 Tf',
-    '0.02 0.37 0.27 rg',
-    '52 671 Td',
-    `(${escPdf('STATUS: CLEAN TITLE CERTIFIED  -  0 TOTAL LOSS OR SALVAGE BRANDS')}) Tj`,
+    '/F1 9 Tf',
+    '0.75 0.1 0.1 rg', // deep red
+    '48 688 Td',
+    `(${escPdf('NOTICE: SAMPLE / DEMO DATA - not a real vehicle record')}) Tj`,
     'ET',
 
+    // Watermark behind content (using standard PDF 1.4 text transformation matrix)
     'BT',
-    '/F2 8.5 Tf',
-    '0.2 0.45 0.35 rg',
-    '52 660 Td',
-    `(${escPdf('All 50 US State Registries, FEMA Flood Databases, and Insurance Clearinghouses Checked')}) Tj`,
+    '/F1 22 Tf',
+    '0.92 0.93 0.95 rg', // Faint watermark
+    '0.866 0.5 -0.5 0.866 60 410 Tm',
+    `(${escPdf('SAMPLE / DEMO DATA - not a real vehicle record')}) Tj`,
+    'ET',
+
+    // Status Banner: Emerald
+    '0.925 0.988 0.957 rg',
+    '0.05 0.6 0.4 RG',
+    '1 w',
+    '40 650 532 26 re',
+    'B',
+
+    'BT',
+    '/F1 10.5 Tf',
+    '0.02 0.37 0.27 rg',
+    '52 659 Td',
+    `(${escPdf('STATUS: NO SALVAGE OR TOTAL LOSS BRANDS REPORTED IN SAMPLE DATA')}) Tj`,
     'ET',
 
     // Vehicle Identification & Specification Box
@@ -152,7 +159,7 @@ export function buildReportPdfBytes(data: ReportPdfData): Uint8Array {
     '0 -15 Td',
     `(${escPdf(`Audit Tier: ${serviceTier}`)}) Tj`,
     '0 -15 Td',
-    `(${escPdf(`Certified Date: ${dateStr}`)}) Tj`,
+    `(${escPdf(`Report Date: ${dateStr}`)}) Tj`,
     'ET',
 
     // Section 1: Title Brand & Loss History Table
@@ -160,7 +167,7 @@ export function buildReportPdfBytes(data: ReportPdfData): Uint8Array {
     '/F1 11 Tf',
     '0.05 0.1 0.2 rg',
     '40 515 Td',
-    `(${escPdf('1. STATE TITLE BRAND & TOTAL LOSS CLEARINGHOUSE FINDINGS')}) Tj`,
+    `(${escPdf('1. TITLE RECORD & LOSS HISTORY FINDINGS (DEMO DATA)')}) Tj`,
     'ET',
 
     // Table Header Row
@@ -174,9 +181,9 @@ export function buildReportPdfBytes(data: ReportPdfData): Uint8Array {
     '/F1 8.5 Tf',
     '0.2 0.25 0.3 rg',
     '48 493 Td',
-    `(${escPdf('DATABASE REGISTRY')}) Tj`,
+    `(${escPdf('RECORD CATEGORY')}) Tj`,
     '150 0 Td',
-    `(${escPdf('REPORTING SOURCE')}) Tj`,
+    `(${escPdf('DATA CATEGORY')}) Tj`,
     '160 0 Td',
     `(${escPdf('RESULT')}) Tj`,
     '70 0 Td',
@@ -190,9 +197,9 @@ export function buildReportPdfBytes(data: ReportPdfData): Uint8Array {
     '48 472 Td',
     `(${escPdf('Salvage / Total Loss')}) Tj`,
     '150 0 Td',
-    `(${escPdf('Insurance Clearinghouses & Auctions')}) Tj`,
+    `(${escPdf('Salvage & Auction Records')}) Tj`,
     '160 0 Td',
-    `(${escPdf('PASSED')}) Tj`,
+    `(${escPdf('RECORD CLEAR')}) Tj`,
     '70 0 Td',
     `(${escPdf('No total loss claims or auction transfers')}) Tj`,
 
@@ -200,9 +207,9 @@ export function buildReportPdfBytes(data: ReportPdfData): Uint8Array {
     '-380 -16 Td',
     `(${escPdf('Flood / Water Damage')}) Tj`,
     '150 0 Td',
-    `(${escPdf('FEMA Emergency Registries & DMVs')}) Tj`,
+    `(${escPdf('Flood & Natural Disaster Data')}) Tj`,
     '160 0 Td',
-    `(${escPdf('PASSED')}) Tj`,
+    `(${escPdf('RECORD CLEAR')}) Tj`,
     '70 0 Td',
     `(${escPdf('Zero flood or storm damage flags')}) Tj`,
 
@@ -210,9 +217,9 @@ export function buildReportPdfBytes(data: ReportPdfData): Uint8Array {
     '-380 -16 Td',
     `(${escPdf('Junk / Dismantler Record')}) Tj`,
     '150 0 Td',
-    `(${escPdf('NMVTIS National Motor Clearinghouse')}) Tj`,
+    `(${escPdf('Dismantler & Scrap Records')}) Tj`,
     '160 0 Td',
-    `(${escPdf('PASSED')}) Tj`,
+    `(${escPdf('RECORD CLEAR')}) Tj`,
     '70 0 Td',
     `(${escPdf('Vehicle never scrapped or crushed')}) Tj`,
 
@@ -220,9 +227,9 @@ export function buildReportPdfBytes(data: ReportPdfData): Uint8Array {
     '-380 -16 Td',
     `(${escPdf('Stolen Vehicle Registry')}) Tj`,
     '150 0 Td',
-    `(${escPdf('NICB & Federal Law Enforcement')}) Tj`,
+    `(${escPdf('Theft & Stolen Vehicle Records')}) Tj`,
     '160 0 Td',
-    `(${escPdf('PASSED')}) Tj`,
+    `(${escPdf('RECORD CLEAR')}) Tj`,
     '70 0 Td',
     `(${escPdf('No active police theft records')}) Tj`,
 
@@ -230,19 +237,19 @@ export function buildReportPdfBytes(data: ReportPdfData): Uint8Array {
     '-380 -16 Td',
     `(${escPdf('Safety Recall Registry')}) Tj`,
     '150 0 Td',
-    `(${escPdf('NHTSA Federal Safety Bureau')}) Tj`,
+    `(${escPdf('Safety & Recall Records')}) Tj`,
     '160 0 Td',
-    `(${escPdf('PASSED')}) Tj`,
+    `(${escPdf('RECORD CLEAR')}) Tj`,
     '70 0 Td',
     `(${escPdf('0 open safety recalls requiring repair')}) Tj`,
     'ET',
 
-    // Section 2: Certified Odometer Timeline
+    // Section 2: Odometer Timeline
     'BT',
     '/F1 11 Tf',
     '0.05 0.1 0.2 rg',
     '40 375 Td',
-    `(${escPdf('2. CERTIFIED ODOMETER TIMELINE & INTEGRITY AUDIT')}) Tj`,
+    `(${escPdf('2. ODOMETER TIMELINE & HISTORY (DEMO DATA)')}) Tj`,
     'ET',
 
     // Table Header
@@ -262,7 +269,7 @@ export function buildReportPdfBytes(data: ReportPdfData): Uint8Array {
     '100 0 Td',
     `(${escPdf('RECORDING FACILITY')}) Tj`,
     '160 0 Td',
-    `(${escPdf('AUDIT STATUS')}) Tj`,
+    `(${escPdf('STATUS')}) Tj`,
     'ET',
 
     // Odometer Rows
@@ -276,28 +283,28 @@ export function buildReportPdfBytes(data: ReportPdfData): Uint8Array {
     '100 0 Td',
     `(${escPdf('Authorized Dealer Network')}) Tj`,
     '160 0 Td',
-    `(${escPdf('Pre-Delivery Inspection (Certified)')}) Tj`,
+    `(${escPdf('Pre-Delivery Inspection (Recorded)')}) Tj`,
 
     '-380 -16 Td',
     `(${escPdf('10/05/2023')}) Tj`,
     '120 0 Td',
     `(${escPdf('18,420 mi')}) Tj`,
     '100 0 Td',
-    `(${escPdf('State DMV Registration Bureau')}) Tj`,
+    `(${escPdf('State Registration Bureau')}) Tj`,
     '160 0 Td',
-    `(${escPdf('Registration Renewal (Steady)')}) Tj`,
+    `(${escPdf('Registration Renewal (Recorded)')}) Tj`,
 
     '-380 -16 Td',
     `(${escPdf('08/19/2025')}) Tj`,
     '120 0 Td',
     `(${escPdf('36,810 mi')}) Tj`,
     '100 0 Td',
-    `(${escPdf('Certified Vehicle Service Center')}) Tj`,
+    `(${escPdf('Authorized Vehicle Service Center')}) Tj`,
     '160 0 Td',
-    `(${escPdf('Scheduled 35k Service (Verified)')}) Tj`,
+    `(${escPdf('Scheduled 35k Service (Recorded)')}) Tj`,
     'ET',
 
-    // Legal / Security Box at Bottom
+    // Legal / Notice Box at Bottom
     '0.96 0.97 0.98 rg',
     '0.88 0.9 0.93 RG',
     '0.5 w',
@@ -308,16 +315,16 @@ export function buildReportPdfBytes(data: ReportPdfData): Uint8Array {
     '/F1 9 Tf',
     '0.1 0.15 0.25 rg',
     '52 242 Td',
-    `(${escPdf('LEGAL & CRYPTOGRAPHIC COMPLIANCE NOTICE')}) Tj`,
+    `(${escPdf('REPORT NOTICE & DISCLOSURE')}) Tj`,
     'ET',
 
     'BT',
     '/F2 7.5 Tf',
     '0.3 0.35 0.4 rg',
     '52 226 Td',
-    `(${escPdf('This official vehicle history record was assembled and verified in accordance with the Federal Anti-Car Theft Act.')}) Tj`,
+    `(${escPdf('This report layout presents simulated vehicle records for evaluation and demonstration purposes.')}) Tj`,
     '0 -12 Td',
-    `(${escPdf('National Motor Vehicle Title Information System (NMVTIS) clearinghouse records are protected under federal law.')}) Tj`,
+    `(${escPdf('Data is compiled from available records and does not constitute a physical mechanical inspection.')}) Tj`,
     '0 -12 Td',
     `(${escPdf(`Tamper-Evident SHA-256 Digest: AA-SEAL-${orderNum.replace(/[^a-zA-Z0-9]/g, '')}-${Date.now().toString(16).toUpperCase()}`)}) Tj`,
     '0 -12 Td',
@@ -374,7 +381,7 @@ export function buildReportPdfBytes(data: ReportPdfData): Uint8Array {
 }
 
 /**
- * Creates an official report PDF Blob and temporary Object URL
+ * Creates a vehicle history report PDF Blob and temporary Object URL
  */
 export function generateReportPdfBlob(data: ReportPdfData): { blob: Blob; fileName: string; url: string } {
   const bytes = buildReportPdfBytes(data);
@@ -389,7 +396,7 @@ export function generateReportPdfBlob(data: ReportPdfData): { blob: Blob; fileNa
 }
 
 /**
- * Directly downloads the certified report PDF file in the browser without opening any new page or tab
+ * Directly downloads the vehicle report PDF file in the browser without opening any new page or tab
  */
 export function downloadReportPdfBlob(data: ReportPdfData): string {
   const { blob, fileName, url } = generateReportPdfBlob(data);
@@ -422,7 +429,7 @@ export function downloadReportPdfBlob(data: ReportPdfData): string {
 }
 
 /**
- * Handles report viewing by triggering immediate certified PDF download safely
+ * Handles report viewing by triggering immediate PDF download safely
  */
 export function viewReportPdfBlob(data: ReportPdfData): void {
   downloadReportPdfBlob(data);

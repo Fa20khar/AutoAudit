@@ -27,14 +27,14 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({
   const generateDefaultBody = () => {
     return `Dear ${order.customer.fullName},
 
-Great news! The official vehicle history report for your ${order.vehicle.year} ${order.vehicle.make} ${order.vehicle.model} (VIN: ${order.vehicle.vinOrReg}) is compiled, verified, and ready for you to access.
+Great news! The vehicle history report for your ${order.vehicle.year} ${order.vehicle.make} ${order.vehicle.model} (VIN: ${order.vehicle.vinOrReg}) is compiled and ready for you to access.
 
 Vehicle Summary:
 - Order Reference: #${order.orderNumber}
 - Vehicle: ${order.vehicle.year} ${order.vehicle.make} ${order.vehicle.model}
 - Chassis VIN: ${order.vehicle.vinOrReg}
 - Service Tier: ${order.serviceName}
-- Status: NMVTIS & State Title Records Verified Clear
+- Status: Report Compiled & Ready
 
 Attached Document:
 ${order.resultFile?.fileName || `${order.vehicle.make}-${order.vehicle.vinOrReg}-Report.pdf`}
@@ -173,15 +173,15 @@ AutoAudit Fulfillment Team`;
                   Your Vehicle History Report is Ready
                 </h4>
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  Hello <strong className="text-slate-800">{order.customer.fullName}</strong>, our team has completed the official title and historical records audit for your vehicle.
+                  Hello <strong className="text-slate-800">{order.customer.fullName}</strong>, our team has completed the vehicle history report compilation for your vehicle.
                 </p>
               </div>
 
               {/* Vehicle Highlight Card */}
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2.5 text-xs">
                 <div className="flex justify-between items-baseline">
-                  <span className="text-slate-500 text-[11px] uppercase tracking-wider font-semibold">Verified Vehicle</span>
-                  <span className="text-emerald-700 font-bold font-mono">NMVTIS & DMV Passed</span>
+                  <span className="text-slate-500 text-[11px] uppercase tracking-wider font-semibold">Vehicle Details</span>
+                  <span className="text-emerald-700 font-bold font-mono">Report Ready</span>
                 </div>
                 <p className="text-sm font-bold text-slate-900">
                   {order.vehicle.year} {order.vehicle.make} {order.vehicle.model}
@@ -206,10 +206,10 @@ AutoAudit Fulfillment Team`;
                   className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl font-bold text-xs shadow-md cursor-pointer transition-colors"
                 >
                   <FileText className="w-4 h-4" />
-                  <span>Download Official Report PDF</span>
+                  <span>Download Report PDF</span>
                 </button>
                 <p className="text-[11px] text-slate-400">
-                  Instant certified PDF download. You can also view it anytime from your AutoAudit account.
+                  Instant PDF download. You can also view it anytime from your AutoAudit account.
                 </p>
               </div>
 
@@ -236,7 +236,7 @@ AutoAudit Fulfillment Team`;
 
               {/* Email Footer */}
               <div className="pt-4 border-t border-slate-100 text-[11px] text-slate-400 text-center space-y-1">
-                <p>AutoAudit Technologies · Official Vehicle History & Title Verification</p>
+                <p>AutoAudit Technologies · Vehicle History Reports</p>
                 <p>Have questions regarding this report? Reply to this email or visit our Help Center.</p>
               </div>
 

@@ -392,7 +392,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           make: make.trim() || 'Verified Vehicle',
           model: model.trim() || 'Series',
           year: year || 2021,
-          mileage: mileage.trim() || 'Actual Certified',
+          mileage: mileage.trim() || 'Not provided',
           countryOrState: countryOrState.trim() || 'US',
           customerNotes: customerNotes.trim() || undefined
         },
@@ -961,7 +961,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                             <p className="text-rose-600 text-[11px] font-semibold">{vinError}</p>
                           ) : (
                             <p className="text-slate-500 text-[10px] sm:text-[11px] leading-tight">
-                              Official registration plate number with state or province.
+                              Registration plate number with state or province.
                             </p>
                           )
                         )}
@@ -1178,7 +1178,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       <span>Settlement & Payment Instructions</span>
                     </div>
                     <p className="text-[11px] text-slate-600 leading-relaxed">
-                      {paymentInstructions?.instructions || 'Please complete your bank transfer using your Order Number as the payment reference. Once submitted, our audit team will verify receipt and dispatch your official vehicle report.'}
+                      {paymentInstructions?.instructions || 'Please complete your bank transfer using your Order Number as the payment reference. Once submitted, our audit team will verify receipt and dispatch your vehicle history report.'}
                     </p>
                   </div>
 
@@ -1227,7 +1227,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       className="mt-0.5 rounded text-[#2563EB] focus:ring-blue-500 shrink-0"
                     />
                     <span>
-                      I acknowledge AutoAudit terms and verify that I am ordering an official online vehicle records compilation.
+                      I authorize processing the entered vehicle and contact details to prepare the vehicle history report and agree to the terms of service.
                     </span>
                   </label>
                 </div>
@@ -1473,7 +1473,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   <span>Payment Transfer Instructions</span>
                 </div>
                 <p className="text-[11px] text-slate-600 leading-relaxed">
-                  {paymentInstructions?.instructions || 'Please complete your bank transfer using your Order Number as the payment reference. Once submitted, our audit team will verify receipt and dispatch your official vehicle report.'}
+                  {paymentInstructions?.instructions || 'Please complete your bank transfer using your Order Number as the payment reference. Once submitted, our audit team will verify receipt and dispatch your vehicle history report.'}
                 </p>
 
                 {paymentInstructions && (
@@ -1604,7 +1604,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   <span>Admin Fulfillment & Payment Protection Policy</span>
                 </div>
                 <p className="text-[11px] text-slate-600 leading-relaxed">
-                  Your order is registered in our Admin Operations Queue. To prevent unauthorized report harvesting and ensure payment verification, certified PDF documents are dispatched directly by AutoAudit Administration via WhatsApp or email upon payment receipt.
+                  Your order is registered in our Admin Operations Queue. To ensure payment verification, PDF report documents are dispatched directly by AutoAudit Administration via WhatsApp or email upon payment receipt.
                 </p>
                 <div className="text-[11px] text-emerald-800 bg-emerald-100/70 px-2.5 py-1 rounded font-semibold inline-block">
                   Admin Support Helpline: 03420617217 (+92 342 0617217)
