@@ -140,27 +140,74 @@ export const VehicleReportForm: React.FC<VehicleReportFormProps> = ({
     }
   };
 
+  /**
+   * Automatically scrolls the window to the nearest invalid field or to the top of the form
+   * when validation errors occur, and sets focus on the invalid input.
+   */
+  const scrollToFirstInvalidField = (targetIdOrSelector?: string) => {
+    if (typeof window === 'undefined') return;
+
+    if (targetIdOrSelector) {
+      const el = document.querySelector(targetIdOrSelector) as HTMLElement | null;
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (typeof el.focus === 'function') {
+          el.focus({ preventScroll: true });
+        }
+        return;
+      }
+    }
+
+    // Fallback: check for any element marked with aria-invalid="true" or data-invalid
+    const firstInvalid = document.querySelector(
+      'input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="true"], [data-invalid="true"]'
+    ) as HTMLElement | null;
+
+    if (firstInvalid) {
+      firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (typeof firstInvalid.focus === 'function') {
+        firstInvalid.focus({ preventScroll: true });
+      }
+      return;
+    }
+
+    // Fallback: scroll smoothly to the top of the form container or top of the window
+    const formElement = document.getElementById('vehicle-report-form');
+    if (formElement) {
+      formElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   // Step 1 Validation
   const validateStep1 = (): boolean => {
     setVinError('');
     const cleanId = vinOrPlate.trim().toUpperCase();
     if (!cleanId) {
-      setVinError(isVin ? 'Please enter a 17-character VIN number.' : 'Please enter a vehicle license plate.');
+      const msg = isVin ? 'Please enter a 17-character VIN number.' : 'Please enter a vehicle license plate.';
+      setVinError(msg);
+      showToast({ title: 'Vehicle Identifier Required', message: msg, type: 'warning' });
+      scrollToFirstInvalidField('#vin-plate-input');
       return false;
     }
     if (isVin) {
       const val = validateVinFormat(cleanId);
       if (!val.isValid) {
         setVinError(val.message);
+        showToast({ title: 'Invalid VIN Format', message: val.message, type: 'warning' });
+        scrollToFirstInvalidField('#vin-plate-input');
         return false;
       }
     }
     if (!make.trim()) {
       showToast({ title: 'Vehicle Make Required', message: 'Please specify the vehicle manufacturer make (e.g. Toyota, Honda, Ford).', type: 'warning' });
+      scrollToFirstInvalidField('#make-input');
       return false;
     }
     if (!model.trim()) {
       showToast({ title: 'Vehicle Model Required', message: 'Please enter the vehicle model (e.g. Camry, Accord, F-150).', type: 'warning' });
+      scrollToFirstInvalidField('#model-input');
       return false;
     }
     return true;
@@ -170,19 +217,23 @@ export const VehicleReportForm: React.FC<VehicleReportFormProps> = ({
   const handleProceedToPayment = async () => {
     if (!fullName.trim() || fullName.trim().length < 2) {
       showToast({ title: 'Name Required', message: 'Please enter your full name.', type: 'warning' });
+      scrollToFirstInvalidField('#fullname-input');
       return;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
       showToast({ title: 'Valid Email Required', message: 'Please enter a valid email address so we can deliver your report.', type: 'warning' });
+      scrollToFirstInvalidField('#email-input');
       return;
     }
     if (!phone.trim() || phone.trim().length < 5) {
       showToast({ title: 'Phone / WhatsApp Required', message: 'Please provide a valid contact number for report delivery updates.', type: 'warning' });
+      scrollToFirstInvalidField('#phone-input');
       return;
     }
     if (!agreedToTerms) {
       showToast({ title: 'Terms Agreement Required', message: 'Please accept the service terms to continue.', type: 'warning' });
+      scrollToFirstInvalidField('#terms-checkbox');
       return;
     }
 
@@ -506,7 +557,7 @@ export const VehicleReportForm: React.FC<VehicleReportFormProps> = ({
           </div>
 
         {/* NATIVE AUTOAUDIT VEHICLE FORM & PAYMENT CHECKOUT */}
-        <div className="bg-[#0F1B2D] border border-[rgba(148,163,184,0.20)] rounded-[16px] shadow-2xl p-6 sm:p-8 space-y-6">
+        <div id="vehicle-report-form" className="bg-[#0F1B2D] border border-[rgba(148,163,184,0.20)] rounded-[16px] shadow-2xl p-6 sm:p-8 space-y-6">
             
             {/* STEP 1: VEHICLE DETAILS */}
             {currentStep === 1 && (
@@ -571,8 +622,10 @@ export const VehicleReportForm: React.FC<VehicleReportFormProps> = ({
                     )}
                   </div>
                   <input
+                    id="vin-plate-input"
                     type="text"
                     value={vinOrPlate}
+                    aria-invalid={!!vinError}
                     onChange={(e) => {
                       setVinOrPlate(e.target.value.toUpperCase());
                       setVinError('');
@@ -624,6 +677,7 @@ export const VehicleReportForm: React.FC<VehicleReportFormProps> = ({
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-300">Vehicle Make *</label>
                     <input
+                      id="make-input"
                       type="text"
                       value={make}
                       onChange={(e) => setMake(e.target.value)}
@@ -635,6 +689,7 @@ export const VehicleReportForm: React.FC<VehicleReportFormProps> = ({
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-300">Vehicle Model *</label>
                     <input
+                      id="model-input"
                       type="text"
                       value={model}
                       onChange={(e) => setModel(e.target.value)}
@@ -800,6 +855,7 @@ export const VehicleReportForm: React.FC<VehicleReportFormProps> = ({
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-slate-300">Your Full Name *</label>
                       <input
+                        id="fullname-input"
                         type="text"
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
@@ -811,6 +867,7 @@ export const VehicleReportForm: React.FC<VehicleReportFormProps> = ({
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-slate-300">Delivery Email Address *</label>
                       <input
+                        id="email-input"
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
@@ -824,6 +881,7 @@ export const VehicleReportForm: React.FC<VehicleReportFormProps> = ({
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-slate-300">Mobile Phone / WhatsApp *</label>
                       <input
+                        id="phone-input"
                         type="tel"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
@@ -883,6 +941,7 @@ export const VehicleReportForm: React.FC<VehicleReportFormProps> = ({
                 {/* Terms checkbox */}
                 <label className="flex items-start gap-2.5 cursor-pointer text-xs text-slate-400">
                   <input
+                    id="terms-checkbox"
                     type="checkbox"
                     checked={agreedToTerms}
                     onChange={(e) => setAgreedToTerms(e.target.checked)}

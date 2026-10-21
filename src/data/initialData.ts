@@ -417,15 +417,16 @@ export const FAQS = [
   },
   {
     q: 'What information is included in a vehicle report?',
-    a: 'Reports compile available vehicle history records, including title brand history, salvage records, reported damage, recorded odometer history, and past service or auction listings where available. Reports are compiled from available data sources and may be incomplete.'
+    a: 'A report summarizes vehicle history information such as title status, odometer readings and reported incidents, where available. Coverage can vary by vehicle, and reports may be incomplete. See the sample report for the layout.'
   },
   {
+    // TODO: Client to confirm refund policy and timeframe
     q: 'What is your refund/cancellation policy?',
-    a: 'If records cannot be obtained for your submitted VIN, or if we fail to fulfill your report within the stated timeframe, you are entitled to a full refund to your original payment method. You can request cancellation through support before report compilation starts.'
+    a: 'Please contact support about cancellations or refunds. Refund terms are confirmed with your order.'
   },
   {
     q: 'How do I print or export my vehicle report as a PDF?',
-    a: 'You can easily save or print any AutoAudit report as a high-resolution PDF using your browser’s native "Print to PDF" feature: 1) Open your report or click "Print / Save PDF" (or press Ctrl + P on Windows / Cmd + P on Mac). 2) In the print destination dropdown, select "Save as PDF" (or "Microsoft Print to PDF"). 3) Under "More settings", ensure "Background graphics" is checked so all colored badges, inspection seals, and charts are rendered crisply. 4) Set margins to "Default" or "Minimum", then click "Save". On mobile (iOS Safari / Android Chrome), tap the Share icon or browser menu (⋮), choose "Print", pinch-to-zoom the preview or tap "Save as PDF", and save directly to your Files or Drive.'
+    a: 'You can save or print your report as a PDF using your browser’s print menu. Select "Save as PDF" as the destination and ensure background graphics are enabled for badges and formatting. On mobile devices, use the Share or browser menu to export directly to PDF.'
   }
 ];
 

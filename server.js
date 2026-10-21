@@ -2761,9 +2761,192 @@ function getSmtpStatus() {
     totalDispatched: db.getEmails().length
   };
 }
+async function sendAdminNewOrderAlert(order) {
+  const adminEmail = process.env.ADMIN_ALERT_EMAIL || "admin@autoaudit.com";
+  const vehicleName = `${order.vehicle.year} ${order.vehicle.make} ${order.vehicle.model}`;
+  const vin = order.vehicle.vinOrReg;
+  const isPaid = order.payment.status === "Paid";
+  const paymentBadge = isPaid ? `PAID ($${order.total.toFixed(2)})` : `PENDING PAYMENT ($${order.total.toFixed(2)})`;
+  const subject = `[${isPaid ? "NEW PAID ORDER" : "NEW ORDER RECEIVED"}] #${order.orderNumber} - ${order.customer.fullName} - ${vehicleName}`;
+  const text = `NEW ORDER ALERT
+
+Order Number: #${order.orderNumber}
+Status: ${order.status}
+Payment: ${paymentBadge} via ${order.payment.method || "Card"}
+
+CUSTOMER DETAILS:
+Name: ${order.customer.fullName}
+Email: ${order.customer.email}
+Phone: ${order.customer.phone || "N/A"}
+
+VEHICLE DETAILS:
+Vehicle: ${vehicleName}
+VIN / Plate: ${vin}
+Region: ${order.vehicle.countryOrState || "N/A"}
+Notes: ${order.vehicle.customerNotes || "None"}
+
+Open AutoAudit Admin Console (/admin) to review and fulfill this order.`;
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #07111f; color: #f8fafc; margin: 0; padding: 24px; }
+    .container { max-width: 600px; margin: 0 auto; background: #0b132b; border-radius: 12px; border: 1px solid #1e293b; overflow: hidden; }
+    .header { background: #07111f; padding: 24px 32px; border-bottom: 1px solid #1e293b; }
+    .header h1 { margin: 0; font-size: 20px; font-weight: 800; color: #10b981; }
+    .badge { display: inline-block; background: ${isPaid ? "#065f46" : "#78350f"}; color: #ffffff; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; text-transform: uppercase; margin-top: 8px; }
+    .body { padding: 28px 32px; }
+    .card { background: #0f1b2d; border: 1px solid #1e293b; border-radius: 8px; padding: 16px; margin: 16px 0; font-size: 13px; line-height: 1.6; }
+    .row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+    .label { color: #94a3b8; }
+    .val { font-weight: 600; color: #ffffff; }
+    .footer { padding: 16px 32px; background: #07111f; font-size: 11px; color: #64748b; text-align: center; border-top: 1px solid #1e293b; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>AutoAudit Admin Notification</h1>
+      <span class="badge">${paymentBadge}</span>
+    </div>
+    <div class="body">
+      <h2 style="font-size: 16px; margin-top: 0; color: #ffffff;">Order #${order.orderNumber} Placed</h2>
+      <div class="card">
+        <div class="row"><span class="label">Customer Name:</span><span class="val">${order.customer.fullName}</span></div>
+        <div class="row"><span class="label">Customer Email:</span><span class="val">${order.customer.email}</span></div>
+        <div class="row"><span class="label">Customer Phone:</span><span class="val">${order.customer.phone || "N/A"}</span></div>
+        <div class="row"><span class="label">Vehicle:</span><span class="val">${vehicleName}</span></div>
+        <div class="row"><span class="label">VIN / Chassis:</span><span class="val" style="font-family: monospace; color: #60a5fa;">${vin}</span></div>
+        <div class="row"><span class="label">Report Plan:</span><span class="val">${order.serviceName}</span></div>
+        <div class="row"><span class="label">Total Amount:</span><span class="val" style="color: #10b981; font-weight: 800;">$${order.total.toFixed(2)} USD</span></div>
+        <div class="row"><span class="label">Payment Method:</span><span class="val">${order.payment.method || "Card"}</span></div>
+        <div class="row"><span class="label">Payment Status:</span><span class="val">${order.payment.status}</span></div>
+        <div class="row"><span class="label">Gateway / Ref:</span><span class="val" style="font-family: monospace;">${order.payment.gatewayRef || "Pending Ref"}</span></div>
+      </div>
+      <p style="font-size: 12px; color: #94a3b8;">
+        Log into the AutoAudit Admin Console (/admin) to view customer records, verify payment, and compile the official vehicle history report.
+      </p>
+    </div>
+    <div class="footer">
+      AutoAudit Operations Notification Dispatcher \xB7 Live Server Alert
+    </div>
+  </div>
+</body>
+</html>`;
+  const mailOptions = {
+    from: SYSTEM_FROM_EMAIL,
+    to: adminEmail,
+    subject,
+    text,
+    html
+  };
+  const info = await transporter.sendMail(mailOptions);
+  const messageId = info.messageId || `admin_msg_${Date.now()}`;
+  const notification = {
+    id: `em-admin-${Date.now()}`,
+    orderId: order.id,
+    orderNumber: order.orderNumber,
+    recipientEmail: adminEmail,
+    recipientType: "admin",
+    subject,
+    type: "new_order_admin",
+    body: text,
+    htmlBody: html,
+    messageId,
+    smtpTransport: isRealSmtp ? "Live SMTP" : "Nodemailer Mock SMTP (JSON Transporter)",
+    sentAt: (/* @__PURE__ */ new Date()).toISOString(),
+    read: false
+  };
+  db.addEmail(notification);
+  console.log(`[SMTP] Dispatched Admin Alert for Order #${order.orderNumber} to ${adminEmail}`);
+  return { success: true, messageId, email: notification };
+}
+async function sendAdminPaymentProofAlert(order, proofRef, proofNote) {
+  const adminEmail = process.env.ADMIN_ALERT_EMAIL || "admin@autoaudit.com";
+  const vehicleName = `${order.vehicle.year} ${order.vehicle.make} ${order.vehicle.model}`;
+  const subject = `[ACTION REQUIRED: PAYMENT PROOF SUBMITTED] #${order.orderNumber} - ${order.customer.fullName} ($${order.total.toFixed(2)})`;
+  const text = `PAYMENT PROOF SUBMITTED BY CUSTOMER
+
+Order: #${order.orderNumber}
+Customer: ${order.customer.fullName} (${order.customer.phone || order.customer.email})
+Amount: $${order.total.toFixed(2)} USD
+Vehicle: ${vehicleName} (VIN: ${order.vehicle.vinOrReg})
+
+PAYMENT REFERENCE / PROOF:
+${proofRef}
+Note: ${proofNote || "None"}
+
+Please verify your bank account / wallet and click 'Approve Payment' in the AutoAudit Admin Panel to release the report.`;
+  const mailOptions = {
+    from: SYSTEM_FROM_EMAIL,
+    to: adminEmail,
+    subject,
+    text
+  };
+  const info = await transporter.sendMail(mailOptions);
+  const messageId = info.messageId || `admin_proof_${Date.now()}`;
+  const notification = {
+    id: `em-admin-proof-${Date.now()}`,
+    orderId: order.id,
+    orderNumber: order.orderNumber,
+    recipientEmail: adminEmail,
+    recipientType: "admin",
+    subject,
+    type: "payment_received",
+    body: text,
+    messageId,
+    smtpTransport: isRealSmtp ? "Live SMTP" : "Nodemailer Mock SMTP (JSON Transporter)",
+    sentAt: (/* @__PURE__ */ new Date()).toISOString(),
+    read: false
+  };
+  db.addEmail(notification);
+  return { success: true, messageId, email: notification };
+}
+async function sendAdminPaymentSubmittedAlert(order, transactionId) {
+  const adminEmail = process.env.ADMIN_ALERT_EMAIL || "admin@autoaudit.com";
+  const vehicleName = `${order.vehicle.year} ${order.vehicle.make} ${order.vehicle.model}`;
+  const txRef = transactionId || order.payment.gatewayRef || "Confirmed via Gateway";
+  const subject = `[PAYMENT CONFIRMED] #${order.orderNumber} - ${order.customer.fullName} ($${order.total.toFixed(2)})`;
+  const text = `PAYMENT CONFIRMED FOR ORDER #${order.orderNumber}
+
+Customer: ${order.customer.fullName} (${order.customer.email})
+Amount: $${order.total.toFixed(2)} USD
+Method: ${order.payment.method || "Online Payment"}
+Transaction ID: ${txRef}
+Vehicle: ${vehicleName} (VIN: ${order.vehicle.vinOrReg})
+
+Official vehicle history report generation has been queued automatically.`;
+  const mailOptions = {
+    from: SYSTEM_FROM_EMAIL,
+    to: adminEmail,
+    subject,
+    text
+  };
+  const info = await transporter.sendMail(mailOptions);
+  const messageId = info.messageId || `admin_pay_${Date.now()}`;
+  const notification = {
+    id: `em-admin-pay-${Date.now()}`,
+    orderId: order.id,
+    orderNumber: order.orderNumber,
+    recipientEmail: adminEmail,
+    recipientType: "admin",
+    subject,
+    type: "payment_received",
+    body: text,
+    messageId,
+    smtpTransport: isRealSmtp ? "Live SMTP" : "Nodemailer Mock SMTP (JSON Transporter)",
+    sentAt: (/* @__PURE__ */ new Date()).toISOString(),
+    read: false
+  };
+  db.addEmail(notification);
+  return { success: true, messageId, email: notification };
+}
 
 // server/services/mockReportGenerator.ts
 var pdfCache = /* @__PURE__ */ new Map();
+var DEMO_DISCLAIMER_TEXT = "SAMPLE / DEMO DATA - not a real vehicle record";
 function generateDummyPdfBuffer(order) {
   const vehicleName = `${order.vehicle.year} ${order.vehicle.make} ${order.vehicle.model}`.trim();
   const vin = (order.vehicle.vinOrReg || "UNKNOWN_VIN").toUpperCase();
@@ -2796,12 +2979,12 @@ function generateDummyPdfBuffer(order) {
     "40 754 Td",
     `(${esc("AUTOAUDIT VEHICLE INTELLIGENCE REPORT")}) Tj`,
     "ET",
-    // Subtitle
+    // Subtitle / Demo Disclaimer
     "BT",
     "/F2 9 Tf",
     "0.7 0.75 0.85 rg",
     "40 732 Td",
-    `(${esc("Certified NMVTIS National Clearinghouse & 50-State DMV Verification Record")}) Tj`,
+    `(${esc(`[DEMO MODE] ${DEMO_DISCLAIMER_TEXT}`)}) Tj`,
     "ET",
     // Order number badge on right
     "BT",
@@ -2810,13 +2993,28 @@ function generateDummyPdfBuffer(order) {
     "440 746 Td",
     `(${esc(`REF: ${orderNum}`)}) Tj`,
     "ET",
+    // Prominent Red Demo Ribbon Bar below header
+    "0.99 0.94 0.94 rg",
+    // soft red bg
+    "0.88 0.25 0.25 RG",
+    // red border
+    "1 w",
+    "40 682 532 20 re",
+    "B",
+    "BT",
+    "/F1 9 Tf",
+    "0.75 0.1 0.1 rg",
+    // deep red
+    "48 688 Td",
+    `(${esc(`NOTICE: ${DEMO_DISCLAIMER_TEXT}`)}) Tj`,
+    "ET",
     // Watermark behind content (using standard PDF 1.4 text transformation matrix)
     "BT",
-    "/F1 32 Tf",
-    "0.93 0.94 0.96 rg",
-    // Very faint grey
-    "0.866 0.5 -0.5 0.866 110 440 Tm",
-    `(${esc("OFFICIAL AUTOAUDIT REPORT")}) Tj`,
+    "/F1 22 Tf",
+    "0.92 0.93 0.95 rg",
+    // Faint watermark
+    "0.866 0.5 -0.5 0.866 60 410 Tm",
+    `(${esc(DEMO_DISCLAIMER_TEXT)}) Tj`,
     "ET",
     // Clean Title Verified Ribbon
     "0.925 0.988 0.957 rg",
@@ -3102,6 +3300,9 @@ function getReportPdfForOrder(orderId) {
   return { buffer, fileName };
 }
 async function processOrderReport(order, options) {
+  if (order.payment?.status !== "Paid") {
+    throw new Error(`Cannot compile or release vehicle report: Order #${order.orderNumber} payment status is "${order.payment?.status || "Pending"}", not "Paid". Payment must be approved by an administrator or confirmed via a verified webhook.`);
+  }
   const now = (/* @__PURE__ */ new Date()).toISOString();
   const sanitizedVin = (order.vehicle.vinOrReg || "RECORD").replace(/[^a-zA-Z0-9]/g, "_");
   const fileName = `AutoAudit_Report_${sanitizedVin}_${order.orderNumber}.pdf`;
@@ -3345,12 +3546,14 @@ ordersRouter.post("/", async (req, res) => {
       details: `$${total} processed via ${body.payment?.method || "Credit Card"}.`
     }
   ];
+  const orderStatus = "Pending Payment";
+  const paymentStatus = "Pending";
   const newOrder = {
     id: `ord-${Date.now()}`,
     orderNumber: newOrderNum,
     serviceId: body.serviceId,
     serviceName: service ? service.name : body.serviceName || "Vehicle History Report",
-    status: "Paid / New",
+    status: orderStatus,
     subtotal,
     discountAmount,
     total,
@@ -3373,29 +3576,114 @@ ordersRouter.post("/", async (req, res) => {
       customerNotes: body.vehicle.customerNotes ? sanitizeText(body.vehicle.customerNotes) : ""
     },
     payment: {
-      status: "Paid",
-      gatewayRef: `ch_${Math.random().toString(36).substring(2, 15)}`,
-      paidAt: now,
-      method: body.payment?.method || "Visa ending in 4242"
+      status: paymentStatus,
+      gatewayRef: "Awaiting Payment Proof",
+      paidAt: void 0,
+      method: body.payment?.method || "Direct Bank Transfer / Wire"
     },
-    internalNotes: "Order received. Automated NMVTIS and title check initialized.",
+    internalNotes: `Order created. Customer pending payment verification via ${body.payment?.method || "Direct Bank Transfer"}.`,
     createdAt: now,
     updatedAt: now,
     auditLogs
   };
   await db.createOrderAsync(newOrder);
-  handleNewOrderCreation(newOrder);
-  triggerAutomatedEmailSequence(newOrder, {
-    stageDelaySeconds: { stage2: 4, stage3: 8 },
-    autoAdvanceOrderStatus: true
-  }).catch((err) => {
-    console.error("[SMTP] Error starting automated email sequence:", err);
+  sendAdminNewOrderAlert(newOrder).catch((err) => {
+    console.error("[SMTP] Error sending admin order notification:", err);
   });
   const { internalNotes, ...safeNewOrder } = newOrder;
   res.status(201).json({
     success: true,
-    message: "Order created successfully. Processing has begun.",
+    message: "Order registered. Proceed to submit transfer reference or payment proof for verification.",
     data: safeNewOrder
+  });
+});
+ordersRouter.post("/:id/payment-proof", async (req, res) => {
+  const { id } = req.params;
+  const { proofRef, note } = req.body;
+  const cleanProof = sanitizeText(proofRef);
+  if (!cleanProof) {
+    res.status(400).json({ success: false, error: "Payment reference or transaction ID is required." });
+    return;
+  }
+  const order = await db.getOrderByIdAsync(id);
+  if (!order) {
+    res.status(404).json({ success: false, error: `Order "${id}" not found.` });
+    return;
+  }
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  order.payment.gatewayRef = cleanProof;
+  order.payment.paidAt = now;
+  order.status = "Payment Submitted";
+  order.updatedAt = now;
+  const proofLog = {
+    id: `log-${Date.now()}-proof`,
+    timestamp: now,
+    actor: "Customer (Payment Proof)",
+    action: "Payment Proof Submitted",
+    details: `Customer submitted transaction ref: ${cleanProof}. Note: ${note ? sanitizeText(note) : "None"}`
+  };
+  order.auditLogs.unshift(proofLog);
+  if (order.internalNotes) {
+    order.internalNotes += `
+[${now}] Customer submitted payment reference: ${cleanProof}`;
+  } else {
+    order.internalNotes = `Customer submitted payment reference: ${cleanProof}`;
+  }
+  db.updateOrderStatus(order.id, "Payment Submitted", `Customer submitted payment reference: ${cleanProof}`);
+  sendAdminPaymentProofAlert(order, cleanProof, note ? sanitizeText(note) : void 0).catch((err) => {
+    console.error("[SMTP] Error sending admin payment proof alert:", err);
+  });
+  const { internalNotes, ...safeOrder } = order;
+  res.json({
+    success: true,
+    message: "Payment reference submitted successfully. Our team will verify and dispatch your report.",
+    data: safeOrder
+  });
+});
+ordersRouter.get("/:id/payment-status", async (req, res) => {
+  const { id } = req.params;
+  const cleanId = String(id).trim();
+  const orders = await db.getOrdersAsync();
+  const order = orders.find(
+    (o) => o.id === cleanId || o.orderNumber.toLowerCase() === cleanId.toLowerCase()
+  );
+  if (!order) {
+    res.status(404).json({ success: false, error: `Order "${id}" not found.` });
+    return;
+  }
+  const isPaid = order.payment?.status === "Paid";
+  const { internalNotes, ...safeOrder } = order;
+  res.json({
+    success: true,
+    orderId: order.id,
+    orderNumber: order.orderNumber,
+    isPaid,
+    paymentStatus: order.payment?.status || "Pending",
+    orderStatus: order.status,
+    paidAt: order.payment?.paidAt,
+    transactionId: order.payment?.gatewayRef,
+    paymentMethod: order.payment?.method,
+    order: safeOrder
+  });
+});
+ordersRouter.get("/payment-instructions", (_req, res) => {
+  res.json({
+    success: true,
+    data: {
+      instructions: process.env.PAYMENT_INSTRUCTIONS || "Please complete your bank transfer using your Order Number as reference. Once submitted, our audit team will verify receipt and dispatch your official vehicle report.",
+      bankName: process.env.PAYMENT_BANK_NAME || "AutoAudit Settlement Services",
+      accountTitle: process.env.PAYMENT_ACCOUNT_TITLE || "AutoAudit Vehicle Intelligence Services",
+      accountNumber: process.env.PAYMENT_ACCOUNT_NUMBER || "Configured via PAYMENT_ACCOUNT_NUMBER env variable",
+      routingOrIban: process.env.PAYMENT_ROUTING_IBAN || "Configured via PAYMENT_ROUTING_IBAN env variable",
+      supportEmail: process.env.SUPPORT_EMAIL || "support@autoaudit.com"
+    }
+  });
+});
+ordersRouter.post("/:id/process-payment", async (_req, res) => {
+  res.status(501).json({
+    success: false,
+    code: "GATEWAY_DISABLED",
+    error: "Direct client-side payment completion is disabled. Payment must be approved by an administrator or confirmed via a cryptographically signed webhook."
   });
 });
 ordersRouter.patch("/:id/payment", requireAdminAuth, async (req, res) => {
@@ -3429,7 +3717,9 @@ ordersRouter.patch("/:id/payment", requireAdminAuth, async (req, res) => {
     return;
   }
   if (status === "Paid") {
-    handleNewOrderCreation(updated);
+    processOrderReport(updated, { autoNotifyUser: true, targetStatus: "Ready" }).catch((err) => {
+      console.error(`[MockReportGenerator] Error auto-generating report on payment approval for ${updated.orderNumber}:`, err);
+    });
     triggerAutomatedEmailSequence(updated, {
       stageDelaySeconds: { stage2: 4, stage3: 8 },
       autoAdvanceOrderStatus: true
@@ -3466,12 +3756,14 @@ ordersRouter.post("/:id/approve-payment", requireAdminAuth, async (req, res) => 
     res.status(404).json({ success: false, error: `Order with identifier "${id}" not found.` });
     return;
   }
-  handleNewOrderCreation(updated);
+  processOrderReport(updated, { autoNotifyUser: true, targetStatus: "Ready" }).catch((err) => {
+    console.error(`[MockReportGenerator] Error generating report on payment approval for ${updated.orderNumber}:`, err);
+  });
   triggerAutomatedEmailSequence(updated, {
     stageDelaySeconds: { stage2: 4, stage3: 8 },
     autoAdvanceOrderStatus: true
   }).catch((err) => {
-    console.error("[SMTP] Error on payment approval:", err);
+    console.error("[SMTP] Error on payment approval email sequence:", err);
   });
   res.json({
     success: true,
@@ -4437,6 +4729,13 @@ reportsRouter.get("/download/:id", (req, res) => {
         auditLogs: []
       };
     }
+    if (order.payment?.status !== "Paid") {
+      res.status(403).json({
+        success: false,
+        error: `Access denied: Order #${order.orderNumber} is pending payment verification. Report will be released upon payment confirmation.`
+      });
+      return;
+    }
     const report = getReportPdfForOrder(order.id) || {
       buffer: generateDummyPdfBuffer(order),
       fileName: `AutoAudit_Report_${(order.vehicle.vinOrReg || "RECORD").replace(/[^a-zA-Z0-9]/g, "_")}_${order.orderNumber}.pdf`
@@ -4468,6 +4767,13 @@ reportsRouter.post("/generate/:id", async (req, res) => {
     res.status(404).json({
       success: false,
       error: `Order with identifier "${id}" not found.`
+    });
+    return;
+  }
+  if (order.payment?.status !== "Paid") {
+    res.status(400).json({
+      success: false,
+      error: `Cannot generate report: Order #${order.orderNumber} payment is pending. Reports can only be generated for paid orders.`
     });
     return;
   }
@@ -5700,6 +6006,224 @@ adminRouter.use("/analytics", analyticsRouter);
 adminRouter.use("/coupons", couponsRouter);
 adminRouter.use("/services", servicesRouter);
 
+// server/routes/webhooks.ts
+import { Router as Router15 } from "express";
+import crypto3 from "crypto";
+var webhooksRouter = Router15();
+var recentWebhookLogs = [];
+webhooksRouter.get("/logs", async (_req, res) => {
+  res.json({
+    success: true,
+    count: recentWebhookLogs.length,
+    data: recentWebhookLogs.slice(0, 50)
+  });
+});
+async function processPaymentCompletion(params) {
+  const { orderIdentifier, transactionId, amount, paymentMethod, provider } = params;
+  const cleanId = String(orderIdentifier).trim();
+  const orders = await db.getOrdersAsync();
+  const order = orders.find(
+    (o) => o.id === cleanId || o.orderNumber.toLowerCase() === cleanId.toLowerCase() || o.payment?.gatewayRef && o.payment.gatewayRef.toLowerCase() === cleanId.toLowerCase()
+  );
+  if (!order) {
+    return {
+      success: false,
+      message: `Order with identifier "${cleanId}" not found in database.`
+    };
+  }
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  const txRef = transactionId || `TXN-WH-${Math.floor(1e7 + Math.random() * 9e7)}`;
+  const methodUsed = paymentMethod || (provider ? `${provider} Webhook` : "Online Payment Gateway");
+  order.payment.status = "Paid";
+  order.payment.paidAt = now;
+  order.payment.gatewayRef = txRef;
+  order.payment.method = methodUsed;
+  order.status = "Paid / New";
+  order.updatedAt = now;
+  const webhookAuditLog = {
+    id: `log-${Date.now()}-webhook`,
+    timestamp: now,
+    actor: `${provider || "Payment Provider"} Webhook Listener`,
+    action: "Payment Completed via Webhook",
+    details: `Confirmed payment of $${amount ?? order.total} USD. Transaction Ref: ${txRef}. Provider: ${provider || "Gateway"}`
+  };
+  order.auditLogs = [webhookAuditLog, ...order.auditLogs || []];
+  const webhookNote = `[${now}] Payment verified via ${provider || "Provider"} Webhook (${txRef})`;
+  order.internalNotes = order.internalNotes ? `${order.internalNotes}
+${webhookNote}` : webhookNote;
+  await db.updateOrderStatus(order.id, "Paid / New", webhookNote);
+  await db.updateOrderPaymentStatus(order.id, "Paid", webhookNote);
+  sendAdminPaymentSubmittedAlert(order).catch((err) => {
+    console.error("[Webhooks] Error sending admin payment alert:", err);
+  });
+  handleNewOrderCreation(order);
+  triggerAutomatedEmailSequence(order, {
+    stageDelaySeconds: { stage2: 3, stage3: 7 },
+    autoAdvanceOrderStatus: true
+  }).catch((err) => {
+    console.error("[Webhooks] Error triggering email sequence:", err);
+  });
+  return {
+    success: true,
+    order,
+    message: `Payment confirmed for Order #${order.orderNumber}.`
+  };
+}
+webhooksRouter.post("/payment", async (req, res) => {
+  const webhookSecret = process.env.PAYMENT_WEBHOOK_SECRET || process.env.WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    console.warn("[Webhook Listener] 503 Service Unavailable: PAYMENT_WEBHOOK_SECRET is not configured on server.");
+    res.status(503).json({
+      success: false,
+      code: "WEBHOOK_SECRET_NOT_CONFIGURED",
+      error: "Payment webhook handler is currently unavailable: PAYMENT_WEBHOOK_SECRET is not configured on the server."
+    });
+    return;
+  }
+  const providedSecret = req.headers["x-webhook-secret"] || req.headers["x-api-key"];
+  if (!providedSecret) {
+    console.warn("[Webhook Listener] 401 Unauthorized: Missing shared secret in request headers.");
+    res.status(401).json({
+      success: false,
+      error: "Unauthorized: Missing required shared-secret header (x-webhook-secret)."
+    });
+    return;
+  }
+  const expectedHash = crypto3.createHash("sha256").update(String(webhookSecret)).digest();
+  const providedHash = crypto3.createHash("sha256").update(String(providedSecret)).digest();
+  const isValid = crypto3.timingSafeEqual(expectedHash, providedHash);
+  if (!isValid) {
+    console.warn("[Webhook Listener] 401 Unauthorized: Shared secret mismatch.");
+    res.status(401).json({
+      success: false,
+      error: "Unauthorized: Invalid webhook shared secret."
+    });
+    return;
+  }
+  const payload = req.body || {};
+  const eventType = payload.type || payload.event || payload.action || "payment.succeeded";
+  const provider = req.headers["x-payment-provider"] || payload.provider || "PaymentProvider";
+  console.log(`[Webhook Listener] Received authenticated webhook: [${provider}] event="${eventType}"`);
+  const orderIdentifier = payload.orderId || payload.orderNumber || payload.order_id || payload.metadata?.orderId || payload.metadata?.orderNumber || payload.data?.object?.metadata?.orderId || payload.data?.object?.metadata?.orderNumber || payload.data?.object?.client_reference_id || payload.resource?.custom || payload.reference;
+  const transactionId = payload.transactionId || payload.id || payload.data?.object?.id || payload.resource?.id || `TXN-${Date.now()}`;
+  const amount = payload.amount ? Number(payload.amount) : payload.data?.object?.amount ? Number(payload.data.object.amount) / 100 : payload.resource?.amount?.value ? Number(payload.resource.amount.value) : void 0;
+  const paymentMethod = payload.paymentMethod || payload.data?.object?.payment_method_types?.[0] || "Direct Card / Gateway";
+  const isCompletionEvent = eventType.includes("succeeded") || eventType.includes("completed") || eventType.includes("paid") || eventType === "checkout.session.completed" || eventType === "payment_intent.succeeded" || eventType === "PAYMENT.CAPTURE.COMPLETED";
+  if (!isCompletionEvent) {
+    const log = {
+      id: `wh-${Date.now()}`,
+      receivedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      provider,
+      event: eventType,
+      orderNumber: orderIdentifier,
+      status: "ignored",
+      details: `Ignored non-completion event "${eventType}".`
+    };
+    recentWebhookLogs.unshift(log);
+    res.json({
+      received: true,
+      status: "ignored",
+      message: `Event ${eventType} acknowledged without status update.`
+    });
+    return;
+  }
+  if (!orderIdentifier) {
+    const log = {
+      id: `wh-${Date.now()}`,
+      receivedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      provider,
+      event: eventType,
+      status: "failed",
+      details: "Missing orderId or orderNumber in webhook payload."
+    };
+    recentWebhookLogs.unshift(log);
+    res.status(400).json({
+      received: true,
+      success: false,
+      error: "Missing orderId or orderNumber in webhook payload."
+    });
+    return;
+  }
+  try {
+    const result = await processPaymentCompletion({
+      orderIdentifier,
+      transactionId,
+      amount,
+      paymentMethod,
+      provider,
+      rawPayload: payload
+    });
+    const log = {
+      id: `wh-${Date.now()}`,
+      receivedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      provider,
+      event: eventType,
+      orderNumber: result.order?.orderNumber || orderIdentifier,
+      orderId: result.order?.id,
+      amount: amount || result.order?.total,
+      status: result.success ? "processed" : "failed",
+      details: result.message
+    };
+    recentWebhookLogs.unshift(log);
+    if (!result.success) {
+      res.status(404).json({
+        received: true,
+        success: false,
+        error: result.message
+      });
+      return;
+    }
+    res.json({
+      received: true,
+      success: true,
+      orderNumber: result.order?.orderNumber,
+      orderId: result.order?.id,
+      paymentStatus: "Paid",
+      message: result.message
+    });
+  } catch (err) {
+    console.error("[Webhooks] Exception processing payment webhook:", err);
+    res.status(500).json({
+      received: true,
+      success: false,
+      error: err?.message || "Server error processing payment webhook."
+    });
+  }
+});
+webhooksRouter.post("/simulate-payment", async (req, res) => {
+  const { orderId, orderNumber, paymentMethod, delayMs } = req.body;
+  const targetIdentifier = orderId || orderNumber;
+  if (!targetIdentifier) {
+    res.status(400).json({ success: false, error: "orderId or orderNumber is required." });
+    return;
+  }
+  const delay = Math.min(Number(delayMs) || 0, 15e3);
+  const execute = async () => {
+    return await processPaymentCompletion({
+      orderIdentifier: targetIdentifier,
+      transactionId: `SIM-TXN-${Date.now()}`,
+      paymentMethod: paymentMethod || "Instant Card Authorization (Simulated Webhook)",
+      provider: "Gateway-Webhook-Simulator"
+    });
+  };
+  if (delay > 0) {
+    setTimeout(async () => {
+      try {
+        await execute();
+      } catch (err) {
+        console.error("[Webhook Simulator] Delayed execution error:", err);
+      }
+    }, delay);
+    res.json({
+      success: true,
+      message: `Payment webhook scheduled to confirm order in ${delay}ms.`
+    });
+  } else {
+    const result = await execute();
+    res.json(result);
+  }
+});
+
 // server.ts
 var __filename2 = fileURLToPath2(import.meta.url);
 var __dirname2 = path2.dirname(__filename2);
@@ -5762,6 +6286,7 @@ async function startServer() {
   app.use("/api/intake", intakeRouter);
   app.use("/api/gemini", geminiRouter);
   app.use("/api/video", videoRouter);
+  app.use("/api/webhooks", webhooksRouter);
   app.post("/api/generate-video", handleGenerateVideo);
   app.post("/api/video-status", handleVideoStatus);
   app.get("/api/video-download", handleVideoDownload);

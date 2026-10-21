@@ -26,6 +26,108 @@ export class ApiError extends Error {
 const DEFAULT_TIMEOUT_MS = 10000; // 10 seconds
 
 /**
+ * Log one clear structured error with HTTP status and URL (no secrets or query tokens)
+ */
+function logApiError(status: number, rawUrl: string, message: string): void {
+  let cleanUrl = rawUrl;
+  try {
+    const parsed = new URL(rawUrl, 'http://localhost');
+    cleanUrl = parsed.pathname;
+  } catch {
+    cleanUrl = rawUrl.split('?')[0];
+  }
+  console.error(`[AutoAudit API Error] HTTP ${status || 'ERR'} at ${cleanUrl}: ${message}`);
+}
+
+/**
+ * Safely extracts an array from various response formats:
+ * 1. Standard AutoAudit backend body: { success: true, data: [...] }
+ * 2. Raw array: [...]
+ * 3. Axios response wrapper: { status: 200, data: [...] } or { status: 200, data: { success: true, data: [...] } }
+ */
+export function extractDataArray<T>(res: any): T[] | null {
+  if (res == null) return null;
+
+  // Raw array
+  if (Array.isArray(res)) {
+    return res;
+  }
+
+  // Object wrapper with data property
+  if (typeof res === 'object' && res !== null && 'data' in res) {
+    if (Array.isArray(res.data)) {
+      return res.data;
+    }
+    // Nested Axios + AutoAudit backend wrapper: res.data.data
+    if (res.data && typeof res.data === 'object' && Array.isArray(res.data.data)) {
+      return res.data.data;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Fallback Cache Storage Manager
+ * Stores timestamps, ensures data under 24 hours old, marks entries as stale when served as fallback.
+ */
+interface CachedPayload<T> {
+  data: T;
+  timestamp: number;
+}
+
+const CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+export const fallbackCache = {
+  get<T>(key: string): { data: T; isStale: boolean } | null {
+    if (typeof window === 'undefined' || !window.localStorage) return null;
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return null;
+      const parsed: CachedPayload<T> = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object' || !parsed.timestamp) {
+        localStorage.removeItem(key);
+        return null;
+      }
+      const age = Date.now() - Number(parsed.timestamp);
+      if (age > CACHE_MAX_AGE_MS || age < 0) {
+        // Expired (> 24 hours) - remove and discard
+        localStorage.removeItem(key);
+        return null;
+      }
+      return {
+        data: parsed.data,
+        isStale: true, // Marked stale when served from fallback
+      };
+    } catch {
+      return null;
+    }
+  },
+
+  set<T>(key: string, data: T): void {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    try {
+      const payload: CachedPayload<T> = {
+        data,
+        timestamp: Date.now(),
+      };
+      localStorage.setItem(key, JSON.stringify(payload));
+    } catch {
+      // localStorage unavailable or quota exceeded
+    }
+  },
+
+  clear(key: string): void {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // ignore
+    }
+  }
+};
+
+/**
  * Helper to perform HTTP fetch requests with timeout and structured error handling
  */
 async function request<T>(
@@ -67,11 +169,19 @@ async function request<T>(
 
     // Parse JSON response body if present
     let jsonResponse: any = null;
-    const contentType = response.headers.get('content-type');
-    if (contentType && contentType.includes('application/json')) {
+    let parseError: Error | null = null;
+    const contentType = response.headers.get('content-type') || '';
+    const isJson = contentType.includes('application/json');
+
+    if (response.status === 204) {
+      return null as T;
+    }
+
+    if (isJson) {
       try {
         jsonResponse = await response.json();
-      } catch (e) {
+      } catch (e: any) {
+        parseError = e;
         jsonResponse = null;
       }
     }
@@ -98,28 +208,43 @@ async function request<T>(
       throw new ApiError(errorMessage, response.status, false, jsonResponse);
     }
 
-    return jsonResponse as T;
-  } catch (error: any) {
-    if (error instanceof ApiError) {
-      throw error;
-    }
-
-    // Check for AbortController timeout
-    if (error?.name === 'AbortError' || controller.signal.aborted) {
+    // HTTP 2xx response, but verify application/json content type
+    if (!isJson) {
       throw new ApiError(
-        `Request timed out after ${timeoutMs / 1000}s while contacting the AutoAudit backend server.`,
-        408,
-        true
+        `Expected application/json response from ${endpoint} but received ${contentType || 'non-JSON payload'}.`,
+        response.status,
+        false
       );
     }
 
-    // Network connection / DNS / Offline errors
-    throw new ApiError(
-      error?.message || 'Network error encountered while communicating with the server.',
-      0,
-      false,
-      error
-    );
+    if (parseError || jsonResponse === null || jsonResponse === undefined) {
+      throw new ApiError(
+        `Malformed JSON response body from ${endpoint}.`,
+        response.status,
+        false,
+        parseError
+      );
+    }
+
+    return jsonResponse as T;
+  } catch (error: any) {
+    const finalErr = error instanceof ApiError
+      ? error
+      : (error?.name === 'AbortError' || controller.signal.aborted)
+        ? new ApiError(
+            `Request timed out after ${timeoutMs / 1000}s while contacting the AutoAudit backend server.`,
+            408,
+            true
+          )
+        : new ApiError(
+            error?.message || 'Network error encountered while communicating with the server.',
+            0,
+            false,
+            error
+          );
+
+    logApiError(finalErr.status, url, finalErr.message);
+    throw finalErr;
   } finally {
     clearTimeout(timeoutId);
   }
@@ -149,21 +274,64 @@ export const api = {
    * Service Plans & Pricing Tiers
    */
   async getServices(timeoutMs = 8000): Promise<ServicePlan[]> {
-    const res = await request<{ success: boolean; data: ServicePlan[] }>(
-      '/api/services',
-      { method: 'GET' },
-      timeoutMs
-    );
-    return res.data;
+    const SERVICES_CACHE_KEY = 'autoaudit_services_cache_v2';
+    try {
+      const res = await request<any>(
+        '/api/services',
+        { method: 'GET' },
+        timeoutMs
+      );
+
+      const data = extractDataArray<ServicePlan>(res);
+      if (data && data.length > 0) {
+        // Clear any stale cache entry and write fresh snapshot with timestamp
+        fallbackCache.clear(SERVICES_CACHE_KEY);
+        fallbackCache.set(SERVICES_CACHE_KEY, data);
+        return data;
+      }
+
+      throw new ApiError('Empty or invalid services array received from server.', 502);
+    } catch (err: any) {
+      // Check fallback cache (<24 hours)
+      const cached = fallbackCache.get<ServicePlan[]>(SERVICES_CACHE_KEY);
+
+      // Rule: Never present stale prices as current: if services data is stale or missing,
+      // indicate error state so the caller does not present stale prices as current pricing.
+      const status = err instanceof ApiError ? err.status : 503;
+      const isStale = Boolean(cached?.isStale);
+
+      throw new ApiError(
+        isStale
+          ? 'Services pricing data is stale and cannot be verified with the server. Please retry.'
+          : (err?.message || 'Failed to retrieve vehicle history services from backend.'),
+        status,
+        err?.isTimeout || false,
+        {
+          stale: isStale,
+          cachedPlans: isStale ? cached?.data : null,
+          url: '/api/services',
+        }
+      );
+    }
   },
 
   async getServiceById(id: string, timeoutMs = 6000): Promise<ServicePlan> {
-    const res = await request<{ success: boolean; data: ServicePlan }>(
+    const res = await request<any>(
       `/api/services/${encodeURIComponent(id)}`,
       { method: 'GET' },
       timeoutMs
     );
-    return res.data;
+    if (!res) {
+      throw new ApiError(`Service tier ${id} not found or empty response.`, 404);
+    }
+    const plan = (res && typeof res === 'object' && 'data' in res)
+      ? ((res.data && typeof res.data === 'object' && 'data' in res.data) ? res.data.data : res.data)
+      : res;
+
+    if (!plan || typeof plan !== 'object' || !plan.id) {
+      throw new ApiError(`Invalid service plan data received for ${id}.`, 502);
+    }
+    return plan as ServicePlan;
   },
 
   /**
@@ -218,13 +386,45 @@ export const api = {
     );
   },
 
+  /**
+   * Active Coupons & Promo Codes
+   */
   async getCoupons(timeoutMs = 6000): Promise<Coupon[]> {
-    const res = await request<{ success: boolean; data: Coupon[] }>(
-      '/api/coupons',
-      { method: 'GET' },
-      timeoutMs
-    );
-    return res.data;
+    const COUPONS_CACHE_KEY = 'autoaudit_coupons_cache_v2';
+    try {
+      const res = await request<any>(
+        '/api/coupons',
+        { method: 'GET' },
+        timeoutMs
+      );
+
+      const data = extractDataArray<Coupon>(res);
+      if (data !== null) {
+        // Clear cache entry when API returns valid data
+        fallbackCache.clear(COUPONS_CACHE_KEY);
+        fallbackCache.set(COUPONS_CACHE_KEY, data);
+        return data;
+      }
+
+      throw new ApiError('Empty or invalid coupons array received from server.', 502);
+    } catch (err: any) {
+      // Fallback cache: use cached data only if under 24 hours old, marked stale
+      const cached = fallbackCache.get<Coupon[]>(COUPONS_CACHE_KEY);
+      if (cached && Array.isArray(cached.data)) {
+        return cached.data;
+      }
+
+      const status = err instanceof ApiError ? err.status : 503;
+      throw new ApiError(
+        err?.message || 'Failed to retrieve active coupons from backend.',
+        status,
+        err?.isTimeout || false,
+        {
+          stale: false,
+          url: '/api/coupons',
+        }
+      );
+    }
   },
 
   /**

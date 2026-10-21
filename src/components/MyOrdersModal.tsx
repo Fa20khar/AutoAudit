@@ -299,7 +299,7 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
             <div>
               <h2 className="text-lg font-bold text-slate-900">
                 {activeTab === 'dashboard' && 'Customer Dashboard'}
-                {activeTab === 'my-reports' && 'My Verified Reports'}
+                {activeTab === 'my-reports' && 'My Vehicle Reports'}
                 {activeTab === 'orders' && 'Order History & Receipts'}
                 {activeTab === 'account' && 'Account Settings'}
                 {activeTab === 'support' && 'Order Support & Inquiries'}
