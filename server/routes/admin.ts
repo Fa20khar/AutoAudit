@@ -11,6 +11,7 @@ import { servicesRouter } from './services';
 import { AdminUserModel } from '../mongodb/models/AdminUser';
 import { hashPassword } from '../utils/jwt';
 import { isMongoConnected } from '../mongodb/connection';
+import { adminSecurityRouter } from './security';
 
 export const adminRouter = Router();
 
@@ -155,3 +156,4 @@ adminRouter.use('/intake', intakeRouter);
 adminRouter.use('/analytics', analyticsRouter);
 adminRouter.use('/coupons', couponsRouter);
 adminRouter.use('/services', servicesRouter);
+adminRouter.use('/security', adminSecurityRouter);

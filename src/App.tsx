@@ -1,8 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
-  INITIAL_SERVICES, 
   INITIAL_ORDERS, 
-  INITIAL_COUPONS, 
   INITIAL_EMAILS 
 } from './data/initialData';
 import { ServicePlan, Order, Coupon, EmailNotification } from './types';
@@ -46,21 +44,17 @@ export default function App() {
 }
 
 function AppContent() {
-  // Persistence state initialization
-  const [services, setServices] = useState<ServicePlan[]>(() => {
-    const saved = localStorage.getItem('autoaudit_services');
-    return saved ? JSON.parse(saved) : INITIAL_SERVICES;
-  });
+  // Pricing & Services state: retrieved live from backend, never cached with stale data
+  const [services, setServices] = useState<ServicePlan[]>([]);
+  const [servicesLoading, setServicesLoading] = useState<boolean>(true);
+  const [servicesError, setServicesError] = useState<string | null>(null);
 
   const [orders, setOrders] = useState<Order[]>(() => {
     const saved = localStorage.getItem('autoaudit_orders');
     return saved ? JSON.parse(saved) : INITIAL_ORDERS;
   });
 
-  const [coupons, setCoupons] = useState<Coupon[]>(() => {
-    const saved = localStorage.getItem('autoaudit_coupons');
-    return saved ? JSON.parse(saved) : INITIAL_COUPONS;
-  });
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
 
   const [emails, setEmails] = useState<EmailNotification[]>(() => {
     const saved = localStorage.getItem('autoaudit_emails');
@@ -191,21 +185,50 @@ function AppContent() {
     });
   };
 
-  // Fetch initial state from backend REST API with fallback to localStorage
-  useEffect(() => {
-    // 1. Load services from backend
+  // Function to load verified services from server with error handling
+  const loadServices = useCallback(() => {
+    setServicesLoading(true);
+    setServicesError(null);
     api.getServices()
       .then((data) => {
-        if (data && data.length > 0) setServices(data);
+        if (data && data.length > 0) {
+          setServices(data);
+          setServicesError(null);
+        } else {
+          setServices([]);
+          setServicesError('No active service plans available from server.');
+        }
       })
-      .catch((err) => console.warn('Using cached services', err));
+      .catch((err) => {
+        setServices([]);
+        setServicesError(err?.message || 'Services pricing could not be verified with the server. Stale prices are hidden.');
+      })
+      .finally(() => {
+        setServicesLoading(false);
+      });
+  }, []);
 
-    // 2. Load active coupons from backend
-    api.getCoupons()
-      .then((data) => {
-        if (data && data.length > 0) setCoupons(data);
-      })
-      .catch((err) => console.warn('Using cached coupons', err));
+  // Fetch initial state from backend REST API
+  useEffect(() => {
+    // 1. Purge legacy cache keys from localStorage
+    const legacyKeys = [
+      'autoaudit_services',
+      'autoaudit_coupons',
+      'autoaudit_services_cache_v1',
+      'autoaudit_coupons_cache_v1',
+      'autoaudit_services_cache_v2',
+      'autoaudit_coupons_cache_v2',
+    ];
+    legacyKeys.forEach((key) => {
+      try {
+        localStorage.removeItem(key);
+      } catch {
+        // ignore
+      }
+    });
+
+    // 2. Load services from backend (no stale cache fallback)
+    loadServices();
 
     // 3. Load customer-scoped past orders if customer previously placed an order on this browser
     const customerEmail = localStorage.getItem('autoaudit_customer_email');
@@ -216,20 +239,26 @@ function AppContent() {
         })
         .catch(() => {});
     }
-  }, []);
+  }, [loadServices]);
 
-  // Save to localStorage when state changes as instant offline fallback
+  // Load coupons only when viewing admin panel with admin token
   useEffect(() => {
-    localStorage.setItem('autoaudit_services', JSON.stringify(services));
-  }, [services]);
+    if (currentView === 'admin') {
+      const adminToken = sessionStorage.getItem('autoaudit_admin_token') || localStorage.getItem('autoaudit_admin_token');
+      if (adminToken) {
+        api.getCoupons(adminToken)
+          .then((data) => {
+            if (data && data.length > 0) setCoupons(data);
+          })
+          .catch(() => {});
+      }
+    }
+  }, [currentView]);
 
+  // Save orders and email notifications to localStorage for offline access
   useEffect(() => {
     localStorage.setItem('autoaudit_orders', JSON.stringify(orders));
   }, [orders]);
-
-  useEffect(() => {
-    localStorage.setItem('autoaudit_coupons', JSON.stringify(coupons));
-  }, [coupons]);
 
   useEffect(() => {
     localStorage.setItem('autoaudit_emails', JSON.stringify(emails));
@@ -394,6 +423,9 @@ function AppContent() {
               }}
               onOrderCompleted={handleOrderCompleted}
               services={services.filter((s) => s.active)}
+              isLoadingServices={servicesLoading}
+              servicesError={servicesError}
+              onRetryServices={loadServices}
               coupons={coupons}
               onOpenTrack={() => setIsTrackModalOpen(true)}
             />
@@ -451,6 +483,9 @@ function AppContent() {
             <ServicesSection
               services={services.filter((s) => s.active)}
               onSelectService={handleOpenOrder}
+              isLoading={servicesLoading}
+              error={servicesError}
+              onRetry={loadServices}
             />
 
             {/* Section 19: How It Works */}
@@ -504,6 +539,9 @@ function AppContent() {
           setOrderInitialVin('');
         }}
         services={services.filter((s) => s.active)}
+        isLoadingServices={servicesLoading}
+        servicesError={servicesError}
+        onRetryServices={loadServices}
         selectedServiceId={selectedServiceIdForOrder}
         initialVin={orderInitialVin}
         initialIsVin={orderInitialIsVin}

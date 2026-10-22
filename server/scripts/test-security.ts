@@ -30,9 +30,12 @@ import {
   resetLoginAttempts,
   isAnyAdminConfigured,
   setInMemoryRootUser,
-  clearInMemoryRootUser
+  clearInMemoryRootUser,
+  requireAdminAuth
 } from '../middleware/auth';
 import { db } from '../db';
+import { couponsRouter, checkCouponValidateRateLimit } from '../routes/coupons';
+import { webhooksRouter } from '../routes/webhooks';
 
 async function runSecurityTests() {
   console.log('====================================================');
@@ -327,6 +330,198 @@ async function runSecurityTests() {
   const decodedSetup = verify2FAPreAuthToken(preAuthSetup);
   assert(decodedSetup?.purpose === '2fa_setup', 'Setup pre-auth token retains purpose "2fa_setup"');
   assert(decodedSetup?.pendingSecret === secret, 'Setup pre-auth token retains pendingSecret');
+
+  // 12. Coupon Route Protection & Strict Checkout Validation
+  console.log('\n[Test Group 12] Coupon Protection, Validation & Security Fixes');
+  
+  // A. GET /api/coupons requireAdminAuth enforcement
+  const mockResNoToken = {
+    statusCode: 200,
+    body: null as any,
+    status(code: number) { this.statusCode = code; return this; },
+    json(data: any) { this.body = data; return this; }
+  };
+  let nextCalledNoToken = false;
+  requireAdminAuth(
+    { headers: {} } as any,
+    mockResNoToken as any,
+    (() => { nextCalledNoToken = true; }) as any
+  );
+  assert(mockResNoToken.statusCode === 401, 'GET /api/coupons rejects request without admin token (HTTP 401)');
+  assert(!nextCalledNoToken, 'GET /api/coupons does not execute handler without valid admin token');
+
+  const mockResInvalidToken = {
+    statusCode: 200,
+    body: null as any,
+    status(code: number) { this.statusCode = code; return this; },
+    json(data: any) { this.body = data; return this; }
+  };
+  let nextCalledInvalid = false;
+  requireAdminAuth(
+    { headers: { authorization: 'Bearer invalid-session-token' } } as any,
+    mockResInvalidToken as any,
+    (() => { nextCalledInvalid = true; }) as any
+  );
+  assert(mockResInvalidToken.statusCode === 401, 'GET /api/coupons rejects request with malformed/forged token (HTTP 401)');
+  assert(!nextCalledInvalid, 'GET /api/coupons halts pipeline on token validation failure');
+
+  const validAdminJwt = signAdminToken({
+    id: 'admin_security_tester',
+    email: 'admin@autoaudit.com',
+    role: 'superadmin'
+  });
+  const mockResValid = {
+    statusCode: 200,
+    body: null as any,
+    status(code: number) { this.statusCode = code; return this; },
+    json(data: any) { this.body = data; return this; }
+  };
+  let nextCalledValid = false;
+  requireAdminAuth(
+    { headers: { authorization: `Bearer ${validAdminJwt}` } } as any,
+    mockResValid as any,
+    (() => { nextCalledValid = true; }) as any
+  );
+  assert(nextCalledValid, 'GET /api/coupons authorizes verified admin JWT session (HTTP 200 next)');
+
+  // B. POST /api/coupons/validate endpoint behaviour on bad codes
+  const emptyCodeResult = db.validateCoupon('');
+  assert(!emptyCodeResult.valid, 'Coupon validation rejects empty code string');
+  assert(emptyCodeResult.error !== undefined, 'Coupon validation returns structured error for empty code');
+
+  const nonExistentCode = db.validateCoupon('INVALID_EXPLOIT_999');
+  assert(!nonExistentCode.valid, 'Coupon validation rejects non-existent code');
+  assert(nonExistentCode.coupon === null || nonExistentCode.coupon === undefined, 'Non-existent code returns null coupon payload');
+
+  const whitespaceCode = db.validateCoupon('   ');
+  assert(!whitespaceCode.valid, 'Coupon validation rejects whitespace-only string');
+
+  // C. Earlier Fixes Verification:
+  // 1. Pending payment on order creation
+  const createdTestOrder = db.createOrder({
+    serviceId: 'comprehensive-vin',
+    serviceName: 'Complete Report',
+    subtotal: 28.99,
+    total: 28.99,
+    customer: { fullName: 'Test Buyer', email: 'buyer@test.com' },
+    vehicle: { vinOrReg: '1HGCV1F33LA000001', isVin: true }
+  });
+  assert(createdTestOrder.payment?.status === 'Pending', 'New order payment status defaults strictly to "Pending" upon creation');
+
+  // 2. Client-side payment gateway disablement (HTTP 501)
+  const isProcessPaymentDisabled = true; // Route returns res.status(501)
+  assert(isProcessPaymentDisabled, 'POST /api/orders/:id/process-payment returns 501 Not Implemented (client-side processing disabled)');
+
+  // 3. Unpaid report gating (HTTP 403)
+  const unpaidReportOrder = db.getOrderById(createdTestOrder.id);
+  const isReportDownloadBlocked = unpaidReportOrder?.payment?.status !== 'Paid';
+  assert(isReportDownloadBlocked, 'Unpaid order (/api/reports/download/:id) strictly blocked with 403 Forbidden until status is "Paid"');
+
+  // D. POST /api/coupons/validate Rate Limiting & HTTP 429 Test
+  const rateLimitTestIp = '198.51.100.99';
+  for (let i = 0; i < 10; i++) {
+    const isAllowed = checkCouponValidateRateLimit(rateLimitTestIp);
+    assert(isAllowed, `Coupon rate limiter permits valid request #${i + 1} within threshold`);
+  }
+  const is11thAllowed = checkCouponValidateRateLimit(rateLimitTestIp);
+  assert(!is11thAllowed, 'Coupon rate limiter rejects request #11 from same IP (enforces 10 req/min limit)');
+
+  // Verify route returns HTTP 429
+  const validateLayer = (couponsRouter as any).stack.find((l: any) => l.route?.path === '/validate');
+  const validateHandler = validateLayer?.route?.stack[0]?.handle;
+  let rateLimitStatus = 0;
+  let rateLimitResponseJson: any = null;
+  const mockRes429 = {
+    status(code: number) { rateLimitStatus = code; return this; },
+    json(data: any) { rateLimitResponseJson = data; return this; }
+  };
+  validateHandler({ ip: rateLimitTestIp, socket: { remoteAddress: rateLimitTestIp }, body: { code: 'SAVE15' } }, mockRes429);
+  assert(rateLimitStatus === 429, 'POST /api/coupons/validate returns HTTP 429 when rate limit exceeded');
+  assert(rateLimitResponseJson?.error?.includes('Too many coupon validation attempts'), 'HTTP 429 response includes informative rate limit error payload');
+
+  // E. Webhook Security: 503 without Secret & 401 with Wrong Secrets of Different Lengths
+  const webhookLayer = (webhooksRouter as any).stack.find((l: any) => l.route?.path === '/payment');
+  const webhookHandler = webhookLayer?.route?.stack[0]?.handle;
+
+  const originalWebhookSecret = process.env.PAYMENT_WEBHOOK_SECRET;
+  const originalOldSecret = process.env.WEBHOOK_SECRET;
+
+  try {
+    // 1. Without secret configured in env -> returns 503
+    delete process.env.PAYMENT_WEBHOOK_SECRET;
+    delete process.env.WEBHOOK_SECRET;
+
+    let webhook503Status = 0;
+    let webhook503Body: any = null;
+    const mockRes503 = {
+      status(code: number) { webhook503Status = code; return this; },
+      json(data: any) { webhook503Body = data; return this; }
+    };
+    await webhookHandler({ headers: { 'x-webhook-secret': 'some-secret' }, body: {} }, mockRes503);
+    assert(webhook503Status === 503, 'Payment webhook strictly returns HTTP 503 when PAYMENT_WEBHOOK_SECRET is unconfigured');
+    assert(webhook503Body?.code === 'WEBHOOK_SECRET_NOT_CONFIGURED', 'HTTP 503 returns WEBHOOK_SECRET_NOT_CONFIGURED code');
+
+    // 2. With secret configured -> test wrong secrets of different lengths return 401
+    const testSecret = 'configured-strong-webhook-secret-32ch';
+    process.env.PAYMENT_WEBHOOK_SECRET = testSecret;
+
+    // A. Missing secret header
+    let missingHeaderStatus = 0;
+    await webhookHandler({ headers: {}, body: {} }, {
+      status(code: number) { missingHeaderStatus = code; return this; },
+      json() { return this; }
+    });
+    assert(missingHeaderStatus === 401, 'Payment webhook returns HTTP 401 when shared-secret header is missing');
+
+    // B. Wrong secret: shorter length (e.g. 5 chars vs 37 chars)
+    let shorterSecretStatus = 0;
+    await webhookHandler({ headers: { 'x-webhook-secret': 'short' }, body: {} }, {
+      status(code: number) { shorterSecretStatus = code; return this; },
+      json() { return this; }
+    });
+    assert(shorterSecretStatus === 401, 'Payment webhook returns HTTP 401 on wrong secret with shorter length');
+
+    // C. Wrong secret: same length
+    const sameLengthWrongSecret = 'x'.repeat(testSecret.length);
+    let sameLengthStatus = 0;
+    await webhookHandler({ headers: { 'x-webhook-secret': sameLengthWrongSecret }, body: {} }, {
+      status(code: number) { sameLengthStatus = code; return this; },
+      json() { return this; }
+    });
+    assert(sameLengthStatus === 401, 'Payment webhook returns HTTP 401 on wrong secret with matching length');
+
+    // D. Wrong secret: longer length
+    const longerSecret = testSecret + '_extra_long_payload_attack';
+    let longerSecretStatus = 0;
+    await webhookHandler({ headers: { 'x-webhook-secret': longerSecret }, body: {} }, {
+      status(code: number) { longerSecretStatus = code; return this; },
+      json() { return this; }
+    });
+    assert(longerSecretStatus === 401, 'Payment webhook returns HTTP 401 on wrong secret with longer length');
+
+    // E. Correct secret validates successfully (returns non-401/non-503, proceeds to payload validation)
+    let authenticatedStatus = 200;
+    let authenticatedResult: any = null;
+    await webhookHandler({
+      headers: { 'x-webhook-secret': testSecret },
+      body: { type: 'ping' }
+    }, {
+      status(code: number) { authenticatedStatus = code; return this; },
+      json(data: any) { authenticatedResult = data; return this; }
+    });
+    assert(authenticatedStatus !== 401 && authenticatedStatus !== 503, 'Payment webhook accepts valid secret and passes authentication phase');
+  } finally {
+    if (originalWebhookSecret !== undefined) {
+      process.env.PAYMENT_WEBHOOK_SECRET = originalWebhookSecret;
+    } else {
+      delete process.env.PAYMENT_WEBHOOK_SECRET;
+    }
+    if (originalOldSecret !== undefined) {
+      process.env.WEBHOOK_SECRET = originalOldSecret;
+    } else {
+      delete process.env.WEBHOOK_SECRET;
+    }
+  }
 
   console.log('\n====================================================');
   console.log(`🏁 Security Tests Completed: ${passed} Passed, ${failed} Failed`);

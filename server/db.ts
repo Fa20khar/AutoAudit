@@ -517,26 +517,50 @@ class Database {
     return this.getOrderById(idOrNumber);
   }
 
-  createOrder(order: Order): Order {
-    this.orders.unshift(order);
+  createOrder(order: any): Order {
+    const now = new Date().toISOString();
+    const id = order.id || `ord-${Date.now()}`;
+    const orderNumber = order.orderNumber || `AA-${Math.floor(10000 + Math.random() * 90000)}`;
+    const fullOrder: Order = {
+      id,
+      orderNumber,
+      status: order.status || 'Pending',
+      serviceId: order.serviceId,
+      serviceName: order.serviceName,
+      subtotal: order.subtotal,
+      discountAmount: order.discountAmount || 0,
+      total: order.total,
+      appliedCoupon: order.appliedCoupon,
+      customer: order.customer,
+      vehicle: order.vehicle,
+      payment: {
+        method: 'Online / Direct',
+        status: 'Pending',
+        ...(order.payment || {})
+      },
+      auditLogs: order.auditLogs || [
+        {
+          id: `log-${Date.now()}`,
+          timestamp: now,
+          actor: 'Customer (Order Creation)',
+          action: 'Order Placed (Pending Payment)'
+        }
+      ],
+      createdAt: order.createdAt || now,
+      updatedAt: order.updatedAt || now
+    };
+    this.orders.unshift(fullOrder);
     if (isMongoConnected()) {
-      OrderModel.create(order).catch(err => {
+      OrderModel.create(fullOrder).catch(err => {
         console.error('[Database] Failed to save order to MongoDB Atlas:', err.message);
       });
     }
-    return order;
+    return fullOrder;
   }
 
-  async createOrderAsync(order: Order): Promise<Order> {
-    this.orders.unshift(order);
-    if (isMongoConnected()) {
-      try {
-        await OrderModel.create(order);
-      } catch (err: any) {
-        console.error('[Database] Error persisting order to MongoDB Atlas:', err.message);
-      }
-    }
-    return order;
+  async createOrderAsync(order: any): Promise<Order> {
+    const fullOrder = this.createOrder(order);
+    return fullOrder;
   }
 
   updateOrderStatus(orderId: string, status: Order['status'], note?: string): Order | null {

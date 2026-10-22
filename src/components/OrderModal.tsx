@@ -14,8 +14,9 @@ import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { validateVinFormat, VinValidationResult } from '../utils/vinValidator';
 import { validateCouponRealTime, calculateDiscount } from '../utils/couponValidator';
-import { INITIAL_COUPONS } from '../data/initialData';
 import { RealtimePricePreview } from './RealtimePricePreview';
+import { Alert } from './ui/Alert';
+import { Button } from './ui/Button';
 import { 
   getActiveIncomingReferralCode, 
   recordReferralConversion, 
@@ -27,6 +28,9 @@ interface OrderModalProps {
   isOpen: boolean;
   onClose: () => void;
   services: ServicePlan[];
+  isLoadingServices?: boolean;
+  servicesError?: string | null;
+  onRetryServices?: () => void;
   selectedServiceId?: string;
   initialVin?: string;
   initialIsVin?: boolean;
@@ -41,6 +45,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   isOpen,
   onClose,
   services,
+  isLoadingServices = false,
+  servicesError = null,
+  onRetryServices,
   selectedServiceId,
   initialVin = '',
   initialIsVin = true,
@@ -81,6 +88,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const [couponCode, setCouponCode] = useState<string>('');
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [couponError, setCouponError] = useState<string>('');
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState<boolean>(false);
   const [agreedToTerms, setAgreedToTerms] = useState<boolean>(true);
 
   // Payment State
@@ -168,7 +176,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
       // Auto-detect if customer arrived via referral link (?ref=CODE) and apply 20% discount
       const incomingRef = getActiveIncomingReferralCode();
       if (incomingRef && !couponCode) {
-        handleCouponInputChange(incomingRef);
+        setCouponCode(incomingRef);
+        handleApplyCoupon(incomingRef);
       }
     }
   }, [isOpen]);
@@ -274,62 +283,143 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
   if (!isOpen) return null;
 
-  const currentPlan = services.find((s) => s.id === serviceId) || services[1] || services[0];
-  const subtotal = currentPlan ? currentPlan.price : 28.99;
-  
-  // Calculate real-time discount and total order amount
-  const discountAmount = appliedCoupon ? calculateDiscount(appliedCoupon, subtotal) : 0;
-  const total = Math.max(0, Number((subtotal - discountAmount).toFixed(2)));
+  const currentPlan = (services.find((s) => s.id === serviceId) || services[0]) || null;
+  const subtotal = currentPlan ? currentPlan.price : 0;
 
-  // Real-time coupon validation helper: validates input code as user types or pastes
+  // Debounced server-side coupon validation refs & state
+  const couponAbortRef = useRef<AbortController | null>(null);
+  const couponReqIdRef = useRef<number>(0);
+  const couponTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const [validatedCouponData, setValidatedCouponData] = useState<{
+    code: string;
+    discountAmount: number;
+    discountPercent?: number;
+    discountFixed?: number;
+    newTotal: number;
+  } | null>(null);
+
+  // Cleanup debounce timer and abort controller on unmount
+  useEffect(() => {
+    return () => {
+      if (couponTimerRef.current) clearTimeout(couponTimerRef.current);
+      if (couponAbortRef.current) couponAbortRef.current.abort();
+    };
+  }, []);
+  
+  // Real-time discount and total order amount from server validation response
+  const discountAmount = validatedCouponData
+    ? validatedCouponData.discountAmount
+    : (appliedCoupon ? calculateDiscount(appliedCoupon, subtotal) : 0);
+  const total = validatedCouponData
+    ? validatedCouponData.newTotal
+    : Math.max(0, Number((subtotal - discountAmount).toFixed(2)));
+
+  // Update coupon input text on keystroke (clears validation state if emptied)
   const handleCouponInputChange = (inputCode: string) => {
     const cleanCode = inputCode.toUpperCase();
     setCouponCode(cleanCode);
 
     if (!cleanCode.trim()) {
+      if (couponTimerRef.current) clearTimeout(couponTimerRef.current);
+      if (couponAbortRef.current) couponAbortRef.current.abort();
+      setValidatedCouponData(null);
       setAppliedCoupon(null);
       setCouponError('');
-      return;
-    }
-
-    // Evaluate real-time against INITIAL_COUPONS and passed coupons
-    const validation = validateCouponRealTime(cleanCode, subtotal, coupons || INITIAL_COUPONS);
-
-    if (validation.isValid && validation.coupon) {
-      setAppliedCoupon(validation.coupon);
-      setCouponError('');
-    } else if (
-      validation.status === 'invalid' ||
-      validation.status === 'expired' ||
-      validation.status === 'max_usage' ||
-      validation.status === 'min_order'
-    ) {
-      setAppliedCoupon(null);
-      setCouponError(validation.message);
+      setIsValidatingCoupon(false);
     } else {
-      // User is still typing (< 3 characters)
-      setAppliedCoupon(null);
       setCouponError('');
     }
   };
 
-  const handleApplyCouponChip = (code: string) => {
-    handleCouponInputChange(code);
-  };
-
-  const handleRemoveCoupon = () => {
-    setCouponCode('');
-    setAppliedCoupon(null);
-    setCouponError('');
-  };
-
-  // Explicit apply button fallback
-  const handleApplyCoupon = async () => {
-    if (!couponCode.trim()) {
+  // Validate coupon on Apply button click or Enter key press (retains debounce and abort protections)
+  const handleApplyCoupon = (overrideCode?: string) => {
+    const cleanCode = (overrideCode || couponCode).trim().toUpperCase();
+    if (!cleanCode) {
       setCouponError('Please enter a coupon code.');
       return;
     }
-    handleCouponInputChange(couponCode);
+
+    if (couponTimerRef.current) {
+      clearTimeout(couponTimerRef.current);
+    }
+
+    setIsValidatingCoupon(true);
+    setCouponError('');
+
+    couponTimerRef.current = setTimeout(async () => {
+      const reqId = ++couponReqIdRef.current;
+      if (couponAbortRef.current) {
+        couponAbortRef.current.abort();
+      }
+      couponAbortRef.current = new AbortController();
+
+      // Referral or Reward Code format check: e.g. REF-*, REWARD-*
+      if (cleanCode.startsWith('REF-') || cleanCode.startsWith('REWARD-')) {
+        const clientVal = validateCouponRealTime(cleanCode, subtotal, coupons);
+        if (clientVal.isValid && clientVal.coupon) {
+          setValidatedCouponData(null);
+          setAppliedCoupon(clientVal.coupon);
+          setCouponError('');
+          setIsValidatingCoupon(false);
+          return;
+        }
+      }
+
+      try {
+        const res = await api.validateCoupon(cleanCode, subtotal);
+        if (reqId !== couponReqIdRef.current) return;
+
+        if (res && res.success) {
+          // Use server's discountAmount & newTotal directly, no undefined fields
+          setValidatedCouponData({
+            code: res.code,
+            discountAmount: res.discountAmount,
+            discountPercent: res.discountPercent,
+            discountFixed: res.discountFixed,
+            newTotal: res.newTotal,
+          });
+          setAppliedCoupon({
+            code: res.code,
+            discountPercent: res.discountPercent ?? 0,
+            discountFixed: res.discountFixed ?? 0,
+            active: true,
+            usageCount: 0,
+            expiryDate: '',
+          });
+          setCouponError('');
+        } else {
+          setValidatedCouponData(null);
+          setAppliedCoupon(null);
+          setCouponError('Invalid coupon code');
+        }
+      } catch (err: any) {
+        if (reqId === couponReqIdRef.current) {
+          setValidatedCouponData(null);
+          setAppliedCoupon(null);
+          setCouponError(err?.message || 'Invalid promotional code');
+        }
+      } finally {
+        if (reqId === couponReqIdRef.current) {
+          setIsValidatingCoupon(false);
+        }
+      }
+    }, 400);
+  };
+
+  const handleApplyCouponChip = (code: string) => {
+    setCouponCode(code);
+    handleApplyCoupon(code);
+  };
+
+  const handleRemoveCoupon = () => {
+    if (couponTimerRef.current) clearTimeout(couponTimerRef.current);
+    if (couponAbortRef.current) couponAbortRef.current.abort();
+    setCouponCode('');
+    setValidatedCouponData(null);
+    setAppliedCoupon(null);
+    setCouponError('');
+    setIsValidatingCoupon(false);
   };
 
   const validateStep2 = () => {
@@ -361,6 +451,16 @@ export const OrderModal: React.FC<OrderModalProps> = ({
         message: 'Please review and accept the Terms of Service to proceed with payment.',
         type: 'warning'
       });
+      return;
+    }
+
+    if (!currentPlan || !currentPlan.id || services.length === 0) {
+      showToast({
+        title: 'Plan Required',
+        message: 'Verified service pricing is unavailable. Please click Retry.',
+        type: 'error'
+      });
+      setIsProcessingPayment(false);
       return;
     }
 
@@ -739,55 +839,73 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 Choose the vehicle report plan that fits your needs. Single one-time payment with clear pricing.
               </p>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 sm:gap-4 pt-1">
-                {services.map((plan) => {
-                  const isSelected = plan.id === serviceId;
-                  return (
-                    <div
-                      key={plan.id}
-                      onClick={() => setServiceId(plan.id)}
-                      className={`p-3 sm:p-4 rounded-[8px] border-2 transition-all cursor-pointer flex flex-col justify-between ${
-                        isSelected
-                          ? 'border-[#FB2C36] bg-red-50/25 shadow-[0_1px_2px_rgba(0,0,0,0.05)]'
-                          : 'border-[#E2E8F0] hover:border-slate-300 bg-white'
-                      }`}
+              {services.length === 0 ? (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-3 text-amber-950">
+                  <p className="text-xs sm:text-sm text-amber-900 font-medium">
+                    {servicesError || 'Verified service plans are currently loading or unavailable.'}
+                  </p>
+                  {onRetryServices && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={onRetryServices}
+                      className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white"
                     >
-                      <div className="space-y-1.5 sm:space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-xs sm:text-sm text-slate-900 tracking-[-0.35px]">{plan.name}</span>
-                          {isSelected && (
-                            <div className="w-4.5 h-4.5 sm:w-5 sm:h-5 rounded-full bg-[#FB2C36] text-white flex items-center justify-center shrink-0">
-                              <Check className="w-3 h-3 stroke-[3]" />
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-xl sm:text-2xl font-black text-slate-900 tracking-[-0.35px]">${plan.price.toFixed(2)}</span>
-                          <span className="text-[10px] text-slate-400">USD</span>
-                        </div>
-
-                        <p className="text-[11px] text-slate-600 leading-snug">
-                          {plan.tagline}
-                        </p>
-
-                        <div className="text-[10px] text-[#FB2C36] font-semibold bg-red-50 px-2 py-0.5 sm:py-1 rounded-[8px] inline-block border border-red-100">
-                          {plan.deliveryTime}
-                        </div>
-                      </div>
-
-                      <div className="pt-2.5 sm:pt-3 mt-2.5 sm:mt-3 border-t border-slate-100 text-[10.5px] sm:text-[11px] text-slate-500">
-                        {plan.includedItems.slice(0, 3).map((inc, i) => (
-                          <div key={i} className="flex items-center gap-1.5 py-0.5">
-                            <Check className="w-3 h-3 text-[#059669] shrink-0" />
-                            <span className="truncate">{inc}</span>
+                      Retry Loading Pricing
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 sm:gap-4 pt-1">
+                  {services.map((plan) => {
+                    const isSelected = plan.id === serviceId;
+                    return (
+                      <div
+                        key={plan.id}
+                        onClick={() => setServiceId(plan.id)}
+                        className={`p-3 sm:p-4 rounded-[8px] border-2 transition-all cursor-pointer flex flex-col justify-between ${
+                          isSelected
+                            ? 'border-[#FB2C36] bg-red-50/25 shadow-[0_1px_2px_rgba(0,0,0,0.05)]'
+                            : 'border-[#E2E8F0] hover:border-slate-300 bg-white'
+                        }`}
+                      >
+                        <div className="space-y-1.5 sm:space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-xs sm:text-sm text-slate-900 tracking-[-0.35px]">{plan.name}</span>
+                            {isSelected && (
+                              <div className="w-4.5 h-4.5 sm:w-5 sm:h-5 rounded-full bg-[#FB2C36] text-white flex items-center justify-center shrink-0">
+                                <Check className="w-3 h-3 stroke-[3]" />
+                              </div>
+                            )}
                           </div>
-                        ))}
+
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-xl sm:text-2xl font-black text-slate-900 tracking-[-0.35px]">${plan.price.toFixed(2)}</span>
+                            <span className="text-[10px] text-slate-400">USD</span>
+                          </div>
+
+                          <p className="text-[11px] text-slate-600 leading-snug">
+                            {plan.tagline}
+                          </p>
+
+                          <div className="text-[10px] text-[#FB2C36] font-semibold bg-red-50 px-2 py-0.5 sm:py-1 rounded-[8px] inline-block border border-red-100">
+                            {plan.deliveryTime}
+                          </div>
+                        </div>
+
+                        <div className="pt-2.5 sm:pt-3 mt-2.5 sm:mt-3 border-t border-slate-100 text-[10.5px] sm:text-[11px] text-slate-500">
+                          {plan.includedItems.slice(0, 3).map((inc, i) => (
+                            <div key={i} className="flex items-center gap-1.5 py-0.5">
+                              <Check className="w-3 h-3 text-[#059669] shrink-0" />
+                              <span className="truncate">{inc}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -1305,31 +1423,54 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     )}
                   </div>
 
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={couponCode}
-                      onChange={(e) => handleCouponInputChange(e.target.value)}
-                      placeholder="e.g. FAKHAR20 or WELCOME10"
-                      className={`w-full pl-8 pr-8 py-2 bg-white border rounded-[8px] text-xs font-mono uppercase tracking-wider transition-all focus:outline-none ${
-                        appliedCoupon
-                          ? 'border-emerald-500 bg-emerald-50/20 text-emerald-950 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500/30'
-                          : couponError
-                          ? 'border-rose-400 bg-rose-50/20 text-rose-950 focus:border-rose-500 focus:ring-1 focus:ring-rose-500/30'
-                          : 'border-slate-300 focus:border-[#FB2C36]'
-                      }`}
-                    />
-                    <Tag className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        value={couponCode}
+                        onChange={(e) => handleCouponInputChange(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleApplyCoupon();
+                          }
+                        }}
+                        placeholder="Enter promo or referral code"
+                        className={`w-full pl-8 pr-8 py-2 bg-white border rounded-[8px] text-xs font-mono uppercase tracking-wider transition-all focus:outline-none ${
+                          appliedCoupon
+                            ? 'border-emerald-500 bg-emerald-50/20 text-emerald-950 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500/30'
+                            : couponError
+                            ? 'border-rose-400 bg-rose-50/20 text-rose-950 focus:border-rose-500 focus:ring-1 focus:ring-rose-500/30'
+                            : 'border-slate-300 focus:border-[#FB2C36]'
+                        }`}
+                      />
+                      <Tag className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
 
-                    {/* Right Trailing Status Indicator */}
-                    <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none flex items-center">
-                      {appliedCoupon && (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 animate-in zoom-in-75 duration-150" />
-                      )}
-                      {couponError && (
-                        <AlertCircle className="w-4 h-4 text-rose-500 animate-in zoom-in-75 duration-150" />
-                      )}
+                      {/* Right Trailing Status Indicator */}
+                      <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none flex items-center">
+                        {appliedCoupon && (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 animate-in zoom-in-75 duration-150" />
+                        )}
+                        {couponError && (
+                          <AlertCircle className="w-4 h-4 text-rose-500 animate-in zoom-in-75 duration-150" />
+                        )}
+                      </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyCoupon()}
+                      disabled={isValidatingCoupon || !couponCode.trim()}
+                      className="px-3.5 py-2 bg-slate-900 hover:bg-black text-white text-xs font-semibold rounded-[8px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shrink-0"
+                    >
+                      {isValidatingCoupon ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Applying...</span>
+                        </>
+                      ) : (
+                        <span>Apply</span>
+                      )}
+                    </button>
                   </div>
 
                   {/* Real-time Applied Success Badge */}
@@ -1354,34 +1495,6 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       <span>{couponError}</span>
                     </p>
                   )}
-
-                  {/* Quick-Apply Promo Chips from INITIAL_COUPONS */}
-                  <div className="pt-0.5">
-                    <span className="text-[10px] text-slate-400 block mb-1">Available Promotions:</span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {INITIAL_COUPONS.filter(c => c.active).map(c => {
-                        const isThisApplied = appliedCoupon?.code === c.code;
-                        return (
-                          <button
-                            key={c.code}
-                            type="button"
-                            onClick={() => handleApplyCouponChip(c.code)}
-                            className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                              isThisApplied
-                                ? 'bg-emerald-600 text-white shadow-xs'
-                                : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
-                            }`}
-                          >
-                            <span>{c.code}</span>
-                            <span className={isThisApplied ? 'text-emerald-100' : 'text-[#FB2C36]'}>
-                              ({c.discountPercent ? `${c.discountPercent}% OFF` : `$${c.discountFixed} OFF`})
-                            </span>
-                            {isThisApplied && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
                 </div>
 
                 {/* Primary Button: Submit Order (#FB2C36 accent, 8px radius, micro-shadow) */}
@@ -1676,7 +1789,11 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
             <button
               type="button"
+              disabled={step === 1 && (!currentPlan || services.length === 0)}
               onClick={() => {
+                if (step === 1 && (!currentPlan || services.length === 0)) {
+                  return;
+                }
                 if (step === 2 && !validateStep2()) {
                   return;
                 }
@@ -1690,7 +1807,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 }
                 setStep((s) => s + 1);
               }}
-              className="px-3.5 py-2 sm:px-5 sm:py-2.5 bg-[#FB2C36] hover:bg-[#E0242E] text-white font-medium text-xs sm:text-sm rounded-[8px] transition-colors flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.05)] active:scale-95 min-h-[40px] sm:min-h-[42px] leading-[1.43]"
+              className="px-3.5 py-2 sm:px-5 sm:py-2.5 bg-[#FB2C36] hover:bg-[#E0242E] disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium text-xs sm:text-sm rounded-[8px] transition-colors flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.05)] active:scale-95 min-h-[40px] sm:min-h-[42px] leading-[1.43]"
             >
               <span>
                 {step === 1 ? (

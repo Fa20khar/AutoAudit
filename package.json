@@ -12,6 +12,7 @@
     "migrate:mongodb": "tsx server/mongodb/migration.ts",
     "migrate:mongodb:dry": "tsx server/mongodb/migration.ts --dry-run",
     "test:security": "tsx server/scripts/test-security.ts",
+    "validate:security-build": "tsx server/scripts/validate-security-build.ts",
     "lint": "tsc --noEmit",
     "preview": "vite preview"
   },

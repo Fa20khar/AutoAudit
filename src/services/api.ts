@@ -67,65 +67,23 @@ export function extractDataArray<T>(res: any): T[] | null {
   return null;
 }
 
-/**
- * Fallback Cache Storage Manager
- * Stores timestamps, ensures data under 24 hours old, marks entries as stale when served as fallback.
- */
-interface CachedPayload<T> {
-  data: T;
-  timestamp: number;
-}
-
-const CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
-
-export const fallbackCache = {
-  get<T>(key: string): { data: T; isStale: boolean } | null {
-    if (typeof window === 'undefined' || !window.localStorage) return null;
+// One-time purge of old/legacy cache keys from localStorage
+if (typeof window !== 'undefined' && window.localStorage) {
+  [
+    'autoaudit_services',
+    'autoaudit_coupons',
+    'autoaudit_services_cache_v1',
+    'autoaudit_coupons_cache_v1',
+    'autoaudit_services_cache_v2',
+    'autoaudit_coupons_cache_v2',
+  ].forEach((k) => {
     try {
-      const raw = localStorage.getItem(key);
-      if (!raw) return null;
-      const parsed: CachedPayload<T> = JSON.parse(raw);
-      if (!parsed || typeof parsed !== 'object' || !parsed.timestamp) {
-        localStorage.removeItem(key);
-        return null;
-      }
-      const age = Date.now() - Number(parsed.timestamp);
-      if (age > CACHE_MAX_AGE_MS || age < 0) {
-        // Expired (> 24 hours) - remove and discard
-        localStorage.removeItem(key);
-        return null;
-      }
-      return {
-        data: parsed.data,
-        isStale: true, // Marked stale when served from fallback
-      };
-    } catch {
-      return null;
-    }
-  },
-
-  set<T>(key: string, data: T): void {
-    if (typeof window === 'undefined' || !window.localStorage) return;
-    try {
-      const payload: CachedPayload<T> = {
-        data,
-        timestamp: Date.now(),
-      };
-      localStorage.setItem(key, JSON.stringify(payload));
-    } catch {
-      // localStorage unavailable or quota exceeded
-    }
-  },
-
-  clear(key: string): void {
-    if (typeof window === 'undefined' || !window.localStorage) return;
-    try {
-      localStorage.removeItem(key);
+      localStorage.removeItem(k);
     } catch {
       // ignore
     }
-  }
-};
+  });
+}
 
 /**
  * Helper to perform HTTP fetch requests with timeout and structured error handling
@@ -274,45 +232,18 @@ export const api = {
    * Service Plans & Pricing Tiers
    */
   async getServices(timeoutMs = 8000): Promise<ServicePlan[]> {
-    const SERVICES_CACHE_KEY = 'autoaudit_services_cache_v2';
-    try {
-      const res = await request<any>(
-        '/api/services',
-        { method: 'GET' },
-        timeoutMs
-      );
+    const res = await request<any>(
+      '/api/services',
+      { method: 'GET' },
+      timeoutMs
+    );
 
-      const data = extractDataArray<ServicePlan>(res);
-      if (data && data.length > 0) {
-        // Clear any stale cache entry and write fresh snapshot with timestamp
-        fallbackCache.clear(SERVICES_CACHE_KEY);
-        fallbackCache.set(SERVICES_CACHE_KEY, data);
-        return data;
-      }
-
-      throw new ApiError('Empty or invalid services array received from server.', 502);
-    } catch (err: any) {
-      // Check fallback cache (<24 hours)
-      const cached = fallbackCache.get<ServicePlan[]>(SERVICES_CACHE_KEY);
-
-      // Rule: Never present stale prices as current: if services data is stale or missing,
-      // indicate error state so the caller does not present stale prices as current pricing.
-      const status = err instanceof ApiError ? err.status : 503;
-      const isStale = Boolean(cached?.isStale);
-
-      throw new ApiError(
-        isStale
-          ? 'Services pricing data is stale and cannot be verified with the server. Please retry.'
-          : (err?.message || 'Failed to retrieve vehicle history services from backend.'),
-        status,
-        err?.isTimeout || false,
-        {
-          stale: isStale,
-          cachedPlans: isStale ? cached?.data : null,
-          url: '/api/services',
-        }
-      );
+    const data = extractDataArray<ServicePlan>(res);
+    if (data && data.length > 0) {
+      return data;
     }
+
+    throw new ApiError('Empty or invalid services array received from server.', 502);
   },
 
   async getServiceById(id: string, timeoutMs = 6000): Promise<ServicePlan> {
@@ -387,44 +318,27 @@ export const api = {
   },
 
   /**
-   * Active Coupons & Promo Codes
+   * Active Coupons & Promo Codes (Admin Protected)
    */
-  async getCoupons(timeoutMs = 6000): Promise<Coupon[]> {
-    const COUPONS_CACHE_KEY = 'autoaudit_coupons_cache_v2';
-    try {
-      const res = await request<any>(
-        '/api/coupons',
-        { method: 'GET' },
-        timeoutMs
-      );
-
-      const data = extractDataArray<Coupon>(res);
-      if (data !== null) {
-        // Clear cache entry when API returns valid data
-        fallbackCache.clear(COUPONS_CACHE_KEY);
-        fallbackCache.set(COUPONS_CACHE_KEY, data);
-        return data;
-      }
-
-      throw new ApiError('Empty or invalid coupons array received from server.', 502);
-    } catch (err: any) {
-      // Fallback cache: use cached data only if under 24 hours old, marked stale
-      const cached = fallbackCache.get<Coupon[]>(COUPONS_CACHE_KEY);
-      if (cached && Array.isArray(cached.data)) {
-        return cached.data;
-      }
-
-      const status = err instanceof ApiError ? err.status : 503;
-      throw new ApiError(
-        err?.message || 'Failed to retrieve active coupons from backend.',
-        status,
-        err?.isTimeout || false,
-        {
-          stale: false,
-          url: '/api/coupons',
-        }
-      );
+  async getCoupons(adminToken?: string, timeoutMs = 6000): Promise<Coupon[]> {
+    const headers: Record<string, string> = {};
+    if (adminToken) {
+      headers['Authorization'] = `Bearer ${adminToken}`;
+      headers['x-admin-token'] = adminToken;
     }
+
+    const res = await request<any>(
+      '/api/coupons',
+      { method: 'GET', headers },
+      timeoutMs
+    );
+
+    const data = extractDataArray<Coupon>(res);
+    if (data !== null) {
+      return data;
+    }
+
+    throw new ApiError('Empty or invalid coupons array received from server.', 502);
   },
 
   /**
@@ -1239,6 +1153,47 @@ export const api = {
     samples: Record<'16:9' | '9:16', Array<{ id: string; title: string; prompt: string; url: string; duration: string }>>;
   }> {
     const res = await fetch('/api/video/samples');
+    return res.json();
+  },
+
+  /**
+   * Fetches latest security build validation report
+   */
+  async getSecurityBuildReport(): Promise<{
+    success: boolean;
+    data: any;
+    error?: string;
+  }> {
+    const token = typeof window !== 'undefined' ? sessionStorage.getItem('autoaudit_admin_token') : '';
+    const res = await fetch('/api/admin/security/validate', {
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'x-admin-token': token || ''
+      }
+    });
+    return res.json();
+  },
+
+  /**
+   * Triggers an immediate security build validation run
+   */
+  async runSecurityBuildValidation(): Promise<{
+    success: boolean;
+    message?: string;
+    data: any;
+    error?: string;
+  }> {
+    const token = typeof window !== 'undefined' ? sessionStorage.getItem('autoaudit_admin_token') : '';
+    const res = await fetch('/api/admin/security/run-validation', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'x-admin-token': token || ''
+      }
+    });
     return res.json();
   }
 };

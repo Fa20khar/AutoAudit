@@ -114,24 +114,8 @@ export const RealtimePricePreview: React.FC<RealtimePricePreviewProps> = ({
         <div className="mt-2 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10.5px] text-slate-500">
           <span className="flex items-center gap-1">
             <Tag className="w-3 h-3 text-blue-500" />
-            <span>Have a discount code? Apply in checkout or click a promo code:</span>
+            <span>Have a discount code? Apply in checkout.</span>
           </span>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => onApplyCouponChip && onApplyCouponChip('FAKHAR20')}
-              className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-1.5 py-0.2 rounded cursor-pointer transition-colors"
-            >
-              FAKHAR20 (20% OFF)
-            </button>
-            <button
-              type="button"
-              onClick={() => onApplyCouponChip && onApplyCouponChip('WELCOME10')}
-              className="text-[10px] font-mono font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-300 px-1.5 py-0.2 rounded cursor-pointer transition-colors"
-            >
-              WELCOME10
-            </button>
-          </div>
         </div>
       )}
     </div>

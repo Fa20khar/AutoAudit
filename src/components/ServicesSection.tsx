@@ -1,17 +1,25 @@
 import React from 'react';
 import { ServicePlan } from '../types';
-import { Check, X, Clock, ArrowRight, Sparkles } from 'lucide-react';
+import { Check, X, Clock, ArrowRight, Sparkles, RefreshCw } from 'lucide-react';
 import { WhatsAppButton } from './WhatsAppButton';
 import { useTranslation } from '../context/LanguageContext';
+import { Alert } from './ui/Alert';
+import { Button } from './ui/Button';
 
 interface ServicesSectionProps {
   services: ServicePlan[];
   onSelectService: (serviceId: string) => void;
+  isLoading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
 }
 
 export const ServicesSection: React.FC<ServicesSectionProps> = ({
   services,
   onSelectService,
+  isLoading,
+  error,
+  onRetry,
 }) => {
   const { t } = useTranslation();
 
@@ -32,7 +40,42 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
           </p>
         </div>
 
+        {/* Loading State */}
+        {isLoading && services.length === 0 && (
+          <div className="max-w-md mx-auto my-12 p-8 text-center space-y-4">
+            <div className="inline-block w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-sm text-slate-300 font-medium">Loading verified service plans...</p>
+          </div>
+        )}
+
+        {/* Error State with Shared Alert & Button Components */}
+        {error && services.length === 0 && (
+          <div className="max-w-lg mx-auto my-10 space-y-4">
+            <Alert
+              variant="warning"
+              title="Pricing Temporarily Unavailable"
+              className="bg-amber-50 border-amber-200 text-amber-950 shadow-sm"
+            >
+              <p className="text-xs sm:text-sm text-amber-900 leading-relaxed mb-3">
+                {error}
+              </p>
+              {onRetry && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={onRetry}
+                  leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
+                  className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white"
+                >
+                  Retry Loading Pricing
+                </Button>
+              )}
+            </Alert>
+          </div>
+        )}
+
         {/* Pricing Cards */}
+        {services.length > 0 && (
         <div className="flex flex-col lg:grid lg:grid-cols-3 gap-5 sm:gap-6 lg:gap-8 items-stretch max-w-6xl mx-auto w-full">
           {services.map((plan) => {
             const isFeatured = plan.isPopular;
@@ -153,6 +196,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
             );
           })}
         </div>
+        )}
 
       </div>
     </section>

@@ -20,7 +20,6 @@
     <meta name="author" content="AutoAudit" />
     <meta name="publisher" content="AutoAudit" />
     <meta name="category" content="Automotive, Vehicle History, VIN Check" />
-    <meta name="coverage" content="North America" />
     <meta name="distribution" content="Global" />
     <meta name="rating" content="General" />
     <meta name="geo.region" content="US" />
@@ -41,7 +40,7 @@
       property="og:description"
       content="Online vehicle history reports and VIN lookup. Enter VIN or plate, choose a report, and receive vehicle history records by email."
     />
-    <meta property="og:image" content="/autoaudit_logo.jpg" />
+    <meta property="og:image" content="https://auto-audit-chi.vercel.app/autoaudit_logo.jpg" />
     <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -58,7 +57,7 @@
       name="twitter:description"
       content="Vehicle history reports and VIN checks. Review vehicle records, title status, odometer readings, and reported incidents."
     />
-    <meta name="twitter:image" content="/autoaudit_logo.jpg" />
+    <meta name="twitter:image" content="https://auto-audit-chi.vercel.app/autoaudit_logo.jpg" />
     <meta name="twitter:image:alt" content="AutoAudit - Vehicle History Reports & VIN Check" />
 
     <!-- Schema.org Organization Structured Data (JSON-LD) -->
@@ -191,6 +190,38 @@
       "mainEntity": [
         {
           "@type": "Question",
+          "name": "What information do I need to order a report?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "You only need the vehicle’s 17-character Vehicle Identification Number (VIN) or the license plate / registration number along with the province or state. For delivery, provide your name and email address where the report should be sent."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How long does it take to receive my report?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Orders are processed upon payment confirmation. Sample reports can be viewed instantly, and compiled PDF reports are dispatched to your email and WhatsApp according to operational availability."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How will I receive my report?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Your finished report is delivered to your registered email address as a PDF document. You can also view and download it directly from your AutoAudit customer dashboard."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I access previous reports?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Once an order is completed, your report remains accessible in your customer dashboard under \"My Reports\" using your order number and email, where it can be viewed or printed."
+          }
+        },
+        {
+          "@type": "Question",
           "name": "What information is included in a vehicle report?",
           "acceptedAnswer": {
             "@type": "Answer",
@@ -199,18 +230,18 @@
         },
         {
           "@type": "Question",
-          "name": "How quickly will I receive my vehicle report after ordering?",
+          "name": "What is your refund/cancellation policy?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Reports are prepared and dispatched to your email address and WhatsApp upon payment verification."
+            "text": "Please contact support about cancellations or refunds. Refund terms are confirmed with your order."
           }
         },
         {
           "@type": "Question",
-          "name": "Where can I find the 17-digit VIN number on a vehicle?",
+          "name": "How do I print or export my vehicle report as a PDF?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "The 17-digit VIN is typically visible on the driver's side dashboard through the windshield, on the driver's door jamb sticker, or on the vehicle registration card."
+            "text": "You can save or print your report as a PDF using your browser’s print menu. Select \"Save as PDF\" as the destination and ensure background graphics are enabled for badges and formatting. On mobile devices, use the Share or browser menu to export directly to PDF."
           }
         }
       ]

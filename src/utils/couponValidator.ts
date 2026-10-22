@@ -1,5 +1,4 @@
 import { Coupon } from '../types';
-import { INITIAL_COUPONS } from '../data/initialData';
 
 export interface CouponValidationResult {
   isValid: boolean;
@@ -30,13 +29,12 @@ export function calculateDiscount(coupon: Coupon, subtotal: number): number {
 
 /**
  * Real-time coupon validation helper.
- * Checks whether an entered promo code exists in the INITIAL_COUPONS list (or passed coupons array),
- * verifies expiration and limits, and computes the discount to apply to total order amount before payment.
+ * Validates dynamic passed coupons and referral discount vouchers without client-side fallback lists.
  */
 export function validateCouponRealTime(
   code: string,
   subtotal: number,
-  availableCoupons: Coupon[] = INITIAL_COUPONS
+  availableCoupons: Coupon[] = []
 ): CouponValidationResult {
   const cleanCode = (code || '').trim().toUpperCase();
 
@@ -52,8 +50,7 @@ export function validateCouponRealTime(
     };
   }
 
-  // Combine provided coupons with INITIAL_COUPONS to ensure fallback resilience
-  const combinedCoupons = [...(availableCoupons || []), ...INITIAL_COUPONS];
+  const combinedCoupons = [...(availableCoupons || [])];
   const uniqueCouponsMap = new Map<string, Coupon>();
   combinedCoupons.forEach(c => {
     if (c && c.code) {
