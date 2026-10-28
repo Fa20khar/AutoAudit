@@ -24,15 +24,32 @@ export interface ServicePlan {
   active: boolean;
 }
 
+export interface VehiclePhotoItem {
+  id: string;
+  name: string;
+  dataUrl?: string;
+  angle?: 'front' | 'rear' | 'driver_side' | 'passenger_side' | 'odometer' | 'vin_plate' | 'interior' | 'damage' | 'engine' | 'other' | string;
+  label?: string;
+  size?: string;
+  uploadedAt?: string;
+}
+
 export interface VehicleDetails {
   vinOrReg: string;
   isVin: boolean;
   make: string;
   model: string;
   year: number;
+  color?: string;
   mileage?: string;
   countryOrState?: string;
   customerNotes?: string;
+  transmission?: string;
+  fuelType?: string;
+  titleStatus?: string;
+  inspectionFocusAreas?: string[];
+  knownDamages?: string[];
+  photos?: VehiclePhotoItem[];
 }
 
 export interface CustomerDetails {

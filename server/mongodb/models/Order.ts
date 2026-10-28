@@ -103,9 +103,16 @@ const OrderSchema = new Schema<OrderDocument>(
       make: { type: String, required: true, trim: true },
       model: { type: String, required: true, trim: true },
       year: { type: Number, required: true },
+      color: { type: String, trim: true },
       mileage: { type: String, trim: true },
       countryOrState: { type: String, trim: true },
-      customerNotes: { type: String, trim: true }
+      customerNotes: { type: String, trim: true },
+      transmission: { type: String, trim: true },
+      fuelType: { type: String, trim: true },
+      titleStatus: { type: String, trim: true },
+      inspectionFocusAreas: { type: [String], default: [] },
+      knownDamages: { type: [String], default: [] },
+      photos: { type: Array, default: [] }
     },
     payment: {
       status: {

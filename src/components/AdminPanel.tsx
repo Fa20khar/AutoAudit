@@ -114,6 +114,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [uploadedFileUrl, setUploadedFileUrl] = useState<string>('');
   const [uploadedFileName, setUploadedFileName] = useState<string>('');
   const [showEmailPreviewModal, setShowEmailPreviewModal] = useState<boolean>(false);
+  const [adminLightboxPhoto, setAdminLightboxPhoto] = useState<{ url: string; label: string; name?: string } | null>(null);
 
   // Mock SMTP Email Sequence & Log state
   const [dispatchedEmails, setDispatchedEmails] = useState<EmailNotification[]>(emails);
@@ -2554,17 +2555,125 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                     {/* Vehicle Details */}
                     <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-4 space-y-2">
-                      <span className="font-bold text-slate-900 uppercase tracking-wider text-[11px] block">
-                        Vehicle Details
-                      </span>
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-900 uppercase tracking-wider text-[11px] block">
+                          Vehicle Details & Specs
+                        </span>
+                        {currentOrder.vehicle.titleStatus && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            {currentOrder.vehicle.titleStatus}
+                          </span>
+                        )}
+                      </div>
                       <div className="space-y-1 text-slate-700">
                         <p><strong>Identifier / VIN:</strong> <span className="font-mono font-bold text-slate-900">{currentOrder.vehicle.vinOrReg}</span></p>
-                        <p><strong>Make / Model / Year:</strong> {currentOrder.vehicle.year} {currentOrder.vehicle.make} {currentOrder.vehicle.model}</p>
+                        <p><strong>Make / Model / Year:</strong> {currentOrder.vehicle.year} {currentOrder.vehicle.make} {currentOrder.vehicle.model} {currentOrder.vehicle.color ? `(${currentOrder.vehicle.color})` : ''}</p>
                         <p><strong>Mileage:</strong> {currentOrder.vehicle.mileage || 'Not provided'}</p>
-                        <p><strong>Region:</strong> {currentOrder.vehicle.countryOrState || 'Global / USA'}</p>
+                        <p><strong>Powertrain:</strong> {currentOrder.vehicle.transmission || 'Automatic'} • {currentOrder.vehicle.fuelType || 'Gasoline'}</p>
+                        <p><strong>Region / Origin:</strong> {currentOrder.vehicle.countryOrState || 'Global / USA'}</p>
+                        {currentOrder.vehicle.customerNotes && (
+                          <p className="text-[11px] text-slate-600 bg-white p-2 rounded border border-slate-200 mt-1">
+                            <strong>Customer Notes:</strong> {currentOrder.vehicle.customerNotes}
+                          </p>
+                        )}
                       </div>
                     </div>
 
+                  </div>
+
+                  {/* Customer Vehicle Photos & Inspection Review Gallery */}
+                  <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-4 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                          <Camera className="w-4 h-4 text-emerald-600" />
+                          <span>Customer-Provided Vehicle Photos & Verification Media</span>
+                        </h4>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          Inspect physical odometer, door-jamb VIN label, exterior condition, and flagged damage areas before finalizing report.
+                        </p>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded text-[11px] font-bold self-start ${
+                        currentOrder.vehicle.photos && currentOrder.vehicle.photos.length > 0
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          : 'bg-slate-200 text-slate-600'
+                      }`}>
+                        {currentOrder.vehicle.photos?.length || 0} Photos Uploaded
+                      </span>
+                    </div>
+
+                    {/* Customer Review Checklist */}
+                    {currentOrder.vehicle.inspectionFocusAreas && currentOrder.vehicle.inspectionFocusAreas.length > 0 && (
+                      <div className="bg-white p-3 rounded-lg border border-slate-200 space-y-1.5">
+                        <span className="text-[11px] font-bold text-slate-800 block">Customer-Requested Review Priorities:</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {currentOrder.vehicle.inspectionFocusAreas.map((area: string) => (
+                            <span
+                              key={area}
+                              className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 font-semibold"
+                            >
+                              ✓ {area}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Photos Grid */}
+                    {currentOrder.vehicle.photos && currentOrder.vehicle.photos.length > 0 ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 pt-1">
+                        {currentOrder.vehicle.photos.map((photo, pIdx) => {
+                          const isOdo = photo.angle === 'odometer';
+                          const isVin = photo.angle === 'vin_plate';
+                          return (
+                            <div
+                              key={photo.id || pIdx}
+                              onClick={() => {
+                                if (photo.dataUrl) {
+                                  setAdminLightboxPhoto({
+                                    url: photo.dataUrl,
+                                    label: photo.label || photo.angle || `Photo #${pIdx + 1}`,
+                                    name: photo.name
+                                  });
+                                }
+                              }}
+                              className="group relative bg-white border border-slate-200 rounded-lg overflow-hidden shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col"
+                            >
+                              <div className="relative h-24 w-full bg-slate-900 overflow-hidden">
+                                {photo.dataUrl ? (
+                                  <img
+                                    src={photo.dataUrl}
+                                    alt={photo.name}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-slate-400">
+                                    <Camera className="w-6 h-6" />
+                                  </div>
+                                )}
+                                <span className={`absolute top-1 left-1 text-[9px] font-bold px-1.5 py-0.2 rounded shadow-xs ${
+                                  isOdo
+                                    ? 'bg-emerald-600 text-white'
+                                    : isVin
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-black/70 text-white'
+                                }`}>
+                                  {photo.angle === 'odometer' ? '⏱️ Odometer' : photo.angle === 'vin_plate' ? '🏷️ VIN' : photo.angle || 'Photo'}
+                                </span>
+                              </div>
+                              <div className="p-1.5 bg-slate-50 text-[10px] text-slate-600 truncate flex items-center justify-between">
+                                <span className="truncate" title={photo.name}>{photo.name}</span>
+                                <Eye className="w-3 h-3 text-slate-400 shrink-0 group-hover:text-blue-600" />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-white rounded-lg border border-dashed border-slate-300 text-center text-xs text-slate-500">
+                        <span>No customer vehicle photos were attached to this order. Proceeding with electronic registry verification (NMVTIS, NICB, auction databases).</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Service, Payment Status & Report Result URL */}
@@ -4397,6 +4506,59 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   Close
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Photo Inspection Lightbox Modal */}
+      {adminLightboxPhoto && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setAdminLightboxPhoto(null)}
+        >
+          <div
+            className="relative max-w-4xl max-h-[90vh] bg-slate-900 rounded-2xl border border-slate-700 overflow-hidden flex flex-col shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-4 py-3 bg-[#0B132B] border-b border-slate-800 flex items-center justify-between text-white">
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-emerald-600 text-white">
+                  {adminLightboxPhoto.label}
+                </span>
+                <span className="text-xs text-slate-300 truncate max-w-md">
+                  {adminLightboxPhoto.name || 'Customer Vehicle Photo'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAdminLightboxPhoto(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-2 flex items-center justify-center bg-black overflow-auto max-h-[75vh]">
+              <img
+                src={adminLightboxPhoto.url}
+                alt={adminLightboxPhoto.name || 'Vehicle Photo Inspection'}
+                className="max-h-[72vh] w-auto object-contain rounded shadow-lg"
+              />
+            </div>
+
+            <div className="px-4 py-2.5 bg-[#0B132B] border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+              <span className="flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span>AutoAudit Certified Odometer & VIN Verification Console</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setAdminLightboxPhoto(null)}
+                className="px-3.5 py-1 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-semibold cursor-pointer"
+              >
+                Close Preview
+              </button>
             </div>
           </div>
         </div>

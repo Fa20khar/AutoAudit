@@ -244,16 +244,16 @@ export const CustomerIntakeModal: React.FC<CustomerIntakeModalProps> = ({
     });
   };
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const remainingSlots = 5 - vehiclePhotos.length;
+    const remainingSlots = 6 - vehiclePhotos.length;
     if (remainingSlots <= 0) {
       showToast({
         type: 'warning',
         title: 'Photo Limit Reached',
-        message: 'Maximum 5 vehicle photos allowed per intake request.',
+        message: 'Maximum 6 vehicle photos allowed per intake request.',
         duration: 4000
       });
       return;
@@ -274,11 +274,17 @@ export const CustomerIntakeModal: React.FC<CustomerIntakeModalProps> = ({
       }
 
       const sizeFormatted = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
-      const previewUrl = URL.createObjectURL(file);
+      const dataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(file);
+      });
+
       newPhotos.push({
         name: file.name,
         size: sizeFormatted,
-        previewUrl
+        previewUrl: dataUrl || URL.createObjectURL(file)
       });
     }
 

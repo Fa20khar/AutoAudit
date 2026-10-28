@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import confetti from 'canvas-confetti';
-import { ServicePlan, Order, Coupon, AuditLog, EmailNotification } from '../types';
+import { ServicePlan, Order, Coupon, AuditLog, EmailNotification, VehiclePhotoItem } from '../types';
+import { VehiclePhotoUploader } from './VehiclePhotoUploader';
 import { 
   X, Check, ArrowRight, ArrowLeft, ShieldCheck, Lock, CreditCard, 
   Sparkles, AlertCircle, FileCheck, CheckCircle2, Building, Wallet, CheckCircle,
@@ -75,6 +76,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const [mileage, setMileage] = useState<string>('');
   const [countryOrState, setCountryOrState] = useState<string>('');
   const [customerNotes, setCustomerNotes] = useState<string>('');
+  const [photos, setPhotos] = useState<VehiclePhotoItem[]>([]);
   const [vinError, setVinError] = useState<string>('');
 
   // Customer details
@@ -494,7 +496,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           year: year || 2021,
           mileage: mileage.trim() || 'Not provided',
           countryOrState: countryOrState.trim() || 'US',
-          customerNotes: customerNotes.trim() || undefined
+          customerNotes: customerNotes.trim() || undefined,
+          photos: photos.length > 0 ? photos : undefined
         },
         payment: {
           status: 'Pending',
@@ -599,7 +602,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           year: year || 2020,
           mileage: mileage.trim() || '41,800 mi',
           countryOrState: countryOrState.trim() || 'California, USA',
-          customerNotes: customerNotes.trim() || undefined
+          customerNotes: customerNotes.trim() || undefined,
+          photos: photos.length > 0 ? photos : undefined
         },
         payment: {
           status: 'Pending',
@@ -1134,6 +1138,17 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     onChange={(e) => setCountryOrState(e.target.value)}
                     placeholder="e.g. California, Ontario, Texas"
                     className="w-full px-3 py-1.5 sm:px-3.5 sm:py-2 bg-slate-50 border border-slate-300 rounded-[8px] text-xs sm:text-sm focus:outline-none focus:border-[#FB2C36]"
+                  />
+                </div>
+
+                {/* Optional Vehicle Photos */}
+                <div className="pt-2 border-t border-slate-200">
+                  <VehiclePhotoUploader
+                    photos={photos}
+                    onChange={setPhotos}
+                    maxPhotos={6}
+                    label="Attach Vehicle Photos (Recommended)"
+                    sublabel="Upload photos of the odometer, VIN sticker, or body condition for auditor review."
                   />
                 </div>
               </div>

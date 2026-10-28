@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, CheckCircle2, ArrowRight, Car, FileCheck, Loader2, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, CheckCircle2, ArrowRight, Car, FileCheck, Loader2, AlertCircle, Camera, Upload } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from '../context/LanguageContext';
 import { validateVinChecksum } from '../utils/vinValidator';
@@ -21,6 +21,7 @@ const SAMPLE_VEHICLE_TITLE = '2020 Honda Accord Touring 2.0T';
 export const Hero: React.FC<HeroProps> = ({
   onStartOrderWithVin,
   onOpenSample,
+  onRequestReport,
 }) => {
   const { showToast } = useToast();
   const { t } = useTranslation();
@@ -30,6 +31,67 @@ export const Hero: React.FC<HeroProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [validationState, setValidationState] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
   const [validationFeedback, setValidationFeedback] = useState<string | null>(null);
+  const [isHeroDragging, setIsHeroDragging] = useState(false);
+  const [isHeroProcessing, setIsHeroProcessing] = useState(false);
+  const heroFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleHeroFiles = async (files: FileList | File[]) => {
+    const validFiles: File[] = [];
+    for (let i = 0; i < files.length; i++) {
+      if (files[i].type.startsWith('image/')) {
+        validFiles.push(files[i]);
+      }
+    }
+    if (validFiles.length === 0) {
+      showToast({
+        title: 'Images Only',
+        message: 'Please choose image files (JPG, PNG, WEBP).',
+        type: 'warning'
+      });
+      return;
+    }
+    setIsHeroProcessing(true);
+    try {
+      const photoItems = [];
+      for (let i = 0; i < Math.min(validFiles.length, 8); i++) {
+        const file = validFiles[i];
+        const reader = new FileReader();
+        const dataUrl = await new Promise<string>((resolve) => {
+          reader.onload = (e) => resolve(e.target?.result as string);
+          reader.readAsDataURL(file);
+        });
+        photoItems.push({
+          id: `photo-hero-${Date.now()}-${i}`,
+          name: file.name,
+          dataUrl,
+          angle: i === 0 ? 'odometer' : i === 1 ? 'vin_plate' : 'front',
+          label: i === 0 ? 'Odometer (Mileage)' : i === 1 ? 'VIN Door Jamb / Sticker' : 'Vehicle Photo',
+          size: `${Math.round(file.size / 1024)} KB`,
+          uploadedAt: new Date().toISOString()
+        });
+      }
+      sessionStorage.setItem('autoaudit_preloaded_photos', JSON.stringify(photoItems));
+      showToast({
+        title: 'Photos Attached',
+        message: `${photoItems.length} vehicle photo(s) attached. Opening vehicle report request...`,
+        type: 'success',
+        duration: 3500
+      });
+      if (onRequestReport) {
+        onRequestReport();
+      } else {
+        onStartOrderWithVin(SAMPLE_VERIFIED_VIN, true);
+      }
+    } catch {
+      showToast({
+        title: 'Upload Error',
+        message: 'Failed to process photos. Please try again.',
+        type: 'error'
+      });
+    } finally {
+      setIsHeroProcessing(false);
+    }
+  };
 
   // Debounced real-time visual checksum validation effect for VIN input
   useEffect(() => {
@@ -318,6 +380,86 @@ export const Hero: React.FC<HeroProps> = ({
                 </div>
 
               </form>
+
+              {/* Direct Media Upload Dual Cards */}
+              <div className="pt-3 border-t border-slate-800/80">
+                <input
+                  ref={heroFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files) handleHeroFiles(e.target.files);
+                  }}
+                />
+                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2.5 flex items-center justify-between">
+                  <span>Or provide photos for specialist review:</span>
+                  <span className="text-emerald-400 font-mono text-[10px]">Odometer & VIN Sticker</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Card 1: Add Image Upload */}
+                  <div
+                    onClick={() => heroFileInputRef.current?.click()}
+                    className="p-3.5 rounded-xl border border-slate-700/80 hover:border-blue-500 bg-[#0B132B]/90 hover:bg-[#101F3C] transition-all cursor-pointer group flex items-center gap-3 shadow-xs"
+                  >
+                    <div className="w-9 h-9 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-400 flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:bg-blue-500/20 transition-all">
+                      {isHeroProcessing ? (
+                        <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Camera className="w-4 h-4" />
+                      )}
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-white group-hover:text-blue-300 transition-colors">
+                        Add Image Upload
+                      </h4>
+                      <p className="text-[10px] text-slate-400">
+                        Camera roll or device files
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Card 2: Add Drag-and-Drop Photos */}
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsHeroDragging(true);
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault();
+                      setIsHeroDragging(false);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsHeroDragging(false);
+                      if (e.dataTransfer.files) handleHeroFiles(e.dataTransfer.files);
+                    }}
+                    onClick={() => heroFileInputRef.current?.click()}
+                    className={`p-3.5 rounded-xl border-2 border-dashed transition-all cursor-pointer flex items-center gap-3 shadow-xs ${
+                      isHeroDragging
+                        ? 'border-blue-400 bg-blue-950/50 text-blue-200'
+                        : 'border-slate-700/80 hover:border-slate-500 bg-[#0B132B]/60 hover:bg-[#0B132B]'
+                    }`}
+                  >
+                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                      isHeroDragging
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400'
+                    }`}>
+                      <Upload className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-white">
+                        Add Drag-and-Drop Photos
+                      </h4>
+                      <p className="text-[10px] text-slate-400">
+                        {isHeroDragging ? 'Drop photos now!' : 'Drop photos directly here'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* One Secondary Link: View Sample Report */}

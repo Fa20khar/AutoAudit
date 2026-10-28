@@ -3,7 +3,8 @@ import { Order } from '../types';
 import { 
   X, LayoutDashboard, FileText, ShoppingBag, User, HelpCircle, 
   LogOut, CheckCircle2, Clock, Search, AlertCircle, 
-  FileCheck, Mail, ShieldCheck, ArrowRight, Loader2, Gift
+  FileCheck, Mail, ShieldCheck, ArrowRight, Loader2, Gift,
+  Camera, Image as ImageIcon, Eye
 } from 'lucide-react';
 import { OrderTrackingProgressBar } from './OrderTrackingProgressBar';
 import { WhatsAppButton } from './WhatsAppButton';
@@ -31,6 +32,7 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [customerOrders, setCustomerOrders] = useState<Order[]>(orders);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(orders[0] || null);
+  const [customerLightboxPhoto, setCustomerLightboxPhoto] = useState<{ url: string; label: string; name?: string } | null>(null);
   const [lookupEmail, setLookupEmail] = useState<string>(() => {
     return (typeof window !== 'undefined' && localStorage.getItem('autoaudit_customer_email')) || '';
   });
@@ -480,6 +482,72 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
                     </div>
                   </div>
 
+                  {/* Customer Review Priorities & Uploaded Photos */}
+                  {((selectedOrder.vehicle.photos && selectedOrder.vehicle.photos.length > 0) || (selectedOrder.vehicle.inspectionFocusAreas && selectedOrder.vehicle.inspectionFocusAreas.length > 0)) && (
+                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-800 flex items-center gap-1.5">
+                          <Camera className="w-4 h-4 text-emerald-600" />
+                          <span>Submitted Vehicle Inspection Media & Focus Areas</span>
+                        </span>
+                        {selectedOrder.vehicle.photos && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 font-mono">
+                            {selectedOrder.vehicle.photos.length} Photo{selectedOrder.vehicle.photos.length === 1 ? '' : 's'} on Record
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Priorities */}
+                      {selectedOrder.vehicle.inspectionFocusAreas && selectedOrder.vehicle.inspectionFocusAreas.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {selectedOrder.vehicle.inspectionFocusAreas.map(area => (
+                            <span key={area} className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 font-medium">
+                              ✓ {area}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Photo Thumbnails */}
+                      {selectedOrder.vehicle.photos && selectedOrder.vehicle.photos.length > 0 && (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+                          {selectedOrder.vehicle.photos.map((photo, idx) => (
+                            <div
+                              key={photo.id || idx}
+                              onClick={() => {
+                                if (photo.dataUrl) {
+                                  setCustomerLightboxPhoto({
+                                    url: photo.dataUrl,
+                                    label: photo.label || photo.angle || `Photo #${idx + 1}`,
+                                    name: photo.name
+                                  });
+                                }
+                              }}
+                              className="group relative bg-white border border-slate-200 rounded-lg overflow-hidden cursor-pointer hover:shadow-xs transition-shadow flex flex-col"
+                            >
+                              <div className="relative h-20 w-full bg-slate-900 overflow-hidden">
+                                {photo.dataUrl ? (
+                                  <img src={photo.dataUrl} alt={photo.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-slate-400">
+                                    <Camera className="w-5 h-5" />
+                                  </div>
+                                )}
+                                <span className="absolute top-1 left-1 text-[8px] font-bold px-1.5 py-0.2 rounded bg-black/75 text-white">
+                                  {photo.angle === 'odometer' ? '⏱️ Odo' : photo.angle === 'vin_plate' ? '🏷️ VIN' : photo.angle || 'Photo'}
+                                </span>
+                              </div>
+                              <div className="p-1 text-[10px] text-slate-600 truncate flex items-center justify-between">
+                                <span className="truncate">{photo.name}</span>
+                                <Eye className="w-3 h-3 text-slate-400 shrink-0" />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Progress tracker */}
                   <OrderTrackingProgressBar
                     status={selectedOrder.status}
@@ -610,6 +678,39 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
         </main>
 
       </div>
+
+      {/* Customer Photo Lightbox */}
+      {customerLightboxPhoto && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setCustomerLightboxPhoto(null)}
+        >
+          <div
+            className="relative max-w-3xl max-h-[90vh] bg-slate-900 rounded-2xl border border-slate-700 overflow-hidden flex flex-col shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-4 py-3 bg-[#0B132B] border-b border-slate-800 flex items-center justify-between text-white">
+              <span className="text-xs font-bold bg-blue-600 px-2 py-0.5 rounded">
+                {customerLightboxPhoto.label}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCustomerLightboxPhoto(null)}
+                className="p-1 rounded text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-2 flex items-center justify-center bg-black max-h-[75vh] overflow-auto">
+              <img
+                src={customerLightboxPhoto.url}
+                alt={customerLightboxPhoto.name || 'Vehicle Photo'}
+                className="max-h-[70vh] w-auto object-contain rounded"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

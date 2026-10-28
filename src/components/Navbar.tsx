@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, ArrowRight, Globe, ChevronRight, Gift } from 'lucide-react';
+import { Menu, X, ArrowRight, Globe, ChevronRight, Gift, Camera } from 'lucide-react';
 import { Logo } from './Logo';
 import { useTranslation } from '../context/LanguageContext';
 
@@ -15,6 +15,7 @@ interface NavbarProps {
   onRequestReport?: () => void;
   onOpenVideoStudio?: () => void; // Hidden in UI per design spec; retained for interface compatibility
   onOpenReferral?: () => void;
+  onOpenIntake?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -29,6 +30,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onRequestReport,
   onOpenVideoStudio,
   onOpenReferral,
+  onOpenIntake,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { language, setLanguage, t } = useTranslation();
@@ -115,6 +117,16 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             {t('navMyReports')}
           </button>
+          {onOpenIntake && (
+            <button
+              onClick={onOpenIntake}
+              className="hover:text-white transition-colors cursor-pointer text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 font-semibold"
+              title="Upload vehicle photos and submit custom report request"
+            >
+              <Camera className="w-3.5 h-3.5" />
+              <span>Intake & Photos</span>
+            </button>
+          )}
         </nav>
 
         {/* Right: Actions (Language toggle, Refer & Earn, Get Report, Mobile Menu) */}
@@ -328,6 +340,22 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <span>{t('navMyReports')}</span>
                   <ChevronRight className="w-4 h-4 text-slate-500" />
                 </button>
+
+                {onOpenIntake && (
+                  <button
+                    onClick={() => {
+                      onOpenIntake();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between text-left px-3.5 py-2 rounded-lg text-xs font-semibold text-emerald-400 hover:text-emerald-300 hover:bg-[#0F172A] transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Camera className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Vehicle Intake & Photo Upload</span>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
+                  </button>
+                )}
 
                 <button
                   onClick={() => {

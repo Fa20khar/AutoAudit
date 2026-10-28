@@ -34,7 +34,8 @@ import { QRCodeSVG } from 'qrcode.react';
 import confetti from 'canvas-confetti';
 import { ProgressStepper } from './ProgressStepper';
 import { ActiveSafetyRecallsBanner } from './ActiveSafetyRecallsBanner';
-import { ServicePlan, Coupon, Order } from '../types';
+import { VehiclePhotoUploader } from './VehiclePhotoUploader';
+import { ServicePlan, Coupon, Order, VehiclePhotoItem } from '../types';
 import { validateVinFormat } from '../utils/vinValidator';
 import { calculateDiscount } from '../utils/couponValidator';
 import { api } from '../services/api';
@@ -69,6 +70,43 @@ const COUNTRIES = [
 
 const MODEL_YEARS = Array.from({ length: 37 }, (_, i) => 2026 - i);
 
+const TRANSMISSIONS = [
+  'Automatic',
+  'Manual',
+  'CVT (Continuously Variable)',
+  'Dual-Clutch (DCT)',
+  'Electric Single-Speed',
+  'Other'
+];
+
+const FUEL_TYPES = [
+  'Gasoline',
+  'Hybrid (HEV)',
+  'Electric (EV)',
+  'Plug-in Hybrid (PHEV)',
+  'Diesel',
+  'Other'
+];
+
+const TITLE_STATUSES = [
+  'Clean Title',
+  'Financed / Active Bank Lien',
+  'Salvage / Rebuilt',
+  'Reconstructed / Total Loss',
+  'Not Sure / Request AutoAudit Verification'
+];
+
+const INSPECTION_AREAS = [
+  'Accident & Collision Check',
+  'Odometer & Rollback Audit',
+  'Salvage / Total Loss History',
+  'Flood, Water & Hail Damage',
+  'Insurance Auction Records & Bid Photos',
+  'Title Brands & Liens Check',
+  'Open Safety Recalls',
+  'Service History & Prior Owners'
+];
+
 export const VehicleReportForm: React.FC<VehicleReportFormProps> = ({
   onBackToHome,
   onOpenSample,
@@ -95,8 +133,34 @@ export const VehicleReportForm: React.FC<VehicleReportFormProps> = ({
   const [color, setColor] = useState<string>('White');
   const [mileage, setMileage] = useState<string>('');
   const [country, setCountry] = useState<string>('United States');
+  const [transmission, setTransmission] = useState<string>('Automatic');
+  const [fuelType, setFuelType] = useState<string>('Gasoline');
+  const [titleStatus, setTitleStatus] = useState<string>('Clean Title');
+  const [inspectionFocusAreas, setInspectionFocusAreas] = useState<string[]>([
+    'Accident & Collision Check',
+    'Odometer & Rollback Audit'
+  ]);
+  const [photos, setPhotos] = useState<VehiclePhotoItem[]>(() => {
+    try {
+      const stored = sessionStorage.getItem('autoaudit_preloaded_photos');
+      if (stored) {
+        sessionStorage.removeItem('autoaudit_preloaded_photos');
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {
+      // ignore
+    }
+    return [];
+  });
   const [vehicleNotes, setVehicleNotes] = useState<string>('');
   const [vinError, setVinError] = useState<string>('');
+
+  const toggleFocusArea = (area: string) => {
+    setInspectionFocusAreas(prev =>
+      prev.includes(area) ? prev.filter(a => a !== area) : [...prev, area]
+    );
+  };
 
   // Step 2: Customer Contact & Plan
   const [fullName, setFullName] = useState<string>('');
@@ -294,9 +358,15 @@ export const VehicleReportForm: React.FC<VehicleReportFormProps> = ({
           make: make.trim() || 'Verified Vehicle',
           model: model.trim() || 'Model',
           year: year || 2021,
+          color,
           mileage: mileage.trim() || 'Pending verification',
           countryOrState: country,
-          customerNotes: vehicleNotes.trim() ? `Color: ${color}. Notes: ${vehicleNotes.trim()}` : `Color: ${color}`
+          customerNotes: vehicleNotes.trim() ? `Color: ${color}. Notes: ${vehicleNotes.trim()}` : `Color: ${color}`,
+          transmission,
+          fuelType,
+          titleStatus,
+          inspectionFocusAreas,
+          photos: photos.length > 0 ? photos : undefined
         },
         payment: {
           status: 'Pending',
@@ -779,14 +849,102 @@ export const VehicleReportForm: React.FC<VehicleReportFormProps> = ({
                   </div>
                 </div>
 
+                {/* Pertinent Vehicle Specifications: Transmission, Fuel, Title Status */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-300">Transmission</label>
+                    <select
+                      value={transmission}
+                      onChange={(e) => setTransmission(e.target.value)}
+                      className="w-full h-11 px-3 bg-[#0B132B] border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-blue-500 cursor-pointer"
+                    >
+                      {TRANSMISSIONS.map(t => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-300">Fuel / Powertrain</label>
+                    <select
+                      value={fuelType}
+                      onChange={(e) => setFuelType(e.target.value)}
+                      className="w-full h-11 px-3 bg-[#0B132B] border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-blue-500 cursor-pointer"
+                    >
+                      {FUEL_TYPES.map(f => (
+                        <option key={f} value={f}>{f}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-300">Current Title Status</label>
+                    <select
+                      value={titleStatus}
+                      onChange={(e) => setTitleStatus(e.target.value)}
+                      className="w-full h-11 px-3 bg-[#0B132B] border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-blue-500 cursor-pointer"
+                    >
+                      {TITLE_STATUSES.map(ts => (
+                        <option key={ts} value={ts}>{ts}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Key Auditor Inspection & Review Focus Areas */}
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                      <span>Auditor Review & Inspection Focus Areas</span>
+                    </label>
+                    <span className="text-[11px] text-slate-400">Select all areas you want prioritized</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {INSPECTION_AREAS.map(area => {
+                      const isSelected = inspectionFocusAreas.includes(area);
+                      return (
+                        <button
+                          key={area}
+                          type="button"
+                          onClick={() => toggleFocusArea(area)}
+                          className={`px-3 py-2 rounded-xl text-xs font-medium text-left transition-all border flex items-center justify-between cursor-pointer ${
+                            isSelected
+                              ? 'bg-blue-950/60 border-blue-500/80 text-blue-200 shadow-xs'
+                              : 'bg-[#0B132B] border-slate-800 text-slate-400 hover:text-slate-300 hover:border-slate-700'
+                          }`}
+                        >
+                          <span>{area}</span>
+                          <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${
+                            isSelected ? 'bg-blue-600 text-white' : 'border border-slate-700'
+                          }`}>
+                            {isSelected ? '✓' : ''}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Vehicle Photos Upload & Categorization */}
+                <div className="pt-2 border-t border-slate-800/80">
+                  <VehiclePhotoUploader
+                    photos={photos}
+                    onChange={setPhotos}
+                    maxPhotos={8}
+                    label="Vehicle Photos & Inspection Media (Recommended for Comprehensive Report)"
+                    sublabel="Attach photos of the odometer, driver-door VIN sticker, exterior, and any known damage for verified human auditor review."
+                  />
+                </div>
+
                 {/* Additional Notes */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-300">Additional Instructions / Notes (Optional)</label>
+                  <label className="text-xs font-bold text-slate-300">Customer Observations & Specific Review Notes (Optional)</label>
                   <textarea
                     rows={2}
                     value={vehicleNotes}
                     onChange={(e) => setVehicleNotes(e.target.value)}
-                    placeholder="Specific items to verify (e.g. auction photos, salvage flood title, previous owner count)..."
+                    placeholder="Specific items to verify (e.g. auction photos, salvage flood title, previous owner count, seller claims to check)..."
                     className="w-full p-3 bg-[#0B132B] border border-slate-700 rounded-xl text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500"
                   />
                 </div>
@@ -950,6 +1108,75 @@ export const VehicleReportForm: React.FC<VehicleReportFormProps> = ({
                       </select>
                     </div>
                   </div>
+                </div>
+
+                {/* Verified Vehicle Inspection Review Summary */}
+                <div className="p-4 bg-[#0B132B] rounded-xl border border-slate-800 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <Car className="w-4 h-4 text-emerald-400" />
+                      <span>Review Selected Vehicle & Inspection Details</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentStep(1)}
+                      className="text-xs text-blue-400 hover:text-blue-300 font-medium cursor-pointer"
+                    >
+                      Edit Vehicle
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-300 bg-slate-900/60 p-3 rounded-lg border border-slate-800">
+                    <div>
+                      <p><strong className="text-white">Vehicle:</strong> {year} {make} {model}</p>
+                      <p><strong className="text-white">{isVin ? 'VIN:' : 'Plate:'}</strong> <span className="font-mono text-blue-400">{vinOrPlate}</span></p>
+                      <p><strong className="text-white">Specs:</strong> {transmission} • {fuelType} • {color}</p>
+                    </div>
+                    <div>
+                      <p><strong className="text-white">Title Status:</strong> <span className="text-emerald-400">{titleStatus}</span></p>
+                      <p><strong className="text-white">Odometer:</strong> {mileage || 'Pending audit'}</p>
+                      <p><strong className="text-white">Attached Media:</strong> {photos.length > 0 ? (
+                        <span className="text-emerald-400 font-semibold font-mono">📸 {photos.length} Photo{photos.length === 1 ? '' : 's'} Ready</span>
+                      ) : (
+                        <span className="text-slate-500">None attached</span>
+                      )}</p>
+                    </div>
+                  </div>
+
+                  {/* Focus Areas Pill Chips */}
+                  {inspectionFocusAreas.length > 0 && (
+                    <div className="space-y-1">
+                      <span className="text-[11px] font-semibold text-slate-400 block">Auditor Priority Checklist:</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {inspectionFocusAreas.map(area => (
+                          <span
+                            key={area}
+                            className="text-[10px] px-2 py-0.5 rounded-full bg-blue-950/70 border border-blue-500/30 text-blue-300 font-medium"
+                          >
+                            ✓ {area}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Photo Thumbnails Preview in Step 2 */}
+                  {photos.length > 0 && (
+                    <div className="pt-1 flex flex-wrap items-center gap-2">
+                      {photos.map(p => (
+                        <div key={p.id} className="relative w-12 h-12 rounded-lg overflow-hidden border border-slate-700 bg-slate-900" title={p.label || p.name}>
+                          {p.dataUrl ? (
+                            <img src={p.dataUrl} alt={p.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <Camera className="w-4 h-4 m-auto text-slate-500" />
+                          )}
+                          <span className="absolute bottom-0 inset-x-0 bg-black/70 text-[8px] text-center text-white truncate px-0.5">
+                            {p.angle === 'odometer' ? 'Odo' : p.angle === 'vin_plate' ? 'VIN' : p.angle}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Promo Code & Summary Bar */}

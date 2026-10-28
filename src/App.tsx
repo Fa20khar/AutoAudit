@@ -411,6 +411,7 @@ function AppContent() {
             onRequestReport={handleOpenRequestReport}
             onOpenVideoStudio={() => setIsVideoModalOpen(true)}
             onOpenReferral={() => setIsReferralModalOpen(true)}
+            onOpenIntake={() => setIsIntakeModalOpen(true)}
           />
 
           <main className="flex-1">
@@ -459,6 +460,7 @@ function AppContent() {
             onRequestReport={handleOpenRequestReport}
             onOpenVideoStudio={() => setIsVideoModalOpen(true)}
             onOpenReferral={() => setIsReferralModalOpen(true)}
+            onOpenIntake={() => setIsIntakeModalOpen(true)}
           />
 
           <main className="flex-1">

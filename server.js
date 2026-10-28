@@ -544,9 +544,16 @@ var OrderSchema = new Schema(
       make: { type: String, required: true, trim: true },
       model: { type: String, required: true, trim: true },
       year: { type: Number, required: true },
+      color: { type: String, trim: true },
       mileage: { type: String, trim: true },
       countryOrState: { type: String, trim: true },
-      customerNotes: { type: String, trim: true }
+      customerNotes: { type: String, trim: true },
+      transmission: { type: String, trim: true },
+      fuelType: { type: String, trim: true },
+      titleStatus: { type: String, trim: true },
+      inspectionFocusAreas: { type: [String], default: [] },
+      knownDamages: { type: [String], default: [] },
+      photos: { type: Array, default: [] }
     },
     payment: {
       status: {
@@ -3595,9 +3602,24 @@ ordersRouter.post("/", async (req, res) => {
       make: body.vehicle.make ? sanitizeText(body.vehicle.make) : "Verified",
       model: body.vehicle.model ? sanitizeText(body.vehicle.model) : "Series",
       year: Number(body.vehicle.year) || (/* @__PURE__ */ new Date()).getFullYear(),
+      color: body.vehicle.color ? sanitizeText(body.vehicle.color) : void 0,
       mileage: body.vehicle.mileage ? sanitizeText(body.vehicle.mileage) : "Pending audit",
       countryOrState: body.vehicle.countryOrState ? sanitizeText(body.vehicle.countryOrState) : "US",
-      customerNotes: body.vehicle.customerNotes ? sanitizeText(body.vehicle.customerNotes) : ""
+      customerNotes: body.vehicle.customerNotes ? sanitizeText(body.vehicle.customerNotes) : "",
+      transmission: body.vehicle.transmission ? sanitizeText(body.vehicle.transmission) : void 0,
+      fuelType: body.vehicle.fuelType ? sanitizeText(body.vehicle.fuelType) : void 0,
+      titleStatus: body.vehicle.titleStatus ? sanitizeText(body.vehicle.titleStatus) : void 0,
+      inspectionFocusAreas: Array.isArray(body.vehicle.inspectionFocusAreas) ? body.vehicle.inspectionFocusAreas.map((item) => sanitizeText(item)).filter(Boolean) : void 0,
+      knownDamages: Array.isArray(body.vehicle.knownDamages) ? body.vehicle.knownDamages.map((item) => sanitizeText(item)).filter(Boolean) : void 0,
+      photos: Array.isArray(body.vehicle.photos) ? body.vehicle.photos.slice(0, 12).map((p, idx) => ({
+        id: p.id || `photo-${Date.now()}-${idx}`,
+        name: sanitizeText(p.name || `Vehicle Photo ${idx + 1}`),
+        dataUrl: typeof p.dataUrl === "string" && p.dataUrl.startsWith("data:image/") ? p.dataUrl : void 0,
+        angle: sanitizeText(p.angle || "other"),
+        label: sanitizeText(p.label || p.angle || "Photo"),
+        size: sanitizeText(p.size || ""),
+        uploadedAt: p.uploadedAt || now
+      })) : void 0
     },
     payment: {
       status: paymentStatus,

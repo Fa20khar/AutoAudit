@@ -230,9 +230,30 @@ ordersRouter.post('/', async (req: Request, res: Response) => {
       make: body.vehicle.make ? sanitizeText(body.vehicle.make) : 'Verified',
       model: body.vehicle.model ? sanitizeText(body.vehicle.model) : 'Series',
       year: Number(body.vehicle.year) || new Date().getFullYear(),
+      color: body.vehicle.color ? sanitizeText(body.vehicle.color) : undefined,
       mileage: body.vehicle.mileage ? sanitizeText(body.vehicle.mileage) : 'Pending audit',
       countryOrState: body.vehicle.countryOrState ? sanitizeText(body.vehicle.countryOrState) : 'US',
-      customerNotes: body.vehicle.customerNotes ? sanitizeText(body.vehicle.customerNotes) : ''
+      customerNotes: body.vehicle.customerNotes ? sanitizeText(body.vehicle.customerNotes) : '',
+      transmission: body.vehicle.transmission ? sanitizeText(body.vehicle.transmission) : undefined,
+      fuelType: body.vehicle.fuelType ? sanitizeText(body.vehicle.fuelType) : undefined,
+      titleStatus: body.vehicle.titleStatus ? sanitizeText(body.vehicle.titleStatus) : undefined,
+      inspectionFocusAreas: Array.isArray(body.vehicle.inspectionFocusAreas)
+        ? body.vehicle.inspectionFocusAreas.map((item: any) => sanitizeText(item)).filter(Boolean)
+        : undefined,
+      knownDamages: Array.isArray(body.vehicle.knownDamages)
+        ? body.vehicle.knownDamages.map((item: any) => sanitizeText(item)).filter(Boolean)
+        : undefined,
+      photos: Array.isArray(body.vehicle.photos)
+        ? body.vehicle.photos.slice(0, 12).map((p: any, idx: number) => ({
+            id: p.id || `photo-${Date.now()}-${idx}`,
+            name: sanitizeText(p.name || `Vehicle Photo ${idx + 1}`),
+            dataUrl: typeof p.dataUrl === 'string' && p.dataUrl.startsWith('data:image/') ? p.dataUrl : undefined,
+            angle: sanitizeText(p.angle || 'other'),
+            label: sanitizeText(p.label || p.angle || 'Photo'),
+            size: sanitizeText(p.size || ''),
+            uploadedAt: p.uploadedAt || now
+          }))
+        : undefined
     },
     payment: {
       status: paymentStatus,
