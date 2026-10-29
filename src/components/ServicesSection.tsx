@@ -1,6 +1,7 @@
 import React from 'react';
 import { ServicePlan } from '../types';
-import { Check, X, Clock, ArrowRight, Sparkles, RefreshCw } from 'lucide-react';
+import { INITIAL_SERVICES } from '../data/initialData';
+import { Check, X, Clock, ArrowRight, RefreshCw } from 'lucide-react';
 import { WhatsAppButton } from './WhatsAppButton';
 import { useTranslation } from '../context/LanguageContext';
 import { Alert } from './ui/Alert';
@@ -22,6 +23,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
   onRetry,
 }) => {
   const { t } = useTranslation();
+  const displayServices = services && services.length > 0 ? services : INITIAL_SERVICES;
 
   return (
     <section id="services" className="py-12 sm:py-16 lg:py-20 bg-[#07111F] text-white border-b border-[rgba(148,163,184,0.20)]">
@@ -41,7 +43,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
         </div>
 
         {/* Loading State */}
-        {isLoading && services.length === 0 && (
+        {isLoading && displayServices.length === 0 && (
           <div className="max-w-md mx-auto my-12 p-8 text-center space-y-4">
             <div className="inline-block w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
             <p className="text-sm text-slate-300 font-medium">Loading verified service plans...</p>
@@ -49,7 +51,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
         )}
 
         {/* Error State with Shared Alert & Button Components */}
-        {error && services.length === 0 && (
+        {error && displayServices.length === 0 && (
           <div className="max-w-lg mx-auto my-10 space-y-4">
             <Alert
               variant="warning"
@@ -75,9 +77,9 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
         )}
 
         {/* Pricing Cards */}
-        {services.length > 0 && (
+        {displayServices.length > 0 && (
         <div className="flex flex-col lg:grid lg:grid-cols-3 gap-5 sm:gap-6 lg:gap-8 items-stretch max-w-6xl mx-auto w-full">
-          {services.map((plan) => {
+          {displayServices.map((plan) => {
             const isFeatured = plan.isPopular;
             const ctaLabel = plan.id === 'basic-report'
               ? 'Get Basic Report'
@@ -96,8 +98,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
               >
                 {/* Featured Badge */}
                 {isFeatured && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#10B981] text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider px-3 sm:px-3.5 py-0.5 sm:py-1 rounded-full shadow-lg flex items-center gap-1.5 whitespace-nowrap z-10">
-                    <Sparkles className="w-3 h-3 text-amber-300" />
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#10B981] text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider px-3 sm:px-3.5 py-0.5 sm:py-1 rounded-full shadow-lg flex items-center justify-center whitespace-nowrap z-10">
                     <span>{t('mostPopular')}</span>
                   </div>
                 )}

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   ShieldCheck, CheckCircle2, Eye, ZoomIn, 
-  Sparkles, Wrench, ArrowRight, Check, Maximize2, X, Lock, FileCheck, Layers
+  Wrench, ArrowRight, Check, Maximize2, X, Lock, FileCheck, Layers
 } from 'lucide-react';
 import { WhatsAppButton } from './WhatsAppButton';
 
@@ -339,7 +339,7 @@ export const InteractiveInspectionSection: React.FC<InteractiveInspectionSection
                     }`}
                     title="Toggle Inspection Spotlight Mode"
                   >
-                    <Sparkles className="w-3.5 h-3.5" />
+                    <Eye className="w-3.5 h-3.5" />
                     <span className="text-[11px]">{isLightActive ? 'Spotlight ON' : 'Spotlight'}</span>
                   </button>
 

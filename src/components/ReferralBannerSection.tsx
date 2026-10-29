@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Gift, Share2, Copy, Check, Users, Sparkles, ArrowRight, DollarSign, Tag, QrCode } from 'lucide-react';
+import { Gift, Share2, Copy, Check, Users, ArrowRight, DollarSign, Tag, QrCode } from 'lucide-react';
 import { getReferralProfile, buildReferralLink, DEFAULT_FRIEND_DISCOUNT_PERCENT, DEFAULT_REWARD_CREDIT } from '../utils/referralStorage';
 import { useToast } from '../context/ToastContext';
 
@@ -43,7 +43,7 @@ export const ReferralBannerSection: React.FC<ReferralBannerSectionProps> = ({
             </div>
 
             <div className="text-xs text-slate-400 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <Check className="w-3.5 h-3.5 text-emerald-400" />
               <span>Unlimited referrals · Instant report discounts</span>
             </div>
           </div>
@@ -81,7 +81,7 @@ export const ReferralBannerSection: React.FC<ReferralBannerSectionProps> = ({
 
                 <div className="p-3 rounded-xl bg-[#07111F]/80 border border-slate-800 space-y-1">
                   <div className="flex items-center gap-1.5 text-amber-300 font-bold">
-                    <Sparkles className="w-4 h-4 shrink-0" />
+                    <Tag className="w-4 h-4 shrink-0" />
                     <span>Stack Discounts</span>
                   </div>
                   <p className="text-slate-400 text-[11px]">Refer 3 friends = 1 Free Report</p>

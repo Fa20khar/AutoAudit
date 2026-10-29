@@ -22,7 +22,6 @@ import {
   Wallet,
   QrCode,
   ArrowRight,
-  Sparkles,
   Phone,
   Mail,
   Send,
@@ -36,6 +35,7 @@ import { ProgressStepper } from './ProgressStepper';
 import { ActiveSafetyRecallsBanner } from './ActiveSafetyRecallsBanner';
 import { VehiclePhotoUploader } from './VehiclePhotoUploader';
 import { ServicePlan, Coupon, Order, VehiclePhotoItem } from '../types';
+import { INITIAL_SERVICES } from '../data/initialData';
 import { validateVinFormat } from '../utils/vinValidator';
 import { calculateDiscount } from '../utils/couponValidator';
 import { api } from '../services/api';
@@ -184,7 +184,8 @@ export const VehicleReportForm: React.FC<VehicleReportFormProps> = ({
   const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
   const [paymentConfirmed, setPaymentConfirmed] = useState<boolean>(false);
 
-  const currentPlan = (services.find(s => s.id === selectedPlanId) || services[0]) || null;
+  const activeServices = (services && services.length > 0) ? services : INITIAL_SERVICES;
+  const currentPlan = (activeServices.find(s => s.id === selectedPlanId) || activeServices[0]) || null;
   const subtotal = currentPlan ? currentPlan.price : 0;
   const discountAmount = appliedCoupon ? calculateDiscount(appliedCoupon, subtotal) : 0;
   const total = Math.max(0, parseFloat((subtotal - discountAmount).toFixed(2)));
@@ -582,7 +583,7 @@ export const VehicleReportForm: React.FC<VehicleReportFormProps> = ({
         <div className="text-center space-y-4 mb-6 sm:mb-8">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0F1B2D] border border-[rgba(148,163,184,0.20)] text-xs font-bold text-[#10B981] tracking-wider uppercase shadow-xs">
             <ShieldCheck className="w-3.5 h-3.5 text-[#10B981]" />
-            <span>Direct Vehicle Intelligence & Payment Checkout</span>
+            <span>Direct Vehicle Verification & Payment Checkout</span>
           </div>
 
           <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-extrabold tracking-[-1.2px] text-white leading-tight">
@@ -989,7 +990,7 @@ export const VehicleReportForm: React.FC<VehicleReportFormProps> = ({
                 {/* Report Package Selection Cards */}
                 <div className="space-y-3">
                   <label className="text-xs font-bold text-slate-300 block">Select Report Tier</label>
-                  {services.length === 0 ? (
+                  {activeServices.length === 0 ? (
                     <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-3 text-amber-950">
                       <p className="text-xs sm:text-sm text-amber-900 font-medium">
                         {servicesError || 'Service pricing plans are currently loading or unavailable.'}
@@ -1007,7 +1008,7 @@ export const VehicleReportForm: React.FC<VehicleReportFormProps> = ({
                     </div>
                   ) : (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {services.map(plan => {
+                    {activeServices.map(plan => {
                       const isSelected = plan.id === selectedPlanId;
                       return (
                         <div
@@ -1238,7 +1239,7 @@ export const VehicleReportForm: React.FC<VehicleReportFormProps> = ({
 
                   <button
                     type="button"
-                    disabled={isSubmittingOrder || !currentPlan || services.length === 0}
+                    disabled={isSubmittingOrder || !currentPlan || activeServices.length === 0}
                     onClick={handleProceedToPayment}
                     className="w-full sm:w-auto px-8 py-3.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
                   >

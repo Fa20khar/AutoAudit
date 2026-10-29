@@ -9,7 +9,6 @@ import {
   ShieldCheck, 
   Upload, 
   Download, 
-  Sparkles, 
   Loader2, 
   AlertCircle,
   ExternalLink,
@@ -437,9 +436,6 @@ export const CustomerIntakeModal: React.FC<CustomerIntakeModalProps> = ({
             <div className="flex items-center gap-2">
               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
                 Vehicle Intake Form
-              </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                <Sparkles className="w-2.5 h-2.5" /> Auto-Generate Supported
               </span>
             </div>
             <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-2">

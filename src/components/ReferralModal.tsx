@@ -10,7 +10,6 @@ import {
   DollarSign,
   Users,
   Award,
-  Sparkles,
   ArrowRight,
   RefreshCw,
   ExternalLink,
@@ -160,7 +159,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
                   Rewards Program
                 </span>
                 <span className="text-xs text-amber-300 font-semibold flex items-center gap-1">
-                  <Sparkles className="w-3 h-3" /> Give 20% • Earn $5
+                  <Gift className="w-3 h-3" /> Give 20% • Earn $5
                 </span>
               </div>
               <h2 id="referral-modal-title" className="text-xl sm:text-2xl font-black text-white tracking-tight mt-0.5">
@@ -251,7 +250,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
             <div className="bg-[#07111F] border-2 border-emerald-500/40 rounded-xl p-4 sm:p-5 relative overflow-hidden">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                  <Tag className="w-3.5 h-3.5 text-emerald-400" />
                   Your Unique Referral Code
                 </span>
                 

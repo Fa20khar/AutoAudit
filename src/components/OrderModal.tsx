@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import { ServicePlan, Order, Coupon, AuditLog, EmailNotification, VehiclePhotoItem } from '../types';
+import { INITIAL_SERVICES } from '../data/initialData';
 import { VehiclePhotoUploader } from './VehiclePhotoUploader';
 import { 
   X, Check, ArrowRight, ArrowLeft, ShieldCheck, Lock, CreditCard, 
-  Sparkles, AlertCircle, FileCheck, CheckCircle2, Building, Wallet, CheckCircle,
+  AlertCircle, FileCheck, CheckCircle2, Building, Wallet, CheckCircle,
   Clock, AlertTriangle, ShieldAlert, RotateCcw, MessageSquare, Loader2,
   Mail, Eye, EyeOff, Send, ExternalLink, Tag, Percent, Gift, Copy
 } from 'lucide-react';
@@ -285,7 +286,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
   if (!isOpen) return null;
 
-  const currentPlan = (services.find((s) => s.id === serviceId) || services[0]) || null;
+  const activeServices = (services && services.length > 0) ? services : INITIAL_SERVICES;
+  const currentPlan = (activeServices.find((s) => s.id === serviceId) || activeServices[0]) || null;
   const subtotal = currentPlan ? currentPlan.price : 0;
 
   // Debounced server-side coupon validation refs & state
@@ -456,7 +458,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
       return;
     }
 
-    if (!currentPlan || !currentPlan.id || services.length === 0) {
+    if (!currentPlan || !currentPlan.id || activeServices.length === 0) {
       showToast({
         title: 'Plan Required',
         message: 'Verified service pricing is unavailable. Please click Retry.',
@@ -843,7 +845,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 Choose the vehicle report plan that fits your needs. Single one-time payment with clear pricing.
               </p>
 
-              {services.length === 0 ? (
+              {activeServices.length === 0 ? (
                 <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-3 text-amber-950">
                   <p className="text-xs sm:text-sm text-amber-900 font-medium">
                     {servicesError || 'Verified service plans are currently loading or unavailable.'}
@@ -861,7 +863,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 sm:gap-4 pt-1">
-                  {services.map((plan) => {
+                  {activeServices.map((plan) => {
                     const isSelected = plan.id === serviceId;
                     return (
                       <div
@@ -1777,7 +1779,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   onClick={triggerCelebration}
                   className="text-[11px] text-slate-400 hover:text-slate-600 font-medium inline-flex items-center gap-1 cursor-pointer transition-colors"
                 >
-                  <Sparkles className="w-3 h-3 text-amber-500" />
+                  <RotateCcw className="w-3 h-3 text-amber-500" />
                   <span>Replay celebration confetti</span>
                 </button>
               </div>
@@ -1804,9 +1806,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
             <button
               type="button"
-              disabled={step === 1 && (!currentPlan || services.length === 0)}
+              disabled={step === 1 && (!currentPlan || activeServices.length === 0)}
               onClick={() => {
-                if (step === 1 && (!currentPlan || services.length === 0)) {
+                if (step === 1 && (!currentPlan || activeServices.length === 0)) {
                   return;
                 }
                 if (step === 2 && !validateStep2()) {

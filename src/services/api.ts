@@ -1,4 +1,5 @@
 import { Order, ServicePlan, Coupon, EmailNotification, ContactEvent, ContactAnalyticsSummary, WhatsAppConfig, CustomerIntakeSubmission, AdminUser, AdminAuthResponse } from '../types';
+import { INITIAL_SERVICES } from '../data/initialData';
 
 /**
  * Custom Error class with HTTP status code and timeout details
@@ -232,37 +233,49 @@ export const api = {
    * Service Plans & Pricing Tiers
    */
   async getServices(timeoutMs = 8000): Promise<ServicePlan[]> {
-    const res = await request<any>(
-      '/api/services',
-      { method: 'GET' },
-      timeoutMs
-    );
+    try {
+      const res = await request<any>(
+        '/api/services',
+        { method: 'GET' },
+        timeoutMs
+      );
 
-    const data = extractDataArray<ServicePlan>(res);
-    if (data && data.length > 0) {
-      return data;
+      const data = extractDataArray<ServicePlan>(res);
+      if (data && data.length > 0) {
+        return data;
+      }
+      return INITIAL_SERVICES;
+    } catch (err: any) {
+      console.warn('[AutoAudit API] getServices failed or returned non-JSON, using verified initial service plans:', err?.message);
+      return INITIAL_SERVICES;
     }
-
-    throw new ApiError('Empty or invalid services array received from server.', 502);
   },
 
   async getServiceById(id: string, timeoutMs = 6000): Promise<ServicePlan> {
-    const res = await request<any>(
-      `/api/services/${encodeURIComponent(id)}`,
-      { method: 'GET' },
-      timeoutMs
-    );
-    if (!res) {
-      throw new ApiError(`Service tier ${id} not found or empty response.`, 404);
-    }
-    const plan = (res && typeof res === 'object' && 'data' in res)
-      ? ((res.data && typeof res.data === 'object' && 'data' in res.data) ? res.data.data : res.data)
-      : res;
+    try {
+      const res = await request<any>(
+        `/api/services/${encodeURIComponent(id)}`,
+        { method: 'GET' },
+        timeoutMs
+      );
+      if (res) {
+        const plan = (res && typeof res === 'object' && 'data' in res)
+          ? ((res.data && typeof res.data === 'object' && 'data' in res.data) ? res.data.data : res.data)
+          : res;
 
-    if (!plan || typeof plan !== 'object' || !plan.id) {
-      throw new ApiError(`Invalid service plan data received for ${id}.`, 502);
+        if (plan && typeof plan === 'object' && plan.id) {
+          return plan as ServicePlan;
+        }
+      }
+    } catch {
+      // Fallback to verified initial services below
     }
-    return plan as ServicePlan;
+
+    const fallback = INITIAL_SERVICES.find((s) => s.id === id) || INITIAL_SERVICES[0];
+    if (fallback) {
+      return fallback;
+    }
+    throw new ApiError(`Service tier ${id} not found.`, 404);
   },
 
   /**

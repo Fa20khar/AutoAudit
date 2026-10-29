@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, ShieldAlert, FileText, Send, Sparkles } from 'lucide-react';
+import { CheckCircle2, ShieldAlert, FileText, Send } from 'lucide-react';
 
 interface Step {
   number: number;
@@ -46,8 +46,7 @@ export const ProgressStepper: React.FC<ProgressStepperProps> = ({
     <div className={`w-full rounded-2xl bg-[#0F1B2D]/95 border border-[rgba(148,163,184,0.20)] p-4 sm:p-6 shadow-xl ${className}`}>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 mb-4 border-b border-[rgba(148,163,184,0.12)]">
         <div>
-          <span className="text-[11px] font-bold text-[#10B981] uppercase tracking-wider flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5" />
+          <span className="text-[11px] font-bold text-[#10B981] uppercase tracking-wider block">
             Report Request Workflow
           </span>
           <h3 className="text-sm sm:text-base font-bold text-white mt-0.5">

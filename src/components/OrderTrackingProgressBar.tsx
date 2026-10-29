@@ -7,8 +7,7 @@ import {
   FileText, 
   Check, 
   Database,
-  ArrowRight,
-  Sparkles
+  ArrowRight
 } from 'lucide-react';
 import { OrderStatus } from '../types';
 

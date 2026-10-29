@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, ShieldCheck, Car, User, FileText, Check, Sparkles } from 'lucide-react';
+import { CheckCircle2, ShieldCheck, Car, User, FileText, Check } from 'lucide-react';
 
 export interface IntakeProgressStats {
   percentage: number;
@@ -30,7 +30,7 @@ export const IntakeProgressBar: React.FC<IntakeProgressBarProps> = ({
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-[#059669] flex items-center justify-center font-bold text-xs">
-            <Sparkles className="w-3.5 h-3.5" />
+            <CheckCircle2 className="w-3.5 h-3.5" />
           </div>
           <div>
             <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">

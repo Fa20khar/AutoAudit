@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  X, Video, Sparkles, Film, Play, Pause, RotateCcw, Download, 
+  X, Video, Film, Play, Pause, RotateCcw, Download, 
   Copy, Check, AlertCircle, Loader2, Maximize2, Smartphone, Monitor,
   Info, ExternalLink, ChevronRight, RefreshCw
 } from 'lucide-react';
@@ -311,9 +311,8 @@ export const VeoVideoModal: React.FC<VeoVideoModalProps> = ({
         {/* Top Header */}
         <div className="bg-[#0B1728] border-b border-slate-800 p-4 sm:p-5 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="relative w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-blue-600 flex items-center justify-center text-white shrink-0 shadow-lg border border-white/20">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-blue-600 flex items-center justify-center text-white shrink-0 shadow-lg border border-white/20">
               <Video className="w-5 h-5" />
-              <Sparkles className="w-3.5 h-3.5 text-amber-300 absolute -top-1 -right-1" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">

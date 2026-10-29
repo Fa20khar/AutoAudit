@@ -7,7 +7,6 @@ import {
   Laptop, 
   Smartphone, 
   HelpCircle, 
-  Sparkles, 
   ExternalLink,
   ChevronRight,
   FileText
@@ -100,7 +99,7 @@ export const PrintGuideModal: React.FC<PrintGuideModalProps> = ({
           
           {/* Quick Notice */}
           <div className="p-3.5 rounded-xl bg-blue-950/40 border border-blue-500/30 flex items-start gap-3 text-blue-200 text-xs">
-            <Sparkles className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+            <FileText className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
             <div>
               <strong>Instant Digital PDF:</strong> Every AutoAudit interactive report includes styled print stylesheets. When printed to PDF, clean page breaks, official stamps, and high-contrast tables format automatically.
             </div>

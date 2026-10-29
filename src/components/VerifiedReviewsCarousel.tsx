@@ -10,7 +10,6 @@ import {
   FileCheck,
   TrendingUp,
   Award,
-  Sparkles,
   ThumbsUp,
   Filter,
   Flame,

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Tag, Sparkles, ShieldCheck, Check, Clock, TrendingDown } from 'lucide-react';
+import { Tag, ShieldCheck, Check, Clock, TrendingDown } from 'lucide-react';
 import { ServicePlan, Coupon } from '../types';
 
 interface RealtimePricePreviewProps {

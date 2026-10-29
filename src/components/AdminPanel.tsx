@@ -6,7 +6,7 @@ import {
   AlertTriangle, RefreshCw, X, ShieldAlert, Check, Plus, Edit2, Trash2,
   Users, FileCheck, CreditCard, ChevronRight, LogOut, ArrowLeft, ShieldCheck, Lock,
   Database, Copy, ExternalLink, CheckCheck, Ban, CheckSquare, Square, XCircle,
-  Loader2, Sparkles, QrCode, Download, Phone, MessageCircle, Filter, SlidersHorizontal,
+  Loader2, QrCode, Download, Phone, MessageCircle, Filter, SlidersHorizontal,
   FileSpreadsheet, Camera, Image as ImageIcon, Smartphone, KeyRound
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -1925,7 +1925,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-blue-600 text-white p-4 rounded-2xl shadow-lg flex flex-col sm:flex-row items-center justify-between gap-3 animate-fadeIn">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0">
-                  <Sparkles className="w-5 h-5 text-yellow-300 animate-pulse" />
+                  <AlertTriangle className="w-5 h-5 text-yellow-300" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
@@ -2879,8 +2879,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                 </>
                               ) : (
                                 <>
-                                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                                  <span>Auto-Generate Dummy PDF</span>
+                                  <FileText className="w-3.5 h-3.5 text-amber-300" />
+                                  <span>Generate Report PDF</span>
                                 </>
                               )}
                             </button>
@@ -3292,7 +3292,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                     </span>
                                   ) : hasProof ? (
                                     <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 inline-flex items-center gap-1 animate-pulse">
-                                      <Sparkles className="w-3 h-3 text-amber-600" />
+                                      <FileCheck className="w-3 h-3 text-amber-600" />
                                       <span>PROOF SUBMITTED</span>
                                     </span>
                                   ) : (
@@ -3738,9 +3738,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <FileText className="w-5 h-5 text-amber-500" />
                         <span>Customer Intake Queue (AutoAudit Direct Submissions)</span>
                       </h3>
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
-                        <Sparkles className="w-2.5 h-2.5" /> Auto-Generate Active
-                      </span>
                     </div>
                     <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
                       Customer vehicle history requests received natively via the AutoAudit website intake layer and payment checkout pipeline. Includes complete 5-section data, certified customer consents, and automated report generation.
@@ -3955,8 +3952,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                       </>
                                     ) : (
                                       <>
-                                        <Sparkles className="w-3 h-3" />
-                                        <span>Auto-Generate</span>
+                                        <FileText className="w-3 h-3" />
+                                        <span>Generate Report</span>
                                       </>
                                     )}
                                   </button>
@@ -4462,8 +4459,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     }}
                     className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
                   >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>Auto-Generate Report Now</span>
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Generate Report Now</span>
                   </button>
                 ) : (
                   <button

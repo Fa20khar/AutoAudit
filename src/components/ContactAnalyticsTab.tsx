@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   MessageSquare, BarChart3, TrendingUp, Users, ArrowUpRight, Search, 
   Filter, Smartphone, Monitor, Globe, ShieldCheck, Check, RefreshCw, 
-  ExternalLink, PhoneCall, Clock, Calendar, Sparkles, Send, Copy, AlertCircle, QrCode
+  ExternalLink, PhoneCall, Clock, Calendar, Tag, Send, Copy, AlertCircle, QrCode
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { WhatsAppIcon, getWhatsAppUrl } from './WhatsAppWidget';
@@ -295,7 +295,7 @@ export const ContactAnalyticsTab: React.FC = () => {
           <div className="flex items-center justify-between text-xs text-slate-500">
             <span className="font-semibold uppercase tracking-wider text-[10px]">Inquiry-to-Order Conversion</span>
             <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
-              <Sparkles className="w-4 h-4" />
+              <TrendingUp className="w-4 h-4" />
             </div>
           </div>
           <div className="flex items-baseline gap-2">
@@ -366,7 +366,7 @@ export const ContactAnalyticsTab: React.FC = () => {
               {[
                 { key: 'vin_check', label: 'VIN Verification', count: summary?.byIntent?.vin_check || 0, icon: Search, bg: 'bg-blue-50 text-blue-700' },
                 { key: 'order_tracking', label: 'Order Tracking', count: summary?.byIntent?.order_tracking || 0, icon: Clock, bg: 'bg-amber-50 text-amber-800' },
-                { key: 'pricing', label: 'Pricing / Plans', count: summary?.byIntent?.pricing || 0, icon: Sparkles, bg: 'bg-purple-50 text-purple-700' },
+                { key: 'pricing', label: 'Pricing / Plans', count: summary?.byIntent?.pricing || 0, icon: Tag, bg: 'bg-purple-50 text-purple-700' },
                 { key: 'general_support', label: 'General Care', count: summary?.byIntent?.general_support || 0, icon: MessageSquare, bg: 'bg-emerald-50 text-emerald-800' },
               ].map((cat) => {
                 const IconComponent = cat.icon;
