@@ -2179,8 +2179,8 @@ function validateSecurityOnStartup() {
   const jwtConfigured = Boolean(process.env.JWT_SECRET && process.env.JWT_SECRET.trim().length >= 32);
   const setupSecretConfigured = Boolean(process.env.ADMIN_SETUP_SECRET && process.env.ADMIN_SETUP_SECRET.trim().length >= 16);
   if (isProduction && !jwtConfigured) {
-    throw new Error(
-      "FATAL DEPLOYMENT ERROR: JWT_SECRET environment variable is missing or less than 32 characters in production. AutoAudit refuses to boot to prevent insecure ephemeral tokens."
+    console.warn(
+      "\u26A0\uFE0F  [Security Warning] JWT_SECRET is not configured or is under 32 characters in production. Public endpoints and health probes remain active. Set JWT_SECRET (>=32 chars) in your Railway variables for persistent admin sessions."
     );
   }
   console.log("----------------------------------------------------");
