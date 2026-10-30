@@ -448,7 +448,7 @@ export const VehicleReportForm: React.FC<VehicleReportFormProps> = ({
 
       showToast({
         title: 'Payment Successful!',
-        message: `Payment confirmed for Order #${createdOrder.orderNumber}. Vehicle intelligence audit initialized.`,
+        message: `Payment confirmed for Order #${createdOrder.orderNumber}. Vehicle history audit initialized.`,
         type: 'success',
         duration: 6000
       });
@@ -1477,7 +1477,7 @@ export const VehicleReportForm: React.FC<VehicleReportFormProps> = ({
                         </div>
 
                         <div className="p-3 bg-slate-900 rounded-xl text-xs space-y-2 font-mono">
-                          <div><span className="text-slate-400">Account Title:</span> <span className="text-white font-bold">AutoAudit Intelligence</span></div>
+                          <div><span className="text-slate-400">Account Title:</span> <span className="text-white font-bold">AutoAudit</span></div>
                           <div><span className="text-slate-400">Reference:</span> <span className="text-emerald-400 font-bold">#{createdOrder.orderNumber}</span></div>
                           <div><span className="text-slate-400">Direct Deposit / Raast / IBAN:</span> <span className="text-blue-400">PKR / USD Multi-Currency Wire Available</span></div>
                         </div>

@@ -469,7 +469,7 @@ export const ReportDownloadModal: React.FC<ReportDownloadModalProps> = ({
               <span className="font-mono font-bold text-blue-700 text-sm print-meta-vin">{vin}</span>
             </div>
             <div>
-              <span className="text-slate-500 block text-[10px] uppercase font-semibold">Audit Generated</span>
+              <span className="text-slate-500 block text-[10px] uppercase font-semibold">Audit Date</span>
               <span className="font-mono text-slate-700 print-meta-date">{new Date().toLocaleDateString()} {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
             </div>
           </div>

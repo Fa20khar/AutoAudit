@@ -24,7 +24,7 @@ const transporter = isRealSmtp
       jsonTransport: true
     });
 
-const SYSTEM_FROM_EMAIL = process.env.SMTP_FROM || 'AutoAudit Notifications <noreply@autoaudit.intelligence>';
+const SYSTEM_FROM_EMAIL = process.env.SMTP_FROM || (process.env.SMTP_USER || 'AutoAudit Notifications <noreply@autoaudit.local>');
 
 /**
  * Generate branded HTML templates for customer notifications
@@ -98,7 +98,7 @@ function generateEmailHtml(order: Order, type: 'order_confirmation' | 'processin
       </div>
     </div>
     <div class="footer">
-      AutoAudit Technologies Inc. · Cryptographic Vehicle Intelligence · All Rights Reserved
+      AutoAudit · Vehicle History Reports · All Rights Reserved
     </div>
   </div>
 </body>
@@ -158,7 +158,7 @@ function generateEmailHtml(order: Order, type: 'order_confirmation' | 'processin
       </p>
     </div>
     <div class="footer">
-      AutoAudit Technologies Inc. · Cryptographic Vehicle Intelligence · All Rights Reserved
+      AutoAudit · Vehicle History Reports · All Rights Reserved
     </div>
   </div>
 </body>
@@ -194,11 +194,11 @@ function generateEmailHtml(order: Order, type: 'order_confirmation' | 'processin
 <body>
   <div class="container">
     <div class="header">
-      <h1>AutoAudit™ Vehicle Intelligence</h1>
+      <h1>AutoAudit™ Vehicle History Reports</h1>
       <p>REPORT READY: ${orderNum}</p>
     </div>
     <div class="body">
-      <span class="badge">Stage 3 of 3: Report Certified</span>
+      <span class="badge">Stage 3 of 3: Report Ready</span>
       <h2 style="font-size: 18px; margin-top: 14px; margin-bottom: 10px;">Official Vehicle History Record Available</h2>
       <p style="font-size: 14px; line-height: 1.5; color: #334155;">
         Hello <strong>${customerName}</strong>,<br/><br/>
@@ -225,8 +225,8 @@ function generateEmailHtml(order: Order, type: 'order_confirmation' | 'processin
       </div>
 
       <div style="text-align: center; margin: 24px 0;">
-        <p style="font-size: 13px; color: #475569; margin-bottom: 12px;">Your certified PDF report has been generated and attached to this message:</p>
-        <a href="${order.resultFile?.fileUrl || `/api/reports/download/${order.id}`}" class="cta-btn" style="color: #ffffff !important; text-decoration: none;">✓ Download Certified PDF Report</a>
+        <p style="font-size: 13px; color: #475569; margin-bottom: 12px;">Your PDF report has been generated and attached to this message:</p>
+        <a href="${order.resultFile?.fileUrl || `/api/reports/download/${order.id}`}" class="cta-btn" style="color: #ffffff !important; text-decoration: none;">✓ Download PDF Report</a>
       </div>
 
       <p style="font-size: 12px; color: #64748b; border-top: 1px solid #f1f5f9; padding-top: 14px;">
@@ -234,7 +234,7 @@ function generateEmailHtml(order: Order, type: 'order_confirmation' | 'processin
       </p>
     </div>
     <div class="footer">
-      AutoAudit Technologies Inc. · Cryptographic Vehicle Intelligence · All Rights Reserved
+      AutoAudit · Vehicle History Reports · All Rights Reserved
     </div>
   </div>
 </body>

@@ -2476,7 +2476,7 @@ var transporter = isRealSmtp ? nodemailer.createTransport({
 }) : nodemailer.createTransport({
   jsonTransport: true
 });
-var SYSTEM_FROM_EMAIL = process.env.SMTP_FROM || "AutoAudit Notifications <noreply@autoaudit.intelligence>";
+var SYSTEM_FROM_EMAIL = process.env.SMTP_FROM || (process.env.SMTP_USER || "AutoAudit Notifications <noreply@autoaudit.local>");
 function generateEmailHtml(order, type) {
   const vehicleName = `${order.vehicle.year} ${order.vehicle.make} ${order.vehicle.model}`;
   const vin = order.vehicle.vinOrReg;
@@ -2550,7 +2550,7 @@ We will notify you the moment your report advances to processing.`;
       </div>
     </div>
     <div class="footer">
-      AutoAudit Technologies Inc. \xB7 Cryptographic Vehicle Intelligence \xB7 All Rights Reserved
+      AutoAudit \xB7 Vehicle History Reports \xB7 All Rights Reserved
     </div>
   </div>
 </body>
@@ -2614,7 +2614,7 @@ No manual action is required. We will send you a final email as soon as your PDF
       </p>
     </div>
     <div class="footer">
-      AutoAudit Technologies Inc. \xB7 Cryptographic Vehicle Intelligence \xB7 All Rights Reserved
+      AutoAudit \xB7 Vehicle History Reports \xB7 All Rights Reserved
     </div>
   </div>
 </body>
@@ -2657,11 +2657,11 @@ You can view, download, and print your official report immediately through the A
 <body>
   <div class="container">
     <div class="header">
-      <h1>AutoAudit\u2122 Vehicle Intelligence</h1>
+      <h1>AutoAudit\u2122 Vehicle History Reports</h1>
       <p>REPORT READY: ${orderNum}</p>
     </div>
     <div class="body">
-      <span class="badge">Stage 3 of 3: Report Certified</span>
+      <span class="badge">Stage 3 of 3: Report Ready</span>
       <h2 style="font-size: 18px; margin-top: 14px; margin-bottom: 10px;">Official Vehicle History Record Available</h2>
       <p style="font-size: 14px; line-height: 1.5; color: #334155;">
         Hello <strong>${customerName}</strong>,<br/><br/>
@@ -2688,8 +2688,8 @@ You can view, download, and print your official report immediately through the A
       </div>
 
       <div style="text-align: center; margin: 24px 0;">
-        <p style="font-size: 13px; color: #475569; margin-bottom: 12px;">Your certified PDF report has been generated and attached to this message:</p>
-        <a href="${order.resultFile?.fileUrl || `/api/reports/download/${order.id}`}" class="cta-btn" style="color: #ffffff !important; text-decoration: none;">\u2713 Download Certified PDF Report</a>
+        <p style="font-size: 13px; color: #475569; margin-bottom: 12px;">Your PDF report has been generated and attached to this message:</p>
+        <a href="${order.resultFile?.fileUrl || `/api/reports/download/${order.id}`}" class="cta-btn" style="color: #ffffff !important; text-decoration: none;">\u2713 Download PDF Report</a>
       </div>
 
       <p style="font-size: 12px; color: #64748b; border-top: 1px solid #f1f5f9; padding-top: 14px;">
@@ -2697,7 +2697,7 @@ You can view, download, and print your official report immediately through the A
       </p>
     </div>
     <div class="footer">
-      AutoAudit Technologies Inc. \xB7 Cryptographic Vehicle Intelligence \xB7 All Rights Reserved
+      AutoAudit \xB7 Vehicle History Reports \xB7 All Rights Reserved
     </div>
   </div>
 </body>
@@ -3008,7 +3008,7 @@ function generateDummyPdfBuffer(order) {
     "1 1 1 rg",
     // White
     "40 754 Td",
-    `(${esc("AUTOAUDIT VEHICLE INTELLIGENCE REPORT")}) Tj`,
+    `(${esc("AUTOAUDIT VEHICLE HISTORY AUDIT REPORT")}) Tj`,
     "ET",
     // Subtitle / Demo Disclaimer
     "BT",
@@ -3263,7 +3263,7 @@ function generateDummyPdfBuffer(order) {
     "/F2 8 Tf",
     "0.55 0.6 0.65 rg",
     "180 90 Td",
-    `(${esc("AutoAudit Technologies Inc. - Cryptographic Vehicle Intelligence Engine")}) Tj`,
+    `(${esc("AutoAudit - Vehicle History & Records System")}) Tj`,
     "ET"
   ];
   const contentStream = lines.join("\n");

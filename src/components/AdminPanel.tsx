@@ -230,7 +230,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     try {
       const res = await api.triggerAutoGenerateForIntake(sub.id);
       showToast({
-        title: 'Report Auto-Generated',
+        title: 'Report Generated',
         message: `Official report PDF (${res.fileName}) compiled. Customer notified via mock SMTP.`,
         type: 'success',
         duration: 5000
@@ -241,7 +241,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       }
     } catch (err: any) {
       showToast({
-        title: 'Auto-Generation Failed',
+        title: 'Report Generation Failed',
         message: err?.message || 'Could not compile report.',
         type: 'error',
         duration: 5000
@@ -941,8 +941,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             id: `log-${Date.now()}-mock-gen`,
             timestamp: now,
             actor: 'Mock Report Generator Service',
-            action: 'Dummy Report PDF Auto-Generated',
-            details: `Auto-generated dummy report PDF (${result.fileName}) and notified customer via email.`
+            action: 'Report PDF Generated',
+            details: `Generated report PDF (${result.fileName}) and notified customer via email.`
           }
         ]
       };
@@ -951,8 +951,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
       showToast({
         type: 'success',
-        title: 'Report PDF Auto-Generated',
-        message: `Dummy report PDF generated for #${currentOrder.orderNumber} & customer notified via email.`,
+        title: 'Report PDF Generated',
+        message: `Report PDF generated for #${currentOrder.orderNumber} & customer notified via email.`,
         duration: 5000,
       });
     } catch {
@@ -2899,7 +2899,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                   showToast({
                                     type: 'error',
                                     title: 'Download Failed',
-                                    message: 'Could not generate PDF. Please try Auto-Generate.',
+                                    message: 'Could not generate PDF. Please click Generate Report PDF.',
                                     duration: 4000,
                                   });
                                 }
@@ -3599,7 +3599,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                   <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
                     <span className="text-[10px] uppercase font-bold text-slate-500 block">System Sender</span>
-                    <span className="font-mono text-slate-800 text-[11px] mt-0.5 block truncate">{smtpStatus?.sender || 'noreply@autoaudit.intelligence'}</span>
+                    <span className="font-mono text-slate-800 text-[11px] mt-0.5 block truncate">{smtpStatus?.sender || 'AutoAudit Notifications (Mock Transporter)'}</span>
                     <span className="text-[10px] text-slate-400">DKIM & SPF Sealed</span>
                   </div>
                   <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">

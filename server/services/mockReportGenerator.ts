@@ -58,7 +58,7 @@ export function generateDummyPdfBuffer(order: Order): Buffer {
     '/F1 18 Tf',
     '1 1 1 rg', // White
     '40 754 Td',
-    `(${esc('AUTOAUDIT VEHICLE INTELLIGENCE REPORT')}) Tj`,
+    `(${esc('AUTOAUDIT VEHICLE HISTORY AUDIT REPORT')}) Tj`,
     'ET',
 
     // Subtitle / Demo Disclaimer
@@ -330,7 +330,7 @@ export function generateDummyPdfBuffer(order: Order): Buffer {
     '/F2 8 Tf',
     '0.55 0.6 0.65 rg',
     '180 90 Td',
-    `(${esc('AutoAudit Technologies Inc. - Cryptographic Vehicle Intelligence Engine')}) Tj`,
+    `(${esc('AutoAudit - Vehicle History & Records System')}) Tj`,
     'ET'
   ];
 

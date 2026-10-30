@@ -65,7 +65,7 @@ export function buildReportPdfBytes(data: ReportPdfData): Uint8Array {
     '/F1 18 Tf',
     '1 1 1 rg',
     '40 754 Td',
-    `(${escPdf('AUTOAUDIT VEHICLE INTELLIGENCE REPORT')}) Tj`,
+    `(${escPdf('AUTOAUDIT VEHICLE HISTORY AUDIT REPORT')}) Tj`,
     'ET',
 
     // Subtitle: Light Slate
@@ -336,7 +336,7 @@ export function buildReportPdfBytes(data: ReportPdfData): Uint8Array {
     '/F2 8 Tf',
     '0.55 0.6 0.65 rg',
     '180 90 Td',
-    `(${escPdf('AutoAudit Technologies Inc. - Cryptographic Vehicle Intelligence Engine')}) Tj`,
+    `(${escPdf('AutoAudit - Vehicle History & Records System')}) Tj`,
     'ET'
   ];
 

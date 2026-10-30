@@ -236,7 +236,7 @@ AutoAudit Fulfillment Team`;
 
               {/* Email Footer */}
               <div className="pt-4 border-t border-slate-100 text-[11px] text-slate-400 text-center space-y-1">
-                <p>AutoAudit Technologies · Vehicle History Reports</p>
+                <p>AutoAudit · Vehicle History Reports</p>
                 <p>Have questions regarding this report? Reply to this email or visit our Help Center.</p>
               </div>
 

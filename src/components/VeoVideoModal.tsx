@@ -495,7 +495,7 @@ export const VeoVideoModal: React.FC<VeoVideoModalProps> = ({
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4 text-amber-300" />
+                    <Play className="w-4 h-4 text-white" />
                     <span>Generate Video ({aspectRatio})</span>
                   </>
                 )}
@@ -542,7 +542,6 @@ export const VeoVideoModal: React.FC<VeoVideoModalProps> = ({
                       <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-xl animate-pulse">
                         <Video className="w-8 h-8 text-white" />
                       </div>
-                      <Sparkles className="w-6 h-6 text-amber-300 absolute -top-2 -right-2 animate-spin" />
                     </div>
 
                     <div className="space-y-1.5 max-w-sm">
@@ -588,7 +587,7 @@ export const VeoVideoModal: React.FC<VeoVideoModalProps> = ({
 
                     {/* Watermark Tag */}
                     <div className="absolute top-4 left-4 pointer-events-none bg-black/60 backdrop-blur-md px-2 py-1 rounded-md border border-white/10 text-[10px] text-slate-300 font-mono flex items-center gap-1.5">
-                      <Sparkles className="w-3 h-3 text-amber-400" />
+                      <Film className="w-3 h-3 text-purple-400" />
                       <span>Veo 3 · {currentVideo.aspectRatio}</span>
                     </div>
 
