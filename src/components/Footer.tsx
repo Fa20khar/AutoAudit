@@ -181,18 +181,6 @@ export const Footer: React.FC<FooterProps> = ({
                   </button>
                 </li>
               )}
-              {onOpenVideoStudio && (
-                <li>
-                  <button
-                    type="button"
-                    onClick={onOpenVideoStudio}
-                    className="hover:text-purple-300 transition-colors cursor-pointer text-purple-400 flex items-center gap-1.5"
-                  >
-                    <span>Veo 3 Video Studio</span>
-                    <span className="text-[10px] bg-purple-950 border border-purple-500/30 px-1.5 py-0.2 rounded font-mono">16:9 & 9:16</span>
-                  </button>
-                </li>
-              )}
             </ul>
           </div>
 
