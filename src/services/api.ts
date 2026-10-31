@@ -1,5 +1,5 @@
 import { Order, ServicePlan, Coupon, EmailNotification, ContactEvent, ContactAnalyticsSummary, WhatsAppConfig, CustomerIntakeSubmission, AdminUser, AdminAuthResponse } from '../types';
-import { INITIAL_SERVICES } from '../data/initialData';
+import { INITIAL_SERVICES, INITIAL_WHATSAPP_CONFIG } from '../data/initialData';
 
 /**
  * Custom Error class with HTTP status code and timeout details
@@ -24,7 +24,7 @@ export class ApiError extends Error {
   }
 }
 
-const DEFAULT_TIMEOUT_MS = 10000; // 10 seconds
+const DEFAULT_TIMEOUT_MS = 25000; // 25 seconds for cold start resilience
 
 /**
  * Log one clear structured error with HTTP status and URL (no secrets or query tokens)
@@ -37,7 +37,12 @@ function logApiError(status: number, rawUrl: string, message: string): void {
   } catch {
     cleanUrl = rawUrl.split('?')[0];
   }
-  console.error(`[AutoAudit API Error] HTTP ${status || 'ERR'} at ${cleanUrl}: ${message}`);
+  const isHtmlRewrite = message.includes('text/html') || message.includes('application/json');
+  if (status === 408 || status === 0 || (status === 200 && isHtmlRewrite)) {
+    console.warn(`[AutoAudit API Notice] ${cleanUrl}: ${message}. Falling back to verified local data.`);
+  } else {
+    console.error(`[AutoAudit API Error] HTTP ${status || 'ERR'} at ${cleanUrl}: ${message}`);
+  }
 }
 
 /**
@@ -86,12 +91,16 @@ if (typeof window !== 'undefined' && window.localStorage) {
   });
 }
 
+export interface RequestOptions extends RequestInit {
+  suppressErrorLog?: boolean;
+}
+
 /**
  * Helper to perform HTTP fetch requests with timeout and structured error handling
  */
 async function request<T>(
   endpoint: string,
-  options: RequestInit = {},
+  options: RequestOptions = {},
   timeoutMs: number = DEFAULT_TIMEOUT_MS
 ): Promise<T> {
   const controller = new AbortController();
@@ -202,7 +211,9 @@ async function request<T>(
             error
           );
 
-    logApiError(finalErr.status, url, finalErr.message);
+    if (!options.suppressErrorLog) {
+      logApiError(finalErr.status, url, finalErr.message);
+    }
     throw finalErr;
   } finally {
     clearTimeout(timeoutId);
@@ -216,15 +227,14 @@ export const api = {
   /**
    * Health Check & Engine Status
    */
-  async getHealth(timeoutMs = 5000): Promise<{ status: string; service?: string; version?: string; uptime?: number }> {
+  async getHealth(timeoutMs = 15000): Promise<{ status: string; service?: string; version?: string; uptime?: number }> {
     try {
       return await request<{ status: string; service?: string; version?: string; uptime?: number }>(
         '/api/health',
-        { method: 'GET' },
+        { method: 'GET', suppressErrorLog: true },
         timeoutMs
       );
-    } catch (err: any) {
-      console.warn('API health check error:', err.message);
+    } catch {
       return { status: 'offline' };
     }
   },
@@ -232,11 +242,11 @@ export const api = {
   /**
    * Service Plans & Pricing Tiers
    */
-  async getServices(timeoutMs = 8000): Promise<ServicePlan[]> {
+  async getServices(timeoutMs = 20000): Promise<ServicePlan[]> {
     try {
       const res = await request<any>(
         '/api/services',
-        { method: 'GET' },
+        { method: 'GET', suppressErrorLog: true },
         timeoutMs
       );
 
@@ -245,8 +255,7 @@ export const api = {
         return data;
       }
       return INITIAL_SERVICES;
-    } catch (err: any) {
-      console.warn('[AutoAudit API] getServices failed or returned non-JSON, using verified initial service plans:', err?.message);
+    } catch {
       return INITIAL_SERVICES;
     }
   },
@@ -255,7 +264,7 @@ export const api = {
     try {
       const res = await request<any>(
         `/api/services/${encodeURIComponent(id)}`,
-        { method: 'GET' },
+        { method: 'GET', suppressErrorLog: true },
         timeoutMs
       );
       if (res) {
@@ -996,13 +1005,20 @@ export const api = {
     return res.data;
   },
 
-  async getWhatsAppConfig(timeoutMs = 5000): Promise<WhatsAppConfig> {
-    const res = await request<{ success: boolean; data: WhatsAppConfig }>(
-      '/api/analytics/whatsapp-config',
-      { method: 'GET' },
-      timeoutMs
-    );
-    return res.data;
+  async getWhatsAppConfig(timeoutMs = 20000): Promise<WhatsAppConfig> {
+    try {
+      const res = await request<{ success: boolean; data: WhatsAppConfig }>(
+        '/api/analytics/whatsapp-config',
+        { method: 'GET', suppressErrorLog: true },
+        timeoutMs
+      );
+      if (res && res.data) {
+        return res.data;
+      }
+      return INITIAL_WHATSAPP_CONFIG;
+    } catch {
+      return INITIAL_WHATSAPP_CONFIG;
+    }
   },
 
   async updateWhatsAppConfig(updates: Partial<WhatsAppConfig>, timeoutMs = 8000): Promise<WhatsAppConfig> {
